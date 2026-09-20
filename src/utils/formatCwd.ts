@@ -1,26 +1,9 @@
 import { homedir } from 'node:os';
+import { formatCwd as formatCwdWith } from '../shared/formatCwd.js';
 
 /**
- * 作業ディレクトリを表示用に短縮する。
- * ホームディレクトリを `~` に置き換え、maxWidth を超える場合は先頭を `…` で中略する。
+ * 作業ディレクトリを表示用に短縮する（Node 環境向けの入口）。
+ * ホームディレクトリの既定値だけを解決し、整形そのものは共有実装に委ねる。
  */
-export const formatCwd = (
-  cwd: string,
-  maxWidth = 40,
-  home: string = homedir(),
-): string => {
-  if (cwd === '') {
-    return '-';
-  }
-
-  let shortened = cwd;
-  if (home !== '' && (cwd === home || cwd.startsWith(`${home}/`))) {
-    shortened = `~${cwd.slice(home.length)}`;
-  }
-
-  if (maxWidth <= 1 || shortened.length <= maxWidth) {
-    return shortened;
-  }
-
-  return `…${shortened.slice(shortened.length - (maxWidth - 1))}`;
-};
+export const formatCwd = (cwd: string, maxWidth = 40, home: string = homedir()): string =>
+  formatCwdWith(cwd, maxWidth, home);

@@ -1,7 +1,7 @@
-import type { CharacterState } from '../../types/agent.js';
+import type { CharacterState } from '../types/agent.js';
 
 /**
- * キャラクターの見た目定義。
+ * キャラクターの見た目定義。TUI / GUI の双方から参照する UI 非依存の共有資産。
  *
  * レイアウトを揺らさないため、全フレームは 2 行・表示幅 8 桁に揃えている
  * （端末差で崩れないよう ASCII と幅の安定した記号のみを使う）。
@@ -21,7 +21,7 @@ const frame = (face: string): string => `${HEAD}\n${face}`;
 export interface CharacterAppearance {
   /** アニメーションフレーム（各要素は改行区切りの 2 行） */
   readonly frames: readonly string[];
-  /** Ink の color 名 */
+  /** 色名（Ink の color 名。GUI では CSS 変数へ対応付ける） */
   readonly color: string;
   /** 一覧に出すステータスラベル */
   readonly label: string;

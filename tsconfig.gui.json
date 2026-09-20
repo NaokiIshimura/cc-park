@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // node の型を持ち込ませず、renderer への node:* 混入を型検査で弾く
+    "types": ["vite/client"]
+  },
+  "include": ["src/gui/renderer/**/*", "vite.config.ts", "vite.preload.config.ts"],
+  "exclude": []
+}

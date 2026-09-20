@@ -1,4 +1,5 @@
 import { Box, Text } from 'ink';
+import { formatClock } from '../../shared/formatClock.js';
 
 interface HeaderProps {
   readonly count: number;
@@ -6,9 +7,6 @@ interface HeaderProps {
   readonly notifyEnabled: boolean;
   readonly isFetching: boolean;
 }
-
-const formatClock = (timestamp: number): string =>
-  new Date(timestamp).toLocaleTimeString('ja-JP', { hour12: false });
 
 /** タイトル・件数・最終更新時刻・通知状態を表示する。 */
 export const Header = ({ count, lastUpdatedAt, notifyEnabled, isFetching }: HeaderProps) => (

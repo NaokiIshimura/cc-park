@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchAgents, type FetchAgentsOptions, type FetchError } from '../core/fetchAgents.js';
+import type {
+  FetchAgentsOptions,
+  FetchAgentsResult,
+  FetchError,
+} from '../core/fetchAgents.js';
 import type { Agent } from '../types/agent.js';
 
 /** ポーリング間隔の下限。外部コマンドの実行コストを踏まえて 500ms でクランプする。 */
@@ -11,8 +15,13 @@ export interface UseAgentsOptions {
   readonly cwd?: string | undefined;
   /** false の場合は初回取得のみ行い、ポーリングしない */
   readonly poll?: boolean;
-  /** テスト用の差し替え */
-  readonly fetcher?: (options: FetchAgentsOptions) => ReturnType<typeof fetchAgents>;
+  /**
+   * セッション取得の実装。
+   *
+   * この hook を renderer（ブラウザ）側からも使えるよう、`node:child_process` に依存する
+   * 既定実装を静的 import せず、呼び出し側から注入させる。
+   */
+  readonly fetcher: (options: FetchAgentsOptions) => Promise<FetchAgentsResult>;
 }
 
 export interface UseAgentsResult {
@@ -26,13 +35,13 @@ export interface UseAgentsResult {
 }
 
 /**
- * `claude agents --json` を一定間隔で実行し、結果を保持する。
+ * `fetcher` を一定間隔で実行し、結果を保持する。
  *
  * - 前回の取得が終わっていなければ今回をスキップする（多重実行ガード）
  * - アンマウント時に interval をクリアし、実行中のプロセスも abort する
  */
 export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
-  const { intervalMs, all = false, cwd, poll = true, fetcher = fetchAgents } = options;
+  const { intervalMs, all = false, cwd, poll = true, fetcher } = options;
 
   const [agents, setAgents] = useState<readonly Agent[]>([]);
   const [previousAgents, setPreviousAgents] = useState<readonly Agent[] | null>(null);

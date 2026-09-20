@@ -1,6 +1,9 @@
 import { Box } from 'ink';
 import { useCallback, useMemo, useState } from 'react';
 import { AgentList, ROWS_PER_AGENT, sortAgents } from './components/AgentList/index.js';
+import { fetchAgents } from './core/fetchAgents.js';
+// props の notify（有効フラグ）と名前が衝突するため別名で受ける
+import { notify as osNotify } from './core/notify.js';
 import { ErrorView } from './components/ErrorView/index.js';
 import { Footer } from './components/Footer/index.js';
 import { Header } from './components/Header/index.js';
@@ -46,6 +49,8 @@ export interface AppProps {
   readonly interactive: boolean;
   readonly selfSessionId: string | null;
   readonly platform: NodeJS.Platform;
+  /** セッション取得の実装。既定は `claude agents --json` の実行 */
+  readonly fetcher?: typeof fetchAgents;
 }
 
 export const App = ({
@@ -57,6 +62,7 @@ export const App = ({
   interactive,
   selfSessionId,
   platform,
+  fetcher = fetchAgents,
 }: AppProps) => {
   const notifySupported = platform === 'darwin';
   const [notifyEnabled, setNotifyEnabled] = useState(notify && notifySupported);
@@ -74,6 +80,7 @@ export const App = ({
     all,
     cwd,
     poll: interactive,
+    fetcher,
   });
 
   const { agents: decorated, transitions } = useTransitions(agents, previousAgents, {
@@ -81,7 +88,7 @@ export const App = ({
     now,
   });
 
-  useNotifications(transitions, { enabled: notifyEnabled });
+  useNotifications(transitions, { enabled: notifyEnabled, notifier: osNotify });
 
   const sorted = useMemo(() => sortAgents(decorated), [decorated]);
 

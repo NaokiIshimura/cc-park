@@ -1,0 +1,339 @@
+/*
+ * TUI（Ink）の見た目を DOM へ写した配色・レイアウト。
+ * Ink の color 名 → CSS 変数の対応は renderer/colors.ts と対になっている。
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #fbfbfd;
+  --surface: #ffffff;
+  --surface-selected: #e8f1ff;
+  --border: #e2e5eb;
+  --fg: #1b1f24;
+  --fg-muted: #6b7280;
+
+  /* Ink color 名との対応 */
+  --ink-default: #1b1f24;
+  --ink-cyan: #0e7490;
+  --ink-yellow: #a16207;
+  --ink-green: #15803d;
+  --ink-green-bright: #16a34a;
+  --ink-gray: #6b7280;
+  --ink-red: #b91c1c;
+  --ink-magenta: #a21caf;
+  --ink-blue-bright: #1d4ed8;
+  --ink-white: #111827;
+
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11131a;
+    --surface: #171a22;
+    --surface-selected: #1f2937;
+    --border: #262b36;
+    --fg: #e5e7eb;
+    --fg-muted: #9aa3b2;
+
+    --ink-default: #e5e7eb;
+    --ink-cyan: #22d3ee;
+    --ink-yellow: #fbbf24;
+    --ink-green: #4ade80;
+    --ink-green-bright: #86efac;
+    --ink-gray: #9aa3b2;
+    --ink-red: #f87171;
+    --ink-magenta: #e879f9;
+    --ink-blue-bright: #60a5fa;
+    --ink-white: #f9fafb;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  /* AA の桁ずれを防ぐため、UI 全体で等幅を崩さない */
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ヘッダ */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.header__title-area {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.header__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-cyan);
+  white-space: nowrap;
+}
+
+.header__count,
+.header__clock {
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.button,
+.toggle {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.button:hover,
+.toggle:hover {
+  border-color: var(--ink-cyan);
+  color: var(--fg);
+}
+
+.toggle--on {
+  border-color: var(--ink-green);
+  color: var(--ink-green);
+  font-weight: 700;
+}
+
+.button--danger {
+  border-color: var(--ink-red);
+  color: var(--ink-red);
+}
+
+.spinner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.spinner--active {
+  background: var(--ink-cyan);
+}
+
+/* 一覧 */
+
+.app__body {
+  flex: 1;
+  overflow-y: auto;
+  /* AA が縮まないよう横方向は詰めず、はみ出す場合だけスクロールさせる */
+  overflow-x: auto;
+}
+
+.agent-list {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: default;
+  /* ダブルクリックでコピーするため、テキスト選択は無効にする */
+  user-select: none;
+}
+
+.agent-row:hover {
+  background: var(--surface);
+}
+
+.agent-row--selected {
+  background: var(--surface-selected);
+  border-color: var(--ink-cyan);
+}
+
+.character {
+  margin: 0;
+  /* 8 桁 2 行の AA をそのままの形で出す */
+  white-space: pre;
+  font-family: var(--font-mono);
+  line-height: 1.25;
+  flex-shrink: 0;
+}
+
+.agent-row__info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.agent-row__line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.agent-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.agent-row__cwd,
+.agent-row__detail {
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag--bg {
+  color: var(--ink-magenta);
+}
+
+.tag--self {
+  color: var(--ink-blue-bright);
+}
+
+.status-badge {
+  font-weight: 700;
+  /* ラベル幅を固定して 2 行目の開始位置を揃える */
+  min-width: 8ch;
+  flex-shrink: 0;
+}
+
+/* 空・エラー */
+
+.empty-state,
+.error-view {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.error-view p {
+  margin: 0;
+}
+
+.error-view__title {
+  color: var(--ink-red);
+  font-weight: 700;
+}
+
+.error-view__message {
+  color: var(--ink-red);
+}
+
+.error-view__hint {
+  color: var(--fg-muted);
+}
+
+/* フッタ */
+
+.footer {
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.footer p {
+  margin: 0;
+}
+
+.footer__help {
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.footer__message {
+  margin-top: 2px;
+  color: var(--ink-green);
+}
+
+/* stop 確認ダイアログ */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 45%);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 320px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.dialog p {
+  margin: 0;
+}
+
+.dialog__message {
+  font-weight: 700;
+}
+
+.dialog__hint {
+  margin-top: 4px;
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.dialog__actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

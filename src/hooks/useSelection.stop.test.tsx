@@ -74,7 +74,7 @@ describe('useSelection の stop 操作', () => {
     const { stdin, unmount } = setup();
     stdin.write('s');
     await wait();
-    expect(state().pendingStopSessionId).toBe('bg-1');
+    expect(state().pendingAction).toEqual({ kind: 'stop', sessionId: 'bg-1' });
     expect(state().message).toContain('stop しますか');
     unmount();
   });
@@ -104,7 +104,7 @@ describe('useSelection の stop 操作', () => {
     stdin.write('y');
     await wait();
     expect(state().message).toBe('stop しました: claude agents setup');
-    expect(state().pendingStopSessionId).toBeNull();
+    expect(state().pendingAction).toBeNull();
     expect(onRefresh).toHaveBeenCalledTimes(1);
     unmount();
   });
@@ -129,7 +129,7 @@ describe('useSelection の stop 操作', () => {
     await wait();
     stdin.write('n');
     await wait();
-    expect(state().pendingStopSessionId).toBeNull();
+    expect(state().pendingAction).toBeNull();
     expect(state().message).toBe('stop を取り消しました');
     expect(stop).not.toHaveBeenCalled();
     unmount();
@@ -151,7 +151,7 @@ describe('useSelection の stop 操作', () => {
     const { stdin, stop, unmount } = setup([interactiveAgent]);
     stdin.write('s');
     await wait();
-    expect(state().pendingStopSessionId).toBeNull();
+    expect(state().pendingAction).toBeNull();
     expect(state().message).toContain('interactive セッションは stop できません');
     expect(stop).not.toHaveBeenCalled();
     unmount();
@@ -161,7 +161,7 @@ describe('useSelection の stop 操作', () => {
     const { stdin, stop, unmount } = setup([]);
     stdin.write('s');
     await wait();
-    expect(state().pendingStopSessionId).toBeNull();
+    expect(state().pendingAction).toBeNull();
     expect(state().message).toBeNull();
     expect(stop).not.toHaveBeenCalled();
     unmount();

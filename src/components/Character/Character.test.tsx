@@ -9,7 +9,7 @@ import {
   HEAD,
   getAppearance,
   getFrame,
-} from './frames.js';
+} from '../../shared/characters.js';
 
 const STATES = Object.keys(CHARACTERS) as CharacterState[];
 

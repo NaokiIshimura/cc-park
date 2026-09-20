@@ -1,4 +1,8 @@
 import { spawn } from 'node:child_process';
+import { buildResumeCommand } from '../shared/resumeCommand.js';
+
+// 既存の import 互換のため再輸出する
+export { buildResumeCommand };
 
 /** 外部コマンド実行の抽象。テストで差し替えられるようにしている。 */
 export type ClipboardWriter = (text: string) => void;
@@ -32,7 +36,3 @@ export const copyToClipboard = (
   writer(text);
   return true;
 };
-
-/** セッションを再開するコマンド文字列を組み立てる。 */
-export const buildResumeCommand = (sessionId: string): string =>
-  `claude --resume ${sessionId}`;

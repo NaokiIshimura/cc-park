@@ -1,41 +1,22 @@
 import { useEffect, useRef } from 'react';
-import { notify, type NotifyOptions } from '../core/notify.js';
+import { toNotification, type NotificationPayload } from '../shared/notification.js';
 import type { TransitionEvent } from '../types/agent.js';
+
+// 既存の import 互換のため再輸出する
+export { toNotification };
 
 /** 同一セッション・同一遷移の連続通知を抑制する時間 */
 const DEBOUNCE_MS = 3000;
 
-/** 遷移イベントから通知内容を組み立てる。通知不要なら null を返す。 */
-export const toNotification = (event: TransitionEvent): NotifyOptions | null => {
-  // 新規出現（from が null）は起動直後の通知洪水になるため対象外
-  if (event.from === null) {
-    return null;
-  }
-
-  if (event.from === 'working' && event.to === 'waiting') {
-    return {
-      title: '[完了] Claude Code',
-      message: `${event.name} が入力待ちになりました`,
-    };
-  }
-  if (event.to === 'blocked') {
-    return {
-      title: '[承認待ち] Claude Code',
-      message: `${event.name} が承認を待っています`,
-    };
-  }
-  if (event.to === 'done') {
-    return {
-      title: '[完了] Claude Code',
-      message: `バックグラウンド ${event.name} が完了しました`,
-    };
-  }
-  return null;
-};
-
 export interface UseNotificationsOptions {
   readonly enabled: boolean;
-  readonly notifier?: typeof notify;
+  /**
+   * 通知の発火手段。
+   *
+   * TUI は osascript、GUI は Electron の Notification と実装が異なるため、
+   * `node:*` に依存する既定実装を静的 import せず、呼び出し側から注入させる。
+   */
+  readonly notifier: (payload: NotificationPayload) => void;
 }
 
 /** 遷移イベントを監視して OS 通知を発火する。 */
@@ -43,7 +24,7 @@ export const useNotifications = (
   transitions: readonly TransitionEvent[],
   options: UseNotificationsOptions,
 ): void => {
-  const { enabled, notifier = notify } = options;
+  const { enabled, notifier } = options;
   const lastNotifiedRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
