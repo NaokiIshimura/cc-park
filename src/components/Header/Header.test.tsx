@@ -9,7 +9,7 @@ const renderHeader = (props: Partial<Parameters<typeof Header>[0]> = {}) =>
 
 describe('Header', () => {
   it('タイトルを表示する', () => {
-    expect(renderHeader()).toContain('cc-park');
+    expect(renderHeader()).toContain('CC Park');
   });
 
   it('セッション件数を表示する', () => {

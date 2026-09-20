@@ -6,7 +6,7 @@
 「作業中」「作業完了」「入力待ち」「承認待ち」が一目で判別できます。
 
 ```
- cc-park 5 sessions                                         notify:on 0:51:04
+ CC Park 5 sessions                                         notify:on 0:51:04
 
  > (\_/)    claude agents setup [bg] ~
    ( oAo)!  BLOCKED  needs your approval 10h39m

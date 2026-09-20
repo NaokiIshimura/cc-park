@@ -51,7 +51,7 @@ describe('App', () => {
 
   it('ヘッダを表示する', async () => {
     const { lastFrame, unmount } = await renderApp();
-    expect(lastFrame()).toContain('cc-park');
+    expect(lastFrame()).toContain('CC Park');
     unmount();
   });
 
