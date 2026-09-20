@@ -60,7 +60,7 @@ describe('execFileRunner', () => {
 
   it('存在しないコマンドでは reject する', async () => {
     await expect(
-      execFileRunner('claude-code-watcher-no-such-command', [], {
+      execFileRunner('cc-park-no-such-command', [], {
         timeoutMs: 5000,
         signal: undefined,
       }),

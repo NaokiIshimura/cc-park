@@ -146,7 +146,7 @@ describe('stopAgent', () => {
 
   it('既定ランナー経由でも claude コマンド未検出を Result で返す', async () => {
     const result = await stopAgent(background(), {
-      command: 'claude-code-watcher-no-such-command',
+      command: 'cc-park-no-such-command',
     });
     expect(result).toMatchObject({ ok: false, error: { kind: 'not-found' } });
   });

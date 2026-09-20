@@ -7,7 +7,7 @@ const NOW = 1_800_000_000_000;
 
 const agent = (overrides: Partial<Agent> = {}): Agent => ({
   sessionId: 'session-a',
-  name: 'watcher',
+  name: 'cc-park',
   cwd: '/Users/naoki/GitHub/app',
   kind: 'interactive' as AgentKind,
   startedAt: NOW - 192_000,
@@ -33,7 +33,7 @@ const renderRow = (overrides: Partial<Agent> = {}, props: Partial<Parameters<typ
 
 describe('AgentRow', () => {
   it('セッション名を表示する', () => {
-    expect(renderRow()).toContain('watcher');
+    expect(renderRow()).toContain('cc-park');
   });
 
   it('経過時間を表示する', () => {

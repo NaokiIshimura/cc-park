@@ -36,7 +36,7 @@ describe('createCommandWriter', () => {
 
   it('存在しないコマンドでも例外を投げない', () => {
     expect(() =>
-      createCommandWriter('claude-code-watcher-no-such-command')('hello'),
+      createCommandWriter('cc-park-no-such-command')('hello'),
     ).not.toThrow();
   });
 });

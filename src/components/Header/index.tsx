@@ -15,7 +15,7 @@ export const Header = ({ count, lastUpdatedAt, notifyEnabled, isFetching }: Head
   <Box flexDirection="row" gap={1} justifyContent="space-between">
     <Box flexDirection="row" gap={1}>
       <Text bold color="cyan">
-        Claude Code Watcher
+        cc-park
       </Text>
       <Text dimColor>{`${count} sessions`}</Text>
     </Box>

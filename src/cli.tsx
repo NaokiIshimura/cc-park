@@ -8,7 +8,7 @@ import { DEFAULT_HIGHLIGHT_MS } from './hooks/useTransitions.js';
 const cli = meow(
   `
   使い方
-    $ claude-code-watcher [options]
+    $ cc-park [options]
 
   オプション
     --interval <ms>              ポーリング間隔 (既定: 2000, 下限: ${MIN_INTERVAL_MS})
@@ -19,9 +19,9 @@ const cli = meow(
     --once                       1 回だけ取得して描画し終了する
 
   例
-    $ claude-code-watcher
-    $ claude-code-watcher --interval 1000 --no-notify
-    $ claude-code-watcher --all --cwd ~/GitHub
+    $ cc-park
+    $ cc-park --interval 1000 --no-notify
+    $ cc-park --all --cwd ~/GitHub
 `,
   {
     importMeta: import.meta,

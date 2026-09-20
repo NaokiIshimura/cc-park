@@ -8,7 +8,7 @@ const jsonFixture = JSON.stringify([
     kind: 'interactive',
     startedAt: 1789918159032,
     sessionId: '40e18e35',
-    name: 'watcher',
+    name: 'cc-park',
     status: 'busy',
   },
 ]);
@@ -129,7 +129,7 @@ describe('fetchAgents', () => {
 // execFileRunner 自体の検証は runCommand.test.ts 側で行う
 describe('既定ランナー', () => {
   it('既定ランナー経由でも claude コマンド未検出を Result で返す', async () => {
-    const result = await fetchAgents({ command: 'claude-code-watcher-no-such-command' });
+    const result = await fetchAgents({ command: 'cc-park-no-such-command' });
     expect(result).toMatchObject({ ok: false, error: { kind: 'not-found' } });
   });
 });

@@ -30,11 +30,11 @@ describe('toCharacterState', () => {
 describe('normalizeAgent', () => {
   const interactive: RawAgent = {
     pid: 16460,
-    cwd: '/Users/naoki/GitHub/claude-code-watcher',
+    cwd: '/Users/naoki/GitHub/cc-park',
     kind: 'interactive',
     startedAt: 1789918159032,
     sessionId: '40e18e35-610a-4623-a62e-084cac5ab466',
-    name: 'claude-code-watcher-bd',
+    name: 'cc-park-bd',
     status: 'busy',
   };
 
@@ -51,8 +51,8 @@ describe('normalizeAgent', () => {
   it('interactive セッションを status から正規化する', () => {
     expect(normalizeAgent(interactive)).toEqual({
       sessionId: '40e18e35-610a-4623-a62e-084cac5ab466',
-      name: 'claude-code-watcher-bd',
-      cwd: '/Users/naoki/GitHub/claude-code-watcher',
+      name: 'cc-park-bd',
+      cwd: '/Users/naoki/GitHub/cc-park',
       kind: 'interactive',
       startedAt: 1789918159032,
       state: 'working',

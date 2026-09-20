@@ -1,10 +1,10 @@
 {
-  "name": "claude-code-watcher",
+  "name": "cc-park",
   "version": "0.1.0",
   "description": "マシン上で稼働中の Claude Code セッションをキャラクターで一覧表示するターミナル TUI",
   "type": "module",
   "bin": {
-    "claude-code-watcher": "./dist/cli.js"
+    "cc-park": "./dist/cli.js"
   },
   "files": [
     "dist"

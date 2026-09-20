@@ -15,7 +15,7 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const agent = (overrides: Partial<Agent> = {}): Agent => ({
   sessionId: 'session-a',
-  name: 'watcher',
+  name: 'cc-park',
   cwd: '/tmp/app',
   kind: 'interactive',
   startedAt: Date.now() - 60_000,
@@ -51,7 +51,7 @@ describe('App', () => {
 
   it('ヘッダを表示する', async () => {
     const { lastFrame, unmount } = await renderApp();
-    expect(lastFrame()).toContain('Claude Code Watcher');
+    expect(lastFrame()).toContain('cc-park');
     unmount();
   });
 
@@ -63,7 +63,7 @@ describe('App', () => {
 
     const { lastFrame, unmount } = await renderApp();
     const output = lastFrame() ?? '';
-    expect(output).toContain('watcher');
+    expect(output).toContain('cc-park');
     expect(output).toContain('other');
     expect(output).toContain('2 sessions');
     unmount();

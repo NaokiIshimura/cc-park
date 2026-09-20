@@ -76,7 +76,7 @@ describe('notify', () => {
 describe('execFileNotifyRunner', () => {
   it('コマンド実行に失敗しても例外を投げない', () => {
     expect(() =>
-      execFileNotifyRunner('claude-code-watcher-no-such-command', []),
+      execFileNotifyRunner('cc-park-no-such-command', []),
     ).not.toThrow();
   });
 

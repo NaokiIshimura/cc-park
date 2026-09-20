@@ -1,4 +1,4 @@
-# claude-code-watcher
+# cc-park
 
 マシン上で稼働中の Claude Code セッションを、キャラクターで一覧表示するターミナル TUI です。
 
@@ -6,12 +6,12 @@
 「作業中」「作業完了」「入力待ち」「承認待ち」が一目で判別できます。
 
 ```
- Claude Code Watcher 5 sessions                             notify:on 0:51:04
+ cc-park 5 sessions                                         notify:on 0:51:04
 
  > (\_/)    claude agents setup [bg] ~
    ( oAo)!  BLOCKED  needs your approval 10h39m
 
-   (\_/)    claude-code-watcher-bd [self] ~/GitHub/claude-code-watcher
+   (\_/)    cc-park-bd [self] ~/GitHub/cc-park
    ( -v-)/  BUSY     working... 21m
 
    (\_/)    vscode-ai-coding-sidebar-3e ~/GitHub/vscode-ai-coding-sidebar
@@ -35,7 +35,7 @@ npm link
 ## 使い方
 
 ```bash
-claude-code-watcher
+cc-park
 ```
 
 ### オプション
@@ -50,8 +50,8 @@ claude-code-watcher
 | `--once` | なし | 1 回だけ取得して描画し終了する |
 
 ```bash
-claude-code-watcher --interval 1000 --no-notify
-claude-code-watcher --all --cwd ~/GitHub
+cc-park --interval 1000 --no-notify
+cc-park --all --cwd ~/GitHub
 ```
 
 パイプやリダイレクトなど非 TTY 環境では、自動的に `--once` 相当の動作になります。
