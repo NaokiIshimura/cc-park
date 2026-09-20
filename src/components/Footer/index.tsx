@@ -6,7 +6,7 @@ interface FooterProps {
   readonly showPlatformNotice: boolean;
 }
 
-const KEY_HELP = 'up/down 選択  Enter コピー  s stop  r 更新  n 通知  q 終了';
+const KEY_HELP = 'up/down 選択  Enter コピー  s stop  x kill  r 更新  n 通知  q 終了';
 
 /** キーバインドヘルプと直近の操作結果を表示する。 */
 export const Footer = ({ message, showPlatformNotice }: FooterProps) => (

@@ -1,6 +1,6 @@
 import { Text } from 'ink';
 import type { CharacterState } from '../../types/agent.js';
-import { getAppearance, getFrame } from './frames.js';
+import { getAppearance, getFrame } from '../../shared/characters.js';
 
 interface CharacterProps {
   readonly state: CharacterState;
@@ -19,5 +19,12 @@ export const Character = ({ state, frame, bold = false }: CharacterProps) => (
   </Text>
 );
 
-export { CHARACTERS, CHARACTER_HEIGHT, CHARACTER_WIDTH, getAppearance, getFrame } from './frames.js';
-export type { CharacterAppearance } from './frames.js';
+export {
+  CHARACTERS,
+  CHARACTER_HEIGHT,
+  CHARACTER_WIDTH,
+  HEAD,
+  getAppearance,
+  getFrame,
+} from '../../shared/characters.js';
+export type { CharacterAppearance } from '../../shared/characters.js';

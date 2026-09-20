@@ -1,10 +1,8 @@
 import { execFile } from 'node:child_process';
+import type { NotificationPayload } from '../shared/notification.js';
 
-export interface NotifyOptions {
-  readonly title: string;
-  readonly message: string;
-  readonly subtitle?: string | undefined;
-}
+/** 通知内容。UI 非依存の共有定義をそのまま使う。 */
+export type NotifyOptions = NotificationPayload;
 
 /** 外部コマンド実行の抽象。テストで差し替えられるようにしている。 */
 export type NotifyRunner = (command: string, args: readonly string[]) => void;
