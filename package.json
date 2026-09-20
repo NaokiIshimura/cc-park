@@ -1,0 +1,43 @@
+{
+  "name": "claude-code-watcher",
+  "version": "0.1.0",
+  "description": "マシン上で稼働中の Claude Code セッションをキャラクターで一覧表示するターミナル TUI",
+  "type": "module",
+  "bin": {
+    "claude-code-watcher": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cli",
+    "tui",
+    "ink"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ink": "^7.1.1",
+    "meow": "^14.1.0",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "ink-testing-library": "^4.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

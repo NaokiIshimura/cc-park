@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+
+# エージェント・エディタ用ディレクトリ
+.claude/
+.vscode/
+.serena/
+
+# OS
+.DS_Store
+coverage/
