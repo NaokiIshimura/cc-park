@@ -21,7 +21,8 @@
     "start": "node dist/cli.js",
     "gui": "ELECTRON_RUN_AS_NODE= electron dist/gui/main.js",
     "gui:dev": "npm run build && npm run gui",
-  "gui:package": "npm run build && electron-packager . --name=cc-park --app-bundle-id=io.github.naokiishimura.cc-park --out=release --overwrite --ignore=\"^/(?!dist($|/)|package\\.json$)\"",
+    "gui:package": "npm run build && electron-packager . --name=cc-park --icon=assets/icon.icns --app-bundle-id=io.github.naokiishimura.cc-park --out=release --overwrite --ignore=\"^/(?!dist($|/)|package\\.json$)\"",
+    "icon:build": "node --experimental-strip-types scripts/generate-icon.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.gui.json"
   },

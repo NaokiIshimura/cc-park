@@ -30,6 +30,20 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  */
 app.setName('cc-park');
 
+/**
+ * Dock のアイコン。
+ *
+ * .app にした場合はバンドルの Info.plist（CFBundleIconFile）が使われるため何もしなくてよいが、
+ * `npm run gui` のようにファイルを直接指定して起動すると Electron 既定のアイコンになる。
+ * 開発中も見た目を揃えるため、リポジトリ内の PNG を読ませる。
+ */
+const applyDevDockIcon = (): void => {
+  if (app.isPackaged || app.dock === undefined) {
+    return;
+  }
+  app.dock.setIcon(join(HERE, '..', '..', 'assets', 'icon.png'));
+};
+
 /** ウィンドウの既定サイズ。縦長の一覧なのでスマートフォン寄りの比率にする。 */
 const WINDOW_WIDTH = 480;
 const WINDOW_HEIGHT = 640;
@@ -138,6 +152,7 @@ const preparePath = async (): Promise<void> => {
  */
 app
   .whenReady()
+  .then(applyDevDockIcon)
   .then(preparePath)
   .then(createWindow)
   .catch((error: unknown) => {

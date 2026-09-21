@@ -16,6 +16,7 @@ npm test            # 全テスト
 npx vitest run <ファイルパス>   # テストは対象を指定して実行する
 npm run gui:dev     # ビルドして GUI ウィンドウを起動
 npm run gui:package # .app にパッケージ化（アプリ名を cc-park で表示したいときはこちらを起動）
+npm run icon:build  # AA からアプリアイコンを生成（assets/icon.svg / .png / .icns）
 node dist/cli.js --once --all   # TUI を 1 回だけ描画（実描画の確認用）
 ```
 
@@ -63,6 +64,10 @@ for (const s of Object.keys(CHARACTERS)) {
 
 GUI のスクリーンショット `docs/gui.png` と、README 冒頭のアニメーション `docs/gui.gif` も
 見た目が変わったら撮り直す（撮り方は「GIF の撮り直し」）。
+
+アプリアイコン `assets/icon.*` も `src/shared/characters.ts` から生成している
+（`justFinished` の両手を上げたフレーム）。AA を変えたら `npm run icon:build` で作り直し、
+生成物をコミットする。生成には `rsvg-convert`（`brew install librsvg`）が要る。
 
 ### AA の制約
 
