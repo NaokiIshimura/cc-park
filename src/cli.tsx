@@ -26,7 +26,7 @@ const cli = meow(
     --cli                        ターミナル (CLI/TUI) で起動する
     --gui                        独自ウィンドウ (GUI) で起動する (既定)
     --interval <ms>              ポーリング間隔 (既定: 2000, 下限: ${MIN_INTERVAL_MS})
-    --all                        完了済みバックグラウンドセッションも表示する (GUI は既定で ON)
+    --all                        完了済みバックグラウンドセッションも表示する
     --cwd <path>                 指定パス配下のバックグラウンドセッションのみ表示する
     --no-notify                  OS 通知を無効化する
     --prompt                     最後に与えたプロンプトを表示する (GUI は既定で ON)

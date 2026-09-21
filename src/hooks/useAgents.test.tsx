@@ -130,6 +130,37 @@ describe('useAgents', () => {
     unmount();
   });
 
+  it('fetcher が reject してもポーリングを止めない', async () => {
+    let call = 0;
+    const fetcher = vi.fn(async (): Promise<FetchAgentsResult> => {
+      call += 1;
+      if (call === 2) {
+        throw new Error('IPC 失敗');
+      }
+      return { ok: true, agents: [agent('a')] };
+    });
+    const { lastFrame, unmount } = render(
+      <Harness intervalMs={MIN_INTERVAL_MS} fetcher={fetcher} />,
+    );
+
+    await wait(MIN_INTERVAL_MS * 4);
+    // 多重実行ガードが立ちっぱなしになると 2 回で止まる
+    expect(fetcher.mock.calls.length).toBeGreaterThan(2);
+    expect(parse(lastFrame()).ids).toEqual(['a']);
+    unmount();
+  });
+
+  it('fetcher が reject したらエラーとして扱う', async () => {
+    const fetcher = vi.fn(async (): Promise<FetchAgentsResult> => {
+      throw new Error('IPC 失敗');
+    });
+    const { lastFrame, unmount } = render(<Harness intervalMs={10_000} fetcher={fetcher} />);
+
+    await wait(20);
+    expect(parse(lastFrame()).error).toBe('exit');
+    unmount();
+  });
+
   it('all と cwd を fetcher へ渡す', async () => {
     const fetcher = vi.fn(
       async (_options: FetchAgentsOptions): Promise<FetchAgentsResult> => ({

@@ -21,8 +21,12 @@ const options: GuiOptions = {
 };
 
 describe('DEFAULT_GUI_OPTIONS', () => {
-  it('GUI は表示オプションを既定で有効にする', () => {
-    expect(DEFAULT_GUI_OPTIONS).toMatchObject({ all: true, prompt: true, tokens: true });
+  it('GUI は prompt / tokens を既定で有効にする', () => {
+    expect(DEFAULT_GUI_OPTIONS).toMatchObject({ prompt: true, tokens: true });
+  });
+
+  it('完了済みセッションが居座らないよう all は既定で無効にする', () => {
+    expect(DEFAULT_GUI_OPTIONS.all).toBe(false);
   });
 });
 
