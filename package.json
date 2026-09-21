@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "マシン上で稼働中の Claude Code セッションをキャラクターで一覧表示するターミナル TUI / デスクトップ GUI",
   "type": "module",
+  "main": "dist/gui/main.js",
   "bin": {
     "cc-park": "./dist/cli.js"
   },
@@ -20,6 +21,7 @@
     "start": "node dist/cli.js",
     "gui": "ELECTRON_RUN_AS_NODE= electron dist/gui/main.js",
     "gui:dev": "npm run build && npm run gui",
+  "gui:package": "npm run build && electron-packager . --name=cc-park --app-bundle-id=io.github.naokiishimura.cc-park --out=release --overwrite --ignore=\"^/(?!dist($|/)|package\\.json$)\"",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.gui.json"
   },
@@ -41,6 +43,7 @@
     "react": "^19.3.0"
   },
   "devDependencies": {
+    "@electron/packager": "^20.3.0",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/node": "^26.6.2",

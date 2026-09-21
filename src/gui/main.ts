@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, clipboard, ipcMain, Notification } from 'electron';
 import { fetchAgents } from '../core/fetchAgents.js';
 import { killAgent } from '../core/killAgent.js';
+import { resolveShellPath } from '../core/shellPath.js';
 import { stopAgent } from '../core/stopAgent.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Agent } from '../types/agent.js';
@@ -18,6 +19,16 @@ import { IPC_CHANNELS, type FetchAgentsRequest } from './ipc.js';
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * アプリ名。`electron dist/gui/main.js` のようにファイルを直接指定して起動すると
+ * 既定値の "Electron" になり、userData の保存先などがその名前になってしまうため明示する。
+ * app.whenReady() より前に設定する必要がある。
+ *
+ * なお macOS のメニューバーに出る名前はバンドルの Info.plist（CFBundleName）が優先されるため、
+ * これでは変わらない。`npm run gui:package` で .app にすると cc-park と表示される。
+ */
+app.setName('cc-park');
 
 /** ウィンドウの既定サイズ。縦長の一覧なのでスマートフォン寄りの比率にする。 */
 const WINDOW_WIDTH = 480;
@@ -112,12 +123,22 @@ ipcMain.on(IPC_CHANNELS.quit, () => {
   app.quit();
 });
 
+/**
+ * Finder から起動したときは PATH が `/usr/bin:/bin:/usr/sbin:/sbin` しか無く、
+ * `~/.local/bin` などに入る `claude` を見つけられない。
+ * 最初の取得が走る前に、ログインシェルと同じ PATH へ揃えておく。
+ */
+const preparePath = async (): Promise<void> => {
+  process.env['PATH'] = await resolveShellPath({ home: config.home });
+};
+
 /*
  * ここで top-level await を使うとモジュール評価が終わらず、Electron の ready
  * イベントが発火しないまま停止する（ESM エントリ固有の制約）。必ず then で受ける。
  */
 app
   .whenReady()
+  .then(preparePath)
   .then(createWindow)
   .catch((error: unknown) => {
     console.error('ウィンドウの起動に失敗しました:', error);

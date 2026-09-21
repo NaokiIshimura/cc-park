@@ -278,11 +278,35 @@ GUI では加えて次の操作ができます。
 - 切り替えた状態は保存されません。次回もまた固定された状態から始まります
 - 実際に固定できたかは OS 側の都合にも左右されるため、表示は main プロセスが適用した結果に追従します
 
+### アプリ（.app）としてパッケージ化する
+
+```bash
+npm run gui:package   # → release/cc-park-<platform>-<arch>/cc-park.app
+```
+
+macOS のメニューバーや Dock に出るアプリ名は、実行中の `.app` バンドルの `CFBundleName` で決まります。
+`npm run gui` は `node_modules` の `Electron.app` をそのまま起動するため、開発中は **`Electron`** と表示されます。
+`cc-park` と表示させたい場合はパッケージ化したものを起動してください。
+
+```bash
+open release/cc-park-darwin-arm64/cc-park.app
+```
+
+| 項目 | 値 |
+| --- | --- |
+| アプリ名（`CFBundleName`） | `cc-park` |
+| バンドル ID | `io.github.naokiishimura.cc-park` |
+| 同梱するもの | `dist/` と `package.json` のみ（GUI は `electron` と Node 標準モジュールしか使わない） |
+| 出力先 | `release/`（git 管理外） |
+
 ### 制約
 
 - `--gui` と `--once`、`--cli` と `--gui` は併用できません
 - 動作確認は macOS のみです（実装上の OS 依存は無く、他 OS でも動作する想定です）
-- `.app` / `.dmg` としての配布パッケージはまだ用意していません
+- `npm run gui:package` で `.app` は作れますが、コード署名・公証・`.dmg` の配布パッケージは用意していません
+- Finder や Dock から起動したアプリの PATH は `/usr/bin:/bin:/usr/sbin:/sbin` だけになり、
+  `~/.local/bin` などに入る `claude` を見つけられません。そのため起動時にログインシェル（`$SHELL -ilc`）へ
+  PATH を問い合わせ、ターミナルから起動したときと同じ状態に揃えてから一覧を取得します
 - 環境変数 `ELECTRON_RUN_AS_NODE` が設定されていると Electron が素の Node として起動してしまうため、
   `cc-park --gui` は子プロセスの環境からこの変数を取り除いてから Electron を起動します
 
@@ -509,6 +533,7 @@ CLI モードは `osascript`（macOS のみ）、GUI モードは Electron の N
 npm run dev         # tsc --watch（CLI）
 npm run build       # TUI + GUI（preload / renderer）をまとめてビルド
 npm run gui:dev     # ビルドして GUI ウィンドウを起動する
+npm run gui:package # .app にパッケージ化する（release/ に出力）
 npm run typecheck   # 本体・テスト・GUI renderer の型チェック
 npm test            # テスト実行
 npx vitest run --coverage

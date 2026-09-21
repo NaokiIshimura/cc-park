@@ -15,6 +15,7 @@ npm run typecheck   # 本体・テスト・GUI renderer の 3 構成すべて型
 npm test            # 全テスト
 npx vitest run <ファイルパス>   # テストは対象を指定して実行する
 npm run gui:dev     # ビルドして GUI ウィンドウを起動
+npm run gui:package # .app にパッケージ化（アプリ名を cc-park で表示したいときはこちらを起動）
 node dist/cli.js --once --all   # TUI を 1 回だけ描画（実描画の確認用）
 ```
 
