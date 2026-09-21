@@ -17,19 +17,19 @@
 
    ▗▐▛███▛█
  > ▝▜██████▀ claude agents setup [bg]
-     ▝▝ ▝▝   BLOCKED  needs your approval 10h39m
+     ▝▝ ▝▝   BLOCKED                               needs your approval 10h39m
 
  ~/GitHub/cc-park
 
     ▐▛███▛█
    ▝▜██████▀ cc-park-bd [self]
-     ▝ ▘▝▝   BUSY     working... 21m
+     ▝ ▘▝▝   BUSY                                              working... 21m
 
  ~/GitHub/vscode-ai-coding-sidebar
 
     ▐▛███▛█
    ▝▜██████▀ vscode-ai-coding-sidebar-3e
-     ▝▝ ▝▝   IDLE     waiting for input 37m
+     ▝▝ ▝▝   IDLE                                       waiting for input 37m
 ```
 
 セッションは**作業ディレクトリごとにまとめて**表示します。
@@ -199,19 +199,19 @@ cc-park --cli --prompt --tokens
  ~
 
  > ▗▐▛███▛█  claude agents setup [bg]                                     ███████░ ctx  92%
-   ▝▜██████▀ BLOCKED  needs your approval 10h39m
+   ▝▜██████▀ BLOCKED                                             needs your approval 10h39m
      ▝▝ ▝▝   > MCP サーバの設定を見直して
 
  ~/GitHub/cc-park
 
     ▐▛███▛█  cc-park-bd [self]                                            ██░░░░░░ ctx  27%
-   ▝▜██████▀ BUSY     working... 21m
+   ▝▜██████▀ BUSY                                                            working... 21m
      ▝ ▘▝▝   > キャラクターの足のアニメーションを左右に分けて
 
  ~/GitHub/vscode-ai-coding-sidebar
 
     ▐▛███▛█  vscode-ai-coding-sidebar-3e                                  ████░░░░ ctx  45%
-   ▝▜██████▀ IDLE     waiting for input 37m
+   ▝▜██████▀ IDLE                                                     waiting for input 37m
      ▝▝ ▝▝   > サイドバーの折りたたみ状態を保存して
 ```
 

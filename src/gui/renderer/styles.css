@@ -277,6 +277,12 @@ body {
   text-overflow: ellipsis;
 }
 
+/* 状態の説明と経過時間。1 行目のトークン表示と右端を揃える */
+.agent-row__detail {
+  margin-left: auto;
+  padding-left: 12px;
+}
+
 /* コンテキスト使用量。名前を押し出さないよう右端へ寄せる */
 .token {
   margin-left: auto;
@@ -323,7 +329,7 @@ body {
 
 .status-badge {
   font-weight: 700;
-  /* ラベル幅を固定して説明文の開始位置を揃える */
+  /* 説明文が短いときも詰まって見えないようラベル幅を固定する */
   min-width: 8ch;
   flex-shrink: 0;
 }

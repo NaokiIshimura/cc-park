@@ -112,10 +112,18 @@ const AgentRowComponent = ({
           ) : null}
         </Box>
 
-        <Text wrap="truncate-end">
-          <StatusBadge state={agent.state} />
-          <Text dimColor>{` ${detail} ${elapsed}`}</Text>
-        </Text>
+        {/*
+          状態ラベルは左端に固定し、説明と経過時間は右端へ寄せる。
+          1 行目のトークン表示と右端が揃い、行ごとの読み取りがしやすくなる。
+        */}
+        <Box flexDirection="row">
+          <Box flexShrink={0}>
+            <StatusBadge state={agent.state} />
+          </Box>
+          <Box flexGrow={1} justifyContent="flex-end">
+            <Text wrap="truncate-end" dimColor>{`${detail} ${elapsed}`}</Text>
+          </Box>
+        </Box>
 
         {showPrompt ? (
           <Text wrap="truncate-end" dimColor>
