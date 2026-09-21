@@ -15,6 +15,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   rawState: 'busy',
   pid: 100,
   id: undefined,
+  meta: undefined,
   ...overrides,
 });
 
@@ -27,6 +28,8 @@ const renderRow = (overrides: Partial<Agent> = {}, props: Partial<Parameters<typ
       now={NOW}
       isSelf={false}
       infoWidth={60}
+      showPrompt
+      showTokens
       {...props}
     />,
   ).lastFrame() ?? '';
@@ -44,8 +47,8 @@ describe('AgentRow', () => {
     expect(renderRow({ startedAt: 0 })).toContain('-');
   });
 
-  it('cwd を短縮して表示する', () => {
-    expect(renderRow({ cwd: '/tmp/work' })).toContain('/tmp/work');
+  it('cwd はグループ見出しへ移したので行には出さない', () => {
+    expect(renderRow({ cwd: '/tmp/work' })).not.toContain('/tmp/work');
   });
 
   it('ステータスラベルを表示する', () => {
@@ -68,12 +71,16 @@ describe('AgentRow', () => {
     expect(renderRow({}, { isSelf: true })).toContain('[self]');
   });
 
+  // プロンプト行にも `>` を使うため、カーソルは行頭の桁にあるかで見分ける
+  const hasCursor = (output: string): boolean =>
+    output.split('\n').some((line) => line.startsWith('>'));
+
   it('選択行には > を付ける', () => {
-    expect(renderRow({}, { selected: true })).toContain('>');
+    expect(hasCursor(renderRow({}, { selected: true }))).toBe(true);
   });
 
   it('非選択行には > を付けない', () => {
-    expect(renderRow()).not.toContain('>');
+    expect(hasCursor(renderRow())).toBe(false);
   });
 
   it('未知の状態では生の状態文字列を併記する', () => {
@@ -88,6 +95,75 @@ describe('AgentRow', () => {
 
   it('キャラクターの AA を表示する', () => {
     expect(renderRow()).toContain('▐▛███▛█');
+  });
+});
+
+describe('AgentRow の付加情報', () => {
+  const withMeta = (meta: Agent['meta']) => renderRow({ meta });
+
+  it('最終プロンプトを目印付きで表示する', () => {
+    expect(withMeta({ lastPrompt: 'テストを書いて', tokens: undefined })).toContain(
+      '> テストを書いて',
+    );
+  });
+
+  it('最終プロンプトが無くても目印だけは出して行数を揃える', () => {
+    const lines = renderRow().split('\n');
+    expect(lines[1]?.trimEnd().endsWith('>')).toBe(true);
+    expect(lines[1]).not.toContain('> ');
+  });
+
+  it('コンテキスト利用率をバーとパーセントで表示する', () => {
+    const output = withMeta({
+      lastPrompt: undefined,
+      tokens: { used: 90_000, limit: 200_000, ratio: 0.45 },
+    });
+    expect(output).toContain('ctx  45%');
+    expect(output).toContain('████░░░░');
+  });
+
+  it('トークン情報が無ければ ctx を出さない', () => {
+    expect(renderRow()).not.toContain('ctx');
+  });
+
+  it('showPrompt が false ならプロンプト行を出さない', () => {
+    const output = renderRow(
+      { meta: { lastPrompt: 'やって', tokens: undefined } },
+      { showPrompt: false },
+    );
+    expect(output).not.toContain('やって');
+  });
+
+  it('showTokens が false なら ctx を出さない', () => {
+    const output = renderRow(
+      { meta: { lastPrompt: undefined, tokens: { used: 1, limit: 200_000, ratio: 0.5 } } },
+      { showTokens: false },
+    );
+    expect(output).not.toContain('ctx');
+  });
+
+  it('情報カラムが狭いときはトークンを省いて名前を優先する', () => {
+    const output = renderRow(
+      { meta: { lastPrompt: undefined, tokens: { used: 1, limit: 200_000, ratio: 0.5 } } },
+      { infoWidth: 20 },
+    );
+    expect(output).not.toContain('ctx');
+    expect(output).toContain('cc-park');
+  });
+
+  it('showPrompt が有効なら 3 行になり 1 行目から名前が並ぶ', () => {
+    const lines = withMeta({ lastPrompt: 'やって', tokens: undefined }).split('\n');
+    expect(lines[0]).toContain('cc-park');
+    expect(lines[1]).toContain('> やって');
+    expect(lines[2]).toContain('BUSY');
+  });
+
+  it('showPrompt が無効なら 2 行になり下揃えで足の行に状態が並ぶ', () => {
+    const lines = renderRow({}, { showPrompt: false }).split('\n');
+    // AA の 1 行目には情報が無く、2 行目に名前・3 行目に状態が来る
+    expect(lines[0]).not.toContain('cc-park');
+    expect(lines[1]).toContain('cc-park');
+    expect(lines[2]).toContain('BUSY');
   });
 });
 

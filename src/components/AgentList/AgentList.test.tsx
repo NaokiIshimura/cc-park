@@ -1,18 +1,24 @@
 import { render } from 'ink-testing-library';
 import { describe, expect, it } from 'vitest';
 import type { Agent, CharacterState } from '../../types/agent.js';
-import { AgentList, computeWindow, sortAgents } from './index.js';
+import { AgentList, computeWindow, needsHeader, sortAgents } from './index.js';
 
-const agent = (sessionId: string, state: CharacterState, startedAt = 0): Agent => ({
+const agent = (
+  sessionId: string,
+  state: CharacterState,
+  startedAt = 0,
+  cwd = '/tmp',
+): Agent => ({
   sessionId,
   name: sessionId,
-  cwd: '/tmp',
+  cwd,
   kind: 'interactive',
   startedAt,
   state,
   rawState: state,
   pid: undefined,
   id: undefined,
+  meta: undefined,
 });
 
 describe('sortAgents', () => {
@@ -85,6 +91,26 @@ describe('computeWindow', () => {
   });
 });
 
+describe('needsHeader', () => {
+  const agents = [
+    agent('a1', 'waiting', 0, '/tmp/a'),
+    agent('a2', 'waiting', 0, '/tmp/a'),
+    agent('b1', 'waiting', 0, '/tmp/b'),
+  ];
+
+  it('窓の先頭では必ず見出しを出す', () => {
+    expect(needsHeader(agents, 1, 1)).toBe(true);
+  });
+
+  it('直前と同じ cwd なら見出しを出さない', () => {
+    expect(needsHeader(agents, 1, 0)).toBe(false);
+  });
+
+  it('cwd が変わったら見出しを出す', () => {
+    expect(needsHeader(agents, 2, 0)).toBe(true);
+  });
+});
+
 describe('AgentList', () => {
   const renderList = (agents: readonly Agent[], selectedIndex = 0, maxVisible = 100) =>
     render(
@@ -95,6 +121,9 @@ describe('AgentList', () => {
         now={1000}
         selfSessionId={null}
         infoWidth={60}
+        headerWidth={70}
+        showPrompt={false}
+        showTokens={false}
         maxVisible={maxVisible}
       />,
     ).lastFrame() ?? '';
@@ -137,6 +166,32 @@ describe('AgentList', () => {
     expect(output).not.toContain('他 ');
   });
 
+  it('cwd ごとに見出しを 1 回だけ出す', () => {
+    const output = renderList([
+      agent('alpha', 'working', 0, '/tmp/a'),
+      agent('beta', 'waiting', 0, '/tmp/a'),
+      agent('gamma', 'waiting', 0, '/tmp/b'),
+    ]);
+    expect(output.match(/\/tmp\/a/g)).toHaveLength(1);
+    expect(output.match(/\/tmp\/b/g)).toHaveLength(1);
+  });
+
+  it('cwd が空のグループは (不明) と表示する', () => {
+    expect(renderList([agent('alpha', 'working', 0, '')])).toContain('(不明)');
+  });
+
+  it('窓の途中で切れても先頭に見出しを出す', () => {
+    const agents = [
+      agent('s0', 'waiting', 0, '/tmp/a'),
+      agent('s1', 'waiting', 0, '/tmp/a'),
+      agent('s2', 'waiting', 0, '/tmp/a'),
+    ];
+    // s2 だけが窓に入る位置でも、その上に見出しが出る
+    const output = renderList(agents, 2, 1);
+    expect(output).toContain('s2');
+    expect(output).toContain('/tmp/a');
+  });
+
   it('selfSessionId に一致する行へ [self] を付ける', () => {
     const output =
       render(
@@ -147,6 +202,9 @@ describe('AgentList', () => {
           now={1000}
           selfSessionId="alpha"
           infoWidth={60}
+          headerWidth={70}
+          showPrompt={false}
+          showTokens={false}
           maxVisible={100}
         />,
       ).lastFrame() ?? '';

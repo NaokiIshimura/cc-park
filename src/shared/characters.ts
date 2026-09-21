@@ -30,9 +30,6 @@ const LEGS_RIGHT_CLOSED = '  ▝▘ ▝▝  ';
 const LEGS_LEFT_OPEN = '  ▝▝ ▘▝  ';
 const LEGS_LEFT_CLOSED = '  ▝▝ ▝▘  ';
 
-/** 停止済みは足を消す。 */
-const NO_LEGS = '         ';
-
 /** 未知の状態は足を不揃いにする。 */
 const UNEVEN_LEGS = '  ▘▝ ▝▘  ';
 
@@ -130,7 +127,7 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
     priority: 4,
   },
   stopped: {
-    frames: [frame('down', NO_LEGS)],
+    frames: [frame('down')],
     color: 'gray',
     label: 'STOPPED',
     description: 'stopped',

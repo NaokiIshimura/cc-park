@@ -21,6 +21,7 @@ const agent = (sessionId: string): Agent => ({
   rawState: 'idle',
   pid: undefined,
   id: undefined,
+  meta: undefined,
 });
 
 const Harness = (props: UseSelectionOptions) => {

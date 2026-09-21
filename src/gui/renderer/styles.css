@@ -164,12 +164,45 @@ body {
   list-style: none;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+/* cwd ごとのグループ。見出しを 1 回だけ出し、行からは cwd を省く */
+.agent-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agent-group__header {
+  margin: 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-cyan);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* どの dir を見ているか分かるよう、スクロール時は上端へ貼り付く */
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1;
+}
+
+.agent-group__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
 .agent-row {
   display: flex;
-  align-items: flex-start;
+  /* 情報が 3 行に満たないときも状態行が AA の足の行に並ぶよう下揃えにする */
+  align-items: flex-end;
   gap: 8px;
   padding: 6px 8px;
   border: 1px solid transparent;
@@ -214,6 +247,8 @@ body {
 
 .agent-row__info {
   min-width: 0;
+  /* トークンを行の右端へ寄せるため、情報カラムはカード幅いっぱいまで広げる */
+  flex: 1;
   display: flex;
   flex-direction: column;
   /* AA の 3 行と行位置を揃えるため、行間は空けず line-height も合わせる */
@@ -235,11 +270,47 @@ body {
   font-weight: 600;
 }
 
-.agent-row__cwd,
+.agent-row__prompt,
 .agent-row__detail {
   color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* コンテキスト使用量。名前を押し出さないよう右端へ寄せる */
+.token {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-left: 12px;
+}
+
+/*
+ * バーは文字ではなく div で描く。`▰` / `▱` は SF Mono に収録されておらず、
+ * フォールバック描画で桁が崩れるため使えない。
+ */
+.token__bar {
+  display: flex;
+  gap: 2px;
+}
+
+.token__segment {
+  width: 4px;
+  height: 10px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.2;
+}
+
+.token__segment--on {
+  opacity: 1;
+}
+
+.token__percent {
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
 }
 
 .tag--bg {

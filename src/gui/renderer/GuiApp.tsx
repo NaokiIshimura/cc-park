@@ -3,7 +3,7 @@ import { useAgents } from '../../hooks/useAgents.js';
 import { useAnimationTick } from '../../hooks/useAnimationTick.js';
 import { useNotifications } from '../../hooks/useNotifications.js';
 import { useTransitions } from '../../hooks/useTransitions.js';
-import { sortAgents } from '../../shared/sortAgents.js';
+import { flattenGroups, groupAgents } from '../../shared/groupAgents.js';
 import type { GuiConfig } from '../config.js';
 import type { CcParkBridge } from '../ipc.js';
 import { createBridgeFetcher } from './bridge.js';
@@ -47,7 +47,9 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
 
   useNotifications(transitions, { enabled: notifyEnabled, notifier: bridge.notify });
 
-  const sorted = useMemo(() => sortAgents(decorated), [decorated]);
+  // 描画は cwd ごとのグループ、選択はフラットな添字。順序を必ず一致させる
+  const groups = useMemo(() => groupAgents(decorated), [decorated]);
+  const sorted = useMemo(() => flattenGroups(groups), [groups]);
 
   // 切り替え後の状態を返し、フッタのメッセージに使わせる
   const toggleNotify = useCallback(() => {
@@ -113,12 +115,14 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
       <main className="app__body">
         {error === null ? (
           <AgentList
-            agents={sorted}
+            groups={groups}
             frame={frame}
             selectedIndex={selectedIndex}
             now={now}
             selfSessionId={config.selfSessionId}
             home={config.home}
+            showPrompt={config.prompt}
+            showTokens={config.tokens}
             onSelect={select}
             onCopy={handleCopy}
           />

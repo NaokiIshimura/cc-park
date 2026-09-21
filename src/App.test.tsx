@@ -23,6 +23,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   rawState: 'busy',
   pid: 1,
   id: undefined,
+  meta: undefined,
   ...overrides,
 });
 
@@ -180,6 +181,27 @@ describe('App', () => {
     expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ all: true, cwd: '/tmp/x' });
     unmount();
   });
+
+  it('既定では transcript を読ませない', async () => {
+    const { unmount } = await renderApp();
+    expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({
+      meta: false,
+      contextLimit: undefined,
+    });
+    unmount();
+  });
+
+  it('--prompt か --tokens があれば transcript を読ませる', async () => {
+    const { unmount } = await renderApp({ tokens: true });
+    expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ meta: true });
+    unmount();
+  });
+
+  it('コンテキスト上限の明示指定を取得処理へ渡す', async () => {
+    const { unmount } = await renderApp({ tokens: true, contextLimit: 200_000 });
+    expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ contextLimit: 200_000 });
+    unmount();
+  });
 });
 
 describe('computeMaxVisible', () => {
@@ -193,8 +215,13 @@ describe('computeMaxVisible', () => {
     expect(computeMaxVisible(0)).toBe(1);
   });
 
+  it('グループ見出しの行数を差し引く', () => {
+    // 40 行 - chrome 8 行 - 見出し 2 グループ x 2 行 = 28 行 → floor((28+1)/4) = 7 件
+    expect(computeMaxVisible(40, 2)).toBe(7);
+  });
+
   it('chrome の行数を差し替えられる', () => {
-    expect(computeMaxVisible(20, 2)).toBe(4);
+    expect(computeMaxVisible(20, 0, 2)).toBe(4);
   });
 
   it('高さが増えるほど件数も増える', () => {

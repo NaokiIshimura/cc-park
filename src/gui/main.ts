@@ -72,7 +72,14 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
 });
 
 ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequest) =>
-  fetchAgents({ all: request.all, cwd: request.cwd }),
+  // transcript の読み取りは node 側でしかできないため、ここで合成して renderer へ返す
+  fetchAgents({
+    all: request.all,
+    cwd: request.cwd,
+    meta: config.prompt || config.tokens,
+    home: config.home,
+    contextLimit: config.contextLimit === 0 ? undefined : config.contextLimit,
+  }),
 );
 
 ipcMain.handle(IPC_CHANNELS.stopAgent, async (_event, agent: Agent) => stopAgent(agent));

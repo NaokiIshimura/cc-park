@@ -9,6 +9,12 @@ export interface GuiOptions {
   readonly notify: boolean;
   readonly highlightMs: number;
   readonly selfSessionId: string | null;
+  /** 最後に与えたプロンプトを表示する */
+  readonly prompt: boolean;
+  /** コンテキスト利用率を表示する */
+  readonly tokens: boolean;
+  /** コンテキスト上限の明示指定。0 なら使用量から推定する */
+  readonly contextLimit: number;
 }
 
 /**
@@ -29,14 +35,28 @@ export interface GuiConfig extends GuiOptions {
   readonly alwaysOnTop: boolean;
 }
 
+/**
+ * GUI で既定から有効にする表示オプション。
+ *
+ * GUI は常時開いたまま眺める使い方が主なので、`cc-park` だけで
+ * `--all --prompt --tokens` と同じ状態になるようにする。
+ * 端末を占有する CLI 側はこれまでどおり最小限の表示から始める。
+ */
+export const GUI_DEFAULT_FLAGS = {
+  all: true,
+  prompt: true,
+  tokens: true,
+} as const;
+
 /** `npm run gui` のように CLI を経由せず起動した場合の既定値。 */
 export const DEFAULT_GUI_OPTIONS: GuiOptions = {
   intervalMs: 2000,
-  all: false,
   cwd: undefined,
   notify: true,
   highlightMs: 10_000,
   selfSessionId: null,
+  contextLimit: 0,
+  ...GUI_DEFAULT_FLAGS,
 };
 
 /** 起動オプションを `--cc-park-config=<json>` 形式の引数へ変換する。 */
@@ -86,5 +106,8 @@ export const parseGuiOptions = (argv: readonly string[]): GuiOptions => {
       isString,
       DEFAULT_GUI_OPTIONS.selfSessionId,
     ),
+    prompt: pick(source.prompt, isBoolean, DEFAULT_GUI_OPTIONS.prompt),
+    tokens: pick(source.tokens, isBoolean, DEFAULT_GUI_OPTIONS.tokens),
+    contextLimit: pick(source.contextLimit, isNumber, DEFAULT_GUI_OPTIONS.contextLimit),
   };
 };

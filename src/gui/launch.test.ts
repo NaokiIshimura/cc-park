@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { encodeGuiOptions, DEFAULT_GUI_OPTIONS } from './config.js';
 import {
   buildGuiArgs,
+  isFlagGiven,
+  resolveGuiFlags,
   buildGuiEnv,
   ELECTRON_MISSING_MESSAGE,
   GUI_ONCE_CONFLICT_MESSAGE,
@@ -70,6 +72,56 @@ describe('buildGuiArgs', () => {
       '/app/dist/gui/main.js',
       encodeGuiOptions(DEFAULT_GUI_OPTIONS),
     ]);
+  });
+});
+
+describe('isFlagGiven', () => {
+  it('フラグそのものを指定していれば true', () => {
+    expect(isFlagGiven(['--prompt'], 'prompt')).toBe(true);
+  });
+
+  it('否定形で指定していても「明示した」とみなす', () => {
+    expect(isFlagGiven(['--no-prompt'], 'prompt')).toBe(true);
+  });
+
+  it('値付きで指定していても「明示した」とみなす', () => {
+    expect(isFlagGiven(['--prompt=false'], 'prompt')).toBe(true);
+  });
+
+  it('指定が無ければ false', () => {
+    expect(isFlagGiven(['--all', '--cli'], 'prompt')).toBe(false);
+  });
+
+  it('前方一致する別のフラグには反応しない', () => {
+    expect(isFlagGiven(['--prompt-only'], 'prompt')).toBe(false);
+  });
+});
+
+describe('resolveGuiFlags', () => {
+  const off = { all: false, prompt: false, tokens: false };
+
+  it('指定が無ければ GUI の既定（すべて有効）にする', () => {
+    expect(resolveGuiFlags(off, [])).toEqual({ all: true, prompt: true, tokens: true });
+  });
+
+  it('明示した否定はそのまま尊重する', () => {
+    expect(resolveGuiFlags(off, ['--no-prompt'])).toEqual({
+      all: true,
+      prompt: false,
+      tokens: true,
+    });
+  });
+
+  it('すべて否定できる', () => {
+    expect(resolveGuiFlags(off, ['--no-all', '--no-prompt', '--no-tokens'])).toEqual(off);
+  });
+
+  it('明示した有効化もそのまま尊重する', () => {
+    expect(resolveGuiFlags({ ...off, prompt: true }, ['--prompt'])).toEqual({
+      all: true,
+      prompt: true,
+      tokens: true,
+    });
   });
 });
 
