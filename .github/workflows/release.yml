@@ -1,0 +1,126 @@
+name: release
+
+# PR が main にマージされた（= main への push）タイミングで .app をビルドし、
+# package.json の version に対応するリリースがまだ無ければ Releases に公開する。
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 同時に走らせるとタグの作成が競合するため、直列に流す
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # .app のビルドと codesign には macOS ランナーが要る
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: バージョンとタグを決める
+        id: version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          {
+            echo "value=${version}"
+            echo "tag=v${version}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 同じバージョンのリリースが既にあるか調べる
+        id: published
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 型チェックとテスト
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: .app をビルドして zip にまとめる
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          mkdir -p artifacts
+          for arch in arm64 x64; do
+            npm run gui:package -- --arch="${arch}"
+            # packager が Info.plist と実行ファイル名を書き換えるため署名が外れる。
+            # 配布用の証明書は持っていないので ad-hoc で署名し直す
+            codesign --force --deep --sign - "release/cc-park-darwin-${arch}/cc-park.app"
+            codesign --verify --deep --strict "release/cc-park-darwin-${arch}/cc-park.app"
+            # .app はディレクトリなので、シンボリックリンクと権限を保てる ditto で固める
+            ditto -c -k --sequesterRsrc --keepParent \
+              "release/cc-park-darwin-${arch}/cc-park.app" \
+              "artifacts/cc-park-${VERSION}-darwin-${arch}.zip"
+          done
+
+      # リリースを作らない場合でも、ビルド結果は実行ログから取れるようにしておく
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cc-park-${{ steps.version.outputs.value }}-darwin
+          path: artifacts/*.zip
+          retention-days: 14
+
+      - name: リリースノートを書く
+        if: steps.published.outputs.value == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          cat > release-notes.md <<'NOTES'
+          ## ダウンロード
+
+          | ファイル | 対象 |
+          | --- | --- |
+          | `cc-park-VERSION-darwin-arm64.zip` | Apple シリコン（M1 以降） |
+          | `cc-park-VERSION-darwin-x64.zip` | Intel Mac |
+
+          ## 使い方
+
+          zip を展開して `cc-park.app` を `/Applications` に置いてください。
+
+          配布用の証明書で署名・公証をしていないため、初回は Gatekeeper に止められます。
+          その場合は次のコマンドで隔離属性を外してください。
+
+          ```bash
+          xattr -dr com.apple.quarantine /Applications/cc-park.app
+          ```
+
+          `claude` コマンドが PATH に入っている必要があります。
+          NOTES
+          sed -i '' "s/VERSION/${VERSION}/g" release-notes.md
+
+      - name: リリースを公開する
+        if: steps.published.outputs.value == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "${TAG}" artifacts/*.zip \
+            --title "cc-park ${TAG}" \
+            --notes-file release-notes.md \
+            --generate-notes \
+            --target "${GITHUB_SHA}"
+
+      - name: リリース済みなので公開はしない
+        if: steps.published.outputs.value == 'true'
+        run: |
+          echo "::notice::${{ steps.version.outputs.tag }} は公開済みです。新しく配布するには package.json の version を上げてください。"
