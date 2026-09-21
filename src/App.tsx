@@ -1,12 +1,17 @@
 import { Box } from 'ink';
 import { useCallback, useMemo, useState } from 'react';
-import { AgentList, ROWS_PER_AGENT, sortAgents } from './components/AgentList/index.js';
+import {
+  AgentList,
+  ROWS_PER_AGENT,
+  ROWS_PER_GROUP_HEADER,
+} from './components/AgentList/index.js';
 import { fetchAgents } from './core/fetchAgents.js';
 // props の notify（有効フラグ）と名前が衝突するため別名で受ける
 import { notify as osNotify } from './core/notify.js';
 import { ErrorView } from './components/ErrorView/index.js';
 import { Footer } from './components/Footer/index.js';
 import { Header } from './components/Header/index.js';
+import { flattenGroups, groupAgents } from './shared/groupAgents.js';
 import { useAgents } from './hooks/useAgents.js';
 import { useAnimationTick } from './hooks/useAnimationTick.js';
 import { useNotifications } from './hooks/useNotifications.js';
@@ -20,6 +25,9 @@ const ANIMATION_INTERVAL_MS = 200;
 /** 情報カラム以外が占める幅（左右 padding + カーソル + キャラクター + 余白） */
 const FIXED_COLUMNS_WIDTH = 14;
 
+/** グループ見出しの左右に空ける余白 */
+const HEADER_PADDING_WIDTH = 2;
+
 /** 情報カラムの最小幅 */
 const MIN_INFO_WIDTH = 20;
 
@@ -32,9 +40,16 @@ const CHROME_ROWS = 8;
 /** 端末が極端に低くても最低 1 件は出す */
 const MIN_VISIBLE_AGENTS = 1;
 
-/** 端末の高さから同時に表示できるセッション数を求める。 */
-export const computeMaxVisible = (rows: number, chromeRows = CHROME_ROWS): number => {
-  const available = rows - chromeRows;
+/**
+ * 端末の高さから同時に表示できるセッション数を求める。
+ * グループ見出しも行を消費するため、グループ数ぶんを先に差し引く。
+ */
+export const computeMaxVisible = (
+  rows: number,
+  groupCount = 0,
+  chromeRows = CHROME_ROWS,
+): number => {
+  const available = rows - chromeRows - groupCount * ROWS_PER_GROUP_HEADER;
   // N 件は 3N + (N-1) = 4N-1 行を占める
   return Math.max(Math.floor((available + 1) / ROWS_PER_AGENT), MIN_VISIBLE_AGENTS);
 };
@@ -49,6 +64,12 @@ export interface AppProps {
   readonly interactive: boolean;
   readonly selfSessionId: string | null;
   readonly platform: NodeJS.Platform;
+  /** 最後に与えたプロンプトを表示する */
+  readonly prompt?: boolean;
+  /** コンテキスト利用率を表示する */
+  readonly tokens?: boolean;
+  /** コンテキスト上限の明示指定。0 なら使用量から推定する */
+  readonly contextLimit?: number;
   /** セッション取得の実装。既定は `claude agents --json` の実行 */
   readonly fetcher?: typeof fetchAgents;
 }
@@ -62,6 +83,9 @@ export const App = ({
   interactive,
   selfSessionId,
   platform,
+  prompt = false,
+  tokens = false,
+  contextLimit = 0,
   fetcher = fetchAgents,
 }: AppProps) => {
   const notifySupported = platform === 'darwin';
@@ -69,7 +93,7 @@ export const App = ({
 
   const { columns, rows } = useTerminalSize();
   const infoWidth = Math.max(columns - FIXED_COLUMNS_WIDTH, MIN_INFO_WIDTH);
-  const maxVisible = computeMaxVisible(rows);
+  const headerWidth = Math.max(columns - HEADER_PADDING_WIDTH, MIN_INFO_WIDTH);
 
   const frame = useAnimationTick(ANIMATION_INTERVAL_MS, interactive);
   // フレーム更新に合わせて経過時間の基準時刻も進める
@@ -81,6 +105,8 @@ export const App = ({
     cwd,
     poll: interactive,
     fetcher,
+    meta: prompt || tokens,
+    contextLimit: contextLimit === 0 ? undefined : contextLimit,
   });
 
   const { agents: decorated, transitions } = useTransitions(agents, previousAgents, {
@@ -90,7 +116,10 @@ export const App = ({
 
   useNotifications(transitions, { enabled: notifyEnabled, notifier: osNotify });
 
-  const sorted = useMemo(() => sortAgents(decorated), [decorated]);
+  // 描画は cwd ごとのグループ、選択はフラットな添字。順序を必ず一致させる
+  const groups = useMemo(() => groupAgents(decorated), [decorated]);
+  const sorted = useMemo(() => flattenGroups(groups), [groups]);
+  const maxVisible = computeMaxVisible(rows, groups.length);
 
   // 切り替え後の状態を返し、フッタのメッセージに使わせる
   const toggleNotify = useCallback(() => {
@@ -124,6 +153,9 @@ export const App = ({
           now={now}
           selfSessionId={selfSessionId}
           infoWidth={infoWidth}
+          headerWidth={headerWidth}
+          showPrompt={prompt}
+          showTokens={tokens}
           maxVisible={maxVisible}
         />
       ) : (

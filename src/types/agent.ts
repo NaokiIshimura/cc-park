@@ -38,6 +38,28 @@ export type CharacterState =
   | 'stopped'
   | 'unknown';
 
+/** 直近リクエストが占めているコンテキスト量。 */
+export interface TokenUsage {
+  /** input + cache_creation + cache_read の合計 */
+  readonly used: number;
+  /** 推定したコンテキスト上限 */
+  readonly limit: number;
+  /** used / limit（0〜1 にクランプ済み） */
+  readonly ratio: number;
+}
+
+/**
+ * transcript から補完したセッションの付加情報。
+ *
+ * `claude agents --json` には含まれないため、取得できないことを前提に
+ * 各項目を `undefined` 許容にしている。
+ */
+export interface SessionMeta {
+  /** 最後にユーザーが与えたプロンプト。改行は空白へ潰して 1 行にしてある */
+  readonly lastPrompt: string | undefined;
+  readonly tokens: TokenUsage | undefined;
+}
+
 /** 正規化後のセッション情報 */
 export interface Agent {
   readonly sessionId: string;
@@ -50,6 +72,8 @@ export interface Agent {
   readonly rawState: string;
   readonly pid: number | undefined;
   readonly id: string | undefined;
+  /** transcript 由来の付加情報。読み取らない / 読めない場合は undefined */
+  readonly meta: SessionMeta | undefined;
 }
 
 /** 状態遷移イベント。新規出現時は `from` が null になる。 */

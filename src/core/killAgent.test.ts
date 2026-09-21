@@ -18,6 +18,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   rawState: 'idle',
   pid: 71547,
   id: undefined,
+  meta: undefined,
   ...overrides,
 });
 

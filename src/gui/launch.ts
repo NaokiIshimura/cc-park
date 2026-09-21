@@ -1,4 +1,4 @@
-import { encodeGuiOptions, type GuiOptions } from './config.js';
+import { encodeGuiOptions, GUI_DEFAULT_FLAGS, type GuiOptions } from './config.js';
 
 /** electron を解決できなかったときの案内。勝手に CLI へ倒さず、ここで終了させる。 */
 export const ELECTRON_MISSING_MESSAGE = [
@@ -51,6 +51,38 @@ export const resolveStartupMode = (flags: StartupFlags): StartupDecision => {
   }
   return { ok: true, mode: 'gui' };
 };
+
+/** GUI 側で既定値を差し替える表示オプション。 */
+export type GuiDisplayFlags = { readonly [K in keyof typeof GUI_DEFAULT_FLAGS]: boolean };
+
+/**
+ * フラグが argv に明示されているか。
+ *
+ * meow は指定の無い boolean も既定値で埋めてしまい「指定しなかった」と区別できないため、
+ * argv を直接見る。`--x` / `--no-x` / `--x=false` のいずれも「明示した」とみなす。
+ */
+export const isFlagGiven = (argv: readonly string[], name: string): boolean =>
+  argv.some(
+    (argument) =>
+      argument === `--${name}` ||
+      argument === `--no-${name}` ||
+      argument.startsWith(`--${name}=`),
+  );
+
+/**
+ * GUI の表示オプションを決める。
+ *
+ * 明示されていないものは GUI 用の既定（`GUI_DEFAULT_FLAGS`）へ倒し、
+ * `--no-all` のように明示した場合はそちらを優先する。
+ */
+export const resolveGuiFlags = (
+  flags: GuiDisplayFlags,
+  argv: readonly string[],
+): GuiDisplayFlags => ({
+  all: isFlagGiven(argv, 'all') ? flags.all : GUI_DEFAULT_FLAGS.all,
+  prompt: isFlagGiven(argv, 'prompt') ? flags.prompt : GUI_DEFAULT_FLAGS.prompt,
+  tokens: isFlagGiven(argv, 'tokens') ? flags.tokens : GUI_DEFAULT_FLAGS.tokens,
+});
 
 /** Electron へ渡す引数を組み立てる。 */
 export const buildGuiArgs = (mainPath: string, options: GuiOptions): string[] => [

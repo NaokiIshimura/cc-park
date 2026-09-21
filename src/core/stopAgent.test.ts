@@ -13,6 +13,7 @@ const background = (overrides: Partial<Agent> = {}): Agent => ({
   rawState: 'blocked',
   pid: undefined,
   id: '2160cf1c',
+  meta: undefined,
   ...overrides,
 });
 

@@ -1,5 +1,6 @@
 import type { Agent, RawAgent } from '../types/agent.js';
 import { normalizeAgents } from './normalizeAgent.js';
+import { readSessionMeta, type ReadSessionMetaOptions } from './readSessionMeta.js';
 import {
   execFileRunner,
   toCommandError,
@@ -32,6 +33,20 @@ export interface FetchAgentsOptions {
   readonly runner?: CommandRunner;
   /** 実行するコマンド名（既定: claude） */
   readonly command?: string;
+  /**
+   * transcript を読んで最終プロンプト / トークン使用量を補完する。
+   * 既定は false。表示しないときにファイル読み取りを起こさないためのオプトイン。
+   */
+  readonly meta?: boolean;
+  /** `~/.claude/projects` を探す起点 */
+  readonly home?: string;
+  /** コンテキスト上限の明示指定 */
+  readonly contextLimit?: number | undefined;
+  /** transcript 読み取りの実装。テストから差し替える */
+  readonly metaReader?: (
+    agent: Agent,
+    options: ReadSessionMetaOptions,
+  ) => Promise<Agent['meta']>;
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -92,5 +107,31 @@ export const fetchAgents = async (
     };
   }
 
-  return { ok: true, agents: normalizeAgents(parsed as RawAgent[]) };
+  const agents = normalizeAgents(parsed as RawAgent[]);
+  if (options.meta !== true) {
+    return { ok: true, agents };
+  }
+
+  return { ok: true, agents: await attachMeta(agents, options) };
+};
+
+/**
+ * transcript 由来の付加情報を合成する。
+ *
+ * ここで合成しておくと、GUI では main プロセスで読んだ結果がそのまま
+ * `FetchAgentsResult` に載るため、IPC の口を増やさずに renderer まで届く。
+ */
+const attachMeta = async (
+  agents: readonly Agent[],
+  options: FetchAgentsOptions,
+): Promise<Agent[]> => {
+  const readMeta = options.metaReader ?? readSessionMeta;
+  const metaOptions: ReadSessionMetaOptions = {
+    ...(options.home === undefined ? {} : { home: options.home }),
+    contextLimit: options.contextLimit,
+  };
+
+  return Promise.all(
+    agents.map(async (agent) => ({ ...agent, meta: await readMeta(agent, metaOptions) })),
+  );
 };

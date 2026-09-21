@@ -18,6 +18,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   rawState: 'busy',
   pid: 1,
   id: undefined,
+  meta: undefined,
   ...overrides,
 });
 
@@ -33,7 +34,8 @@ const setup = (overrides: Partial<Parameters<typeof AgentRow>[0]> = {}) => {
       selected={false}
       now={NOW}
       isSelf={false}
-      home={HOME}
+      showPrompt
+      showTokens
       onSelect={onSelect}
       onCopy={onCopy}
       {...overrides}
@@ -48,9 +50,9 @@ describe('AgentRow', () => {
     expect(screen.getByText('worker')).toBeDefined();
   });
 
-  it('cwd をホーム短縮して表示する', () => {
+  it('cwd はグループ見出しへ移したので行には出さない', () => {
     setup();
-    expect(screen.getByText('~/GitHub/app')).toBeDefined();
+    expect(screen.queryByText('~/GitHub/app')).toBeNull();
   });
 
   it('状態ラベルと説明・経過時間を表示する', () => {
@@ -109,5 +111,60 @@ describe('AgentRow', () => {
     const { onCopy, user } = setup();
     await user.dblClick(screen.getByRole('option'));
     expect(onCopy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AgentRow の付加情報', () => {
+  it('最終プロンプトを目印付きで表示する', () => {
+    setup({ agent: agent({ meta: { lastPrompt: 'テストを書いて', tokens: undefined } }) });
+    expect(screen.getByText('> テストを書いて')).toBeDefined();
+  });
+
+  it('最終プロンプトが無くても目印だけは出して行数を揃える', () => {
+    const { container } = setup();
+    expect(container.querySelector('.agent-row__prompt')?.textContent).toBe('>');
+  });
+
+  it('コンテキスト利用率をパーセントで表示する', () => {
+    const { container } = setup({
+      agent: agent({
+        meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } },
+      }),
+    });
+    // 桁を揃えるための空白が潰れないよう、要素の textContent を直接見る
+    expect(container.querySelector('.token__percent')?.textContent).toBe('ctx  45%');
+  });
+
+  it('バーは使用率のぶんだけセグメントを塗る', () => {
+    const { container } = setup({
+      agent: agent({
+        meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } },
+      }),
+    });
+    expect(container.querySelectorAll('.token__segment')).toHaveLength(8);
+    expect(container.querySelectorAll('.token__segment--on')).toHaveLength(4);
+  });
+
+  it('トークン情報が無ければ ctx を出さない', () => {
+    const { container } = setup();
+    expect(container.querySelector('.token')).toBeNull();
+  });
+
+  it('showPrompt が false ならプロンプト行を出さない', () => {
+    const { container } = setup({
+      agent: agent({ meta: { lastPrompt: 'やって', tokens: undefined } }),
+      showPrompt: false,
+    });
+    expect(container.querySelector('.agent-row__prompt')).toBeNull();
+  });
+
+  it('showTokens が false なら ctx を出さない', () => {
+    const { container } = setup({
+      agent: agent({
+        meta: { lastPrompt: undefined, tokens: { used: 1, limit: 200_000, ratio: 0.5 } },
+      }),
+      showTokens: false,
+    });
+    expect(container.querySelector('.token')).toBeNull();
   });
 });

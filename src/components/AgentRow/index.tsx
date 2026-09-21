@@ -1,9 +1,29 @@
 import { Box, Text } from 'ink';
 import { memo } from 'react';
 import type { Agent } from '../../types/agent.js';
-import { formatCwd, formatDuration } from '../../utils/index.js';
+import { CHARACTER_HEIGHT } from '../../shared/characters.js';
+import {
+  formatTokenBar,
+  formatTokenPercent,
+  tokenUsageColor,
+  TOKEN_TEXT_WIDTH,
+} from '../../shared/formatTokenUsage.js';
+import { formatDuration } from '../../utils/index.js';
 import { Character, getAppearance } from '../Character/index.js';
 import { StatusBadge } from '../StatusBadge/index.js';
+
+/** プロンプト行の先頭に置く目印。選択カーソルとは列が離れるので同じ `>` を使う。 */
+const PROMPT_MARKER = '>';
+
+/**
+ * プロンプト行の中身を組み立てる。
+ * まだプロンプトが無いセッションでも行数を揃えるため、目印だけは残す。
+ */
+const promptLine = (lastPrompt: string | undefined): string =>
+  lastPrompt === undefined ? PROMPT_MARKER : `${PROMPT_MARKER} ${lastPrompt}`;
+
+/** トークン表示を出しても名前が潰れない最小の幅 */
+const MIN_NAME_WIDTH = 12;
 
 interface AgentRowProps {
   readonly agent: Agent;
@@ -15,9 +35,18 @@ interface AgentRowProps {
   readonly isSelf: boolean;
   /** 情報カラムに使える表示幅 */
   readonly infoWidth: number;
+  /** 最終プロンプトを表示するか */
+  readonly showPrompt: boolean;
+  /** コンテキスト利用率を表示するか */
+  readonly showTokens: boolean;
 }
 
-/** 1 セッション分の行。キャラクター・名前・cwd・状態・経過時間を表示する。 */
+/**
+ * 1 セッション分の行。キャラクター・名前・トークン・最終プロンプト・状態を表示する。
+ *
+ * cwd はグループ見出しへ移したので行には出さない。
+ * 情報が 3 行に満たないときは下揃えになり、状態行が AA の足の行に並ぶ。
+ */
 const AgentRowComponent = ({
   agent,
   frame,
@@ -25,6 +54,8 @@ const AgentRowComponent = ({
   now,
   isSelf,
   infoWidth,
+  showPrompt,
+  showTokens,
 }: AgentRowProps) => {
   const appearance = getAppearance(agent.state);
   const elapsed = agent.startedAt > 0 ? formatDuration(now - agent.startedAt) : '-';
@@ -33,38 +64,63 @@ const AgentRowComponent = ({
       ? `${appearance.description} (${agent.rawState})`
       : appearance.description;
 
+  const tokens = showTokens ? agent.meta?.tokens : undefined;
+  const lastPrompt = showPrompt ? agent.meta?.lastPrompt : undefined;
+
+  // 情報カラムは下揃えなので、カーソルも名前の行まで下げて位置を合わせる
+  const infoLines = showPrompt ? 3 : 2;
+  const cursorOffset = CHARACTER_HEIGHT - infoLines;
+
+  // トークンは右端に固定し、余った幅を名前に割り当てる。狭いときは名前を優先する
+  const tokenFits = tokens !== undefined && infoWidth >= MIN_NAME_WIDTH + TOKEN_TEXT_WIDTH + 1;
+  const nameWidth = tokenFits ? infoWidth - TOKEN_TEXT_WIDTH - 1 : infoWidth;
+
   return (
-    <Box flexDirection="row" gap={1}>
-      <Text color="cyan">{selected ? '>' : ' '}</Text>
+    <Box flexDirection="row" gap={1} alignItems="flex-end">
+      <Box flexShrink={0} alignSelf="flex-start" marginTop={cursorOffset}>
+        <Text color="cyan">{selected ? '>' : ' '}</Text>
+      </Box>
 
       <Box flexDirection="column" flexShrink={0}>
         <Character state={agent.state} frame={frame} bold={selected} />
       </Box>
 
       {/*
-        Claude Code の起動バナーと同じ 3 行構成（名前 / 状態 / cwd）にして
-        AA の 3 行と 1 対 1 で対応させる。
+        AA の 3 行と 1 対 1 で対応させる（名前 / プロンプト / 状態）。
+        プロンプトが取れない場合は 2 行になり、下揃えで足の行に状態が来る。
       */}
       <Box flexDirection="column" width={infoWidth}>
-        {/*
-          全角を含む名前でも行が折り返してキャラクターの枠が崩れないよう、
-          1 行を 1 つの Text にまとめて Ink 側で表示幅どおりに切り詰めさせる。
-        */}
-        <Text wrap="truncate-end">
-          <Text bold={selected} color={selected ? 'white' : 'gray'}>
-            {agent.name}
+        <Box flexDirection="row">
+          {/*
+            全角を含む名前でも行が折り返してキャラクターの枠が崩れないよう、
+            1 行を 1 つの Text にまとめて Ink 側で表示幅どおりに切り詰めさせる。
+          */}
+          <Box width={nameWidth}>
+            <Text wrap="truncate-end">
+              <Text bold={selected} color={selected ? 'white' : 'gray'}>
+                {agent.name}
+              </Text>
+              {agent.kind === 'background' ? <Text color="magenta"> [bg]</Text> : null}
+              {isSelf ? <Text color="blueBright"> [self]</Text> : null}
+            </Text>
+          </Box>
+
+          {tokenFits && tokens !== undefined ? (
+            <Text color={tokenUsageColor(tokens.ratio)}>
+              {` ${formatTokenBar(tokens.ratio)} ${formatTokenPercent(tokens.ratio)}`}
+            </Text>
+          ) : null}
+        </Box>
+
+        {showPrompt ? (
+          <Text wrap="truncate-end" dimColor>
+            {promptLine(lastPrompt)}
           </Text>
-          {agent.kind === 'background' ? <Text color="magenta"> [bg]</Text> : null}
-          {isSelf ? <Text color="blueBright"> [self]</Text> : null}
-        </Text>
+        ) : null}
 
         <Text wrap="truncate-end">
           <StatusBadge state={agent.state} />
           <Text dimColor>{` ${detail} ${elapsed}`}</Text>
-        </Text>
-
-        <Text wrap="truncate-end" dimColor>
-          {formatCwd(agent.cwd)}
         </Text>
       </Box>
     </Box>

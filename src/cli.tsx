@@ -9,6 +9,7 @@ import {
   buildGuiEnv,
   ELECTRON_MISSING_MESSAGE,
   resolveElectronPath,
+  resolveGuiFlags,
   resolveStartupMode,
 } from './gui/launch.js';
 import { MIN_INTERVAL_MS } from './hooks/useAgents.js';
@@ -25,9 +26,12 @@ const cli = meow(
     --cli                        ターミナル (CLI/TUI) で起動する
     --gui                        独自ウィンドウ (GUI) で起動する (既定)
     --interval <ms>              ポーリング間隔 (既定: 2000, 下限: ${MIN_INTERVAL_MS})
-    --all                        完了済みバックグラウンドセッションも表示する
+    --all                        完了済みバックグラウンドセッションも表示する (GUI は既定で ON)
     --cwd <path>                 指定パス配下のバックグラウンドセッションのみ表示する
     --no-notify                  OS 通知を無効化する
+    --prompt                     最後に与えたプロンプトを表示する (GUI は既定で ON)
+    --tokens                     コンテキスト利用率を表示する (GUI は既定で ON)
+    --context-limit <tokens>     コンテキスト上限を明示指定する (既定: 使用量から推定)
     --finished-highlight <sec>   作業完了ハイライトの保持秒数 (既定: ${DEFAULT_HIGHLIGHT_MS / 1000})
     --once                       1 回だけ取得して描画し終了する (CLI モード)
 
@@ -36,6 +40,8 @@ const cli = meow(
     $ cc-park --cli
     $ cc-park --cli --interval 1000 --no-notify
     $ cc-park --all --cwd ~/GitHub
+    $ cc-park --cli --prompt --tokens
+    $ cc-park --no-prompt --no-tokens
 `,
   {
     importMeta: import.meta,
@@ -44,6 +50,9 @@ const cli = meow(
       all: { type: 'boolean', default: false },
       cwd: { type: 'string' },
       notify: { type: 'boolean', default: true },
+      prompt: { type: 'boolean', default: false },
+      tokens: { type: 'boolean', default: false },
+      contextLimit: { type: 'number', default: 0 },
       finishedHighlight: { type: 'number', default: DEFAULT_HIGHLIGHT_MS / 1000 },
       once: { type: 'boolean', default: false },
       cli: { type: 'boolean', default: false },
@@ -55,9 +64,17 @@ const cli = meow(
 const intervalMs = Math.max(cli.flags.interval, MIN_INTERVAL_MS);
 const highlightMs = Math.max(cli.flags.finishedHighlight, 0) * 1000;
 const selfSessionId = process.env['CLAUDE_CODE_SESSION_ID'] ?? null;
+// 0 は「指定なし（使用量から推定）」を表す
+const contextLimit = Math.max(cli.flags.contextLimit, 0);
 
 /** GUI モード: Ink を描画せず、Electron を子プロセスとして起動する。 */
 const startGui = async (): Promise<void> => {
+  // 明示されなかった表示オプションは GUI 用の既定へ倒す
+  const display = resolveGuiFlags(
+    { all: cli.flags.all, prompt: cli.flags.prompt, tokens: cli.flags.tokens },
+    process.argv.slice(2),
+  );
+
   const electronPath = await resolveElectronPath(() => import('electron'));
   if (electronPath === null) {
     console.error(ELECTRON_MISSING_MESSAGE);
@@ -69,11 +86,12 @@ const startGui = async (): Promise<void> => {
     electronPath,
     buildGuiArgs(mainPath, {
       intervalMs,
-      all: cli.flags.all,
       cwd: cli.flags.cwd,
       notify: cli.flags.notify,
       highlightMs,
       selfSessionId,
+      contextLimit,
+      ...display,
     }),
     { stdio: 'inherit', env: buildGuiEnv(process.env) },
   );
@@ -99,6 +117,9 @@ const startCli = async (): Promise<void> => {
       interactive={interactive}
       selfSessionId={selfSessionId}
       platform={process.platform}
+      prompt={cli.flags.prompt}
+      tokens={cli.flags.tokens}
+      contextLimit={contextLimit}
     />,
     {
       patchConsole: false,

@@ -16,6 +16,7 @@ const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
   rawState: 'idle',
   pid: undefined,
   id: undefined,
+  meta: undefined,
   ...overrides,
 });
 

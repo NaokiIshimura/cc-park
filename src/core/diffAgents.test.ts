@@ -12,6 +12,7 @@ const agent = (sessionId: string, state: CharacterState): Agent => ({
   rawState: state,
   pid: undefined,
   id: undefined,
+  meta: undefined,
 });
 
 describe('diffAgents', () => {

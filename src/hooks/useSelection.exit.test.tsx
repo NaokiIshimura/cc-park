@@ -25,6 +25,7 @@ const agent: Agent = {
   rawState: 'idle',
   pid: undefined,
   id: undefined,
+  meta: undefined,
 };
 
 const Harness = () => {

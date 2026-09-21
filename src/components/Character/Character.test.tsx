@@ -215,6 +215,17 @@ describe('getFrame', () => {
       expect(CHARACTERS[state].frames.length).toBeGreaterThan(1);
     },
   );
+
+  /*
+   * 足が 1 本も無いと「キャラクターが欠けている」ように見えてしまう。
+   * 静止させる状態でも足は残す約束なので、全状態・全フレームで固定する。
+   */
+  it.each(STATES)('%s はどのフレームでも足がある', (state) => {
+    for (const frame of CHARACTERS[state].frames) {
+      const legs = frame.split('\n')[2] ?? '';
+      expect(legs.trim()).not.toBe('');
+    }
+  });
 });
 
 describe('Character', () => {

@@ -15,6 +15,10 @@ export interface UseAgentsOptions {
   readonly cwd?: string | undefined;
   /** false の場合は初回取得のみ行い、ポーリングしない */
   readonly poll?: boolean;
+  /** transcript から最終プロンプト / トークン使用量を補完する */
+  readonly meta?: boolean;
+  /** コンテキスト上限の明示指定 */
+  readonly contextLimit?: number | undefined;
   /**
    * セッション取得の実装。
    *
@@ -41,7 +45,15 @@ export interface UseAgentsResult {
  * - アンマウント時に interval をクリアし、実行中のプロセスも abort する
  */
 export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
-  const { intervalMs, all = false, cwd, poll = true, fetcher } = options;
+  const {
+    intervalMs,
+    all = false,
+    cwd,
+    poll = true,
+    fetcher,
+    meta = false,
+    contextLimit,
+  } = options;
 
   const [agents, setAgents] = useState<readonly Agent[]>([]);
   const [previousAgents, setPreviousAgents] = useState<readonly Agent[] | null>(null);
@@ -65,7 +77,7 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const result = await fetcher({ all, cwd, signal: controller.signal });
+    const result = await fetcher({ all, cwd, signal: controller.signal, meta, contextLimit });
 
     inFlightRef.current = false;
     abortRef.current = null;
@@ -87,7 +99,7 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
     if (result.error.kind !== 'aborted') {
       setError(result.error);
     }
-  }, [fetcher, all, cwd]);
+  }, [fetcher, all, cwd, meta, contextLimit]);
 
   useEffect(() => {
     mountedRef.current = true;

@@ -20,6 +20,9 @@ const config: GuiConfig = {
   home: HOME,
   platform: 'darwin',
   alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,
+  prompt: false,
+  tokens: false,
+  contextLimit: 0,
 };
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
@@ -32,6 +35,7 @@ const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
   rawState: 'idle',
   pid: undefined,
   id: undefined,
+  meta: undefined,
   ...overrides,
 });
 

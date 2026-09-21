@@ -15,7 +15,16 @@ const options: GuiOptions = {
   notify: false,
   highlightMs: 5000,
   selfSessionId: 'self-1',
+  prompt: true,
+  tokens: true,
+  contextLimit: 200_000,
 };
+
+describe('DEFAULT_GUI_OPTIONS', () => {
+  it('GUI は表示オプションを既定で有効にする', () => {
+    expect(DEFAULT_GUI_OPTIONS).toMatchObject({ all: true, prompt: true, tokens: true });
+  });
+});
 
 describe('encodeGuiOptions', () => {
   it('フラグ付きの JSON 文字列にする', () => {

@@ -18,6 +18,7 @@ const agent = (sessionId: string): Agent => ({
   rawState: 'busy',
   pid: undefined,
   id: undefined,
+  meta: undefined,
 });
 
 const Harness = (props: UseAgentsOptions) => {

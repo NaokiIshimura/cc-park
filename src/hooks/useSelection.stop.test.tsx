@@ -17,6 +17,7 @@ const backgroundAgent: Agent = {
   rawState: 'blocked',
   pid: undefined,
   id: '2160cf1c',
+  meta: undefined,
 };
 
 const interactiveAgent: Agent = {
@@ -29,6 +30,7 @@ const interactiveAgent: Agent = {
   rawState: 'idle',
   pid: 71547,
   id: undefined,
+  meta: undefined,
 };
 
 // メッセージが長く端末幅で折り返されるため、描画結果ではなく戻り値を直接見る

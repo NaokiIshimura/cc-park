@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Agent } from '../types/agent.js';
+import type { ReadSessionMetaOptions } from './readSessionMeta.js';
 import { buildArgs, fetchAgents, type CommandRunner } from './fetchAgents.js';
 
 const jsonFixture = JSON.stringify([
@@ -131,5 +133,79 @@ describe('既定ランナー', () => {
   it('既定ランナー経由でも claude コマンド未検出を Result で返す', async () => {
     const result = await fetchAgents({ command: 'cc-park-no-such-command' });
     expect(result).toMatchObject({ ok: false, error: { kind: 'not-found' } });
+  });
+});
+
+describe('transcript 由来の付加情報', () => {
+  const raw = [
+    { kind: 'interactive', sessionId: 'a', name: 'alpha', cwd: '/tmp/x', status: 'busy' },
+    { kind: 'interactive', sessionId: 'b', name: 'beta', cwd: '/tmp/y', status: 'idle' },
+  ];
+  const runner = runnerReturning(JSON.stringify(raw));
+
+  it('既定では transcript を読まない', async () => {
+    const metaReader = vi.fn(async () => ({ lastPrompt: 'x', tokens: undefined }));
+    const result = await fetchAgents({ runner, metaReader });
+
+    expect(metaReader).not.toHaveBeenCalled();
+    expect(result.ok && result.agents[0]?.meta).toBeUndefined();
+  });
+
+  it('meta を有効にすると全セッションぶん合成する', async () => {
+    const metaReader = vi.fn(async (agent: Agent) => ({
+      lastPrompt: `prompt-${agent.sessionId}`,
+      tokens: undefined,
+    }));
+    const result = await fetchAgents({ runner, meta: true, metaReader });
+
+    expect(metaReader).toHaveBeenCalledTimes(2);
+    expect(result.ok && result.agents.map((item) => item.meta?.lastPrompt)).toEqual([
+      'prompt-a',
+      'prompt-b',
+    ]);
+  });
+
+  it('home と contextLimit を読み取りへ渡す', async () => {
+    const metaReader = vi.fn(async (_agent: Agent, _options: ReadSessionMetaOptions) => undefined);
+    await fetchAgents({
+      runner,
+      meta: true,
+      metaReader,
+      home: '/Users/naoki',
+      contextLimit: 200_000,
+    });
+
+    expect(metaReader.mock.calls[0]?.[1]).toEqual({
+      home: '/Users/naoki',
+      contextLimit: 200_000,
+    });
+  });
+
+  it('home 未指定なら既定の解決に任せる', async () => {
+    const metaReader = vi.fn(async (_agent: Agent, _options: ReadSessionMetaOptions) => undefined);
+    await fetchAgents({ runner, meta: true, metaReader });
+
+    expect(metaReader.mock.calls[0]?.[1]).toEqual({ contextLimit: undefined });
+  });
+
+  it('metaReader 未指定なら既定の読み取りを使う', async () => {
+    // 実在しない cwd なので transcript は見つからず、meta は undefined のまま返る
+    const missing = runnerReturning(
+      JSON.stringify([
+        { kind: 'interactive', sessionId: 'z', name: 'zeta', cwd: '/no/such/dir', status: 'idle' },
+      ]),
+    );
+    const result = await fetchAgents({ runner: missing, meta: true });
+
+    expect(result.ok && result.agents).toHaveLength(1);
+    expect(result.ok && result.agents[0]?.meta).toBeUndefined();
+  });
+
+  it('読み取りに失敗しても一覧は返る', async () => {
+    const metaReader = vi.fn(async () => undefined);
+    const result = await fetchAgents({ runner, meta: true, metaReader });
+
+    expect(result.ok && result.agents).toHaveLength(2);
+    expect(result.ok && result.agents[0]?.meta).toBeUndefined();
   });
 });

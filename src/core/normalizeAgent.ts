@@ -55,6 +55,8 @@ export const normalizeAgent = (raw: RawAgent): Agent | null => {
     rawState,
     pid: raw.pid,
     id: raw.id,
+    // transcript 由来の付加情報は fetchAgents が後から合成する
+    meta: undefined,
   };
 };
 
