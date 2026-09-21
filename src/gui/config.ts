@@ -39,11 +39,16 @@ export interface GuiConfig extends GuiOptions {
  * GUI で既定から有効にする表示オプション。
  *
  * GUI は常時開いたまま眺める使い方が主なので、`cc-park` だけで
- * `--all --prompt --tokens` と同じ状態になるようにする。
+ * `--prompt --tokens` と同じ状態になるようにする。
  * 端末を占有する CLI 側はこれまでどおり最小限の表示から始める。
+ *
+ * `all` だけは既定で無効にする。完了済みの background セッションは
+ * `claude agents --json --all` が数日単位で返し続けるため、既定で含めると
+ * 「`claude agents --json` には出ないセッションが一覧に居座る」状態になる。
+ * 完了済みも見たい場合は `cc-park --all` と明示する。
  */
 export const GUI_DEFAULT_FLAGS = {
-  all: true,
+  all: false,
   prompt: true,
   tokens: true,
 } as const;

@@ -77,14 +77,29 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const result = await fetcher({ all, cwd, signal: controller.signal, meta, contextLimit });
+    // 取得が reject すると多重実行ガードが立ったままになり、
+    // 以降のポーリングがすべてスキップされる。必ず finally で解除する
+    let result: FetchAgentsResult;
+    try {
+      result = await fetcher({ all, cwd, signal: controller.signal, meta, contextLimit });
+    } catch (thrown) {
+      // 取得実装そのものが投げた場合（GUI の IPC 失敗など）。
+      // 握らないと未処理の rejection になり、原因も画面に出ない
+      result = {
+        ok: false,
+        error: { kind: 'exit', message: thrown instanceof Error ? thrown.message : String(thrown) },
+      };
+    } finally {
+      inFlightRef.current = false;
+      abortRef.current = null;
+      if (mountedRef.current) {
+        setIsFetching(false);
+      }
+    }
 
-    inFlightRef.current = false;
-    abortRef.current = null;
     if (!mountedRef.current) {
       return;
     }
-    setIsFetching(false);
 
     if (result.ok) {
       setPreviousAgents(snapshotRef.current);
