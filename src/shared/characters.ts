@@ -29,17 +29,17 @@ const UNEVEN_LEGS = '  ▘▝ ▝▘  ';
 /**
  * 手の高さ。動きはすべてこの手で表し、足は動かさない。
  *
- * 左右で象限が鏡像になるため、桁ごとに使う文字が違う。
- * どの高さでも身体と縦に繋がる文字だけを選んでいる
- * （`▗` は桁 0 の身体 `▝` の真上、`▖` は桁 8 の身体 `▀` の真上に乗る）。
+ * 左右で鏡像にはできず、どちらもセルの**右**半分を使う。
+ * 桁 0 は身体の `▝`（右半分）の真上に乗せる必要があり、
+ * 桁 8 を左半分（`▖` `▌`）にすると隣の `█` と横に隣接して頭とくっついてしまう。
+ * 右半分に寄せれば、身体とは縦に繋がったまま頭との間に 1 ピクセル空く。
  */
 type HandPose = 'down' | 'low' | 'high';
-const LEFT_HAND: Readonly<Record<HandPose, string>> = { down: ' ', low: '▗', high: '▐' };
-const RIGHT_HAND: Readonly<Record<HandPose, string>> = { down: ' ', low: '▖', high: '▌' };
+const HAND: Readonly<Record<HandPose, string>> = { down: ' ', low: '▗', high: '▐' };
 
 /** 手の高さと足の形から 1 フレームを組み立てる。 */
 const frame = (left: HandPose, right: HandPose, legs: string = LEGS): string =>
-  `${LEFT_HAND[left]}${HEAD}${RIGHT_HAND[right]}\n${BODY}\n${legs}`;
+  `${HAND[left]}${HEAD}${HAND[right]}\n${BODY}\n${legs}`;
 
 export interface CharacterAppearance {
   /** アニメーションフレーム（各要素は改行区切りの 3 行） */

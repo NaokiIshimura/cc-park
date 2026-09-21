@@ -131,6 +131,32 @@ describe('frames 定義', () => {
     }
   });
 
+  /*
+   * 逆に、手が頭と横に隣接すると手に見えなくなる（桁 8 に `▖` `▌` のような
+   * セルの左半分を使う文字を置くと、隣の `█` とくっつく）。
+   * 手は身体と縦に繋がりつつ、頭との間は空いていなければならない。
+   */
+  it.each(STATES)('%s は全フレームで手が頭とくっついていない', (state) => {
+    // 頭の中央（桁 1-7）が占めるピクセルの x 座標
+    const headX = new Set(Array.from({ length: 14 }, (_, i) => i + 2));
+
+    for (const frame of CHARACTERS[state].frames) {
+      const pixels = toPixels(frame);
+
+      // 手が入るのは頭の行（上 2 ピクセル）の両端の桁
+      for (const y of [0, 1]) {
+        for (const x of [0, 1, CHARACTER_WIDTH * 2 - 2, CHARACTER_WIDTH * 2 - 1]) {
+          if (pixels[y]?.[x] !== true) {
+            continue;
+          }
+          for (const dx of [-1, 1]) {
+            expect(headX.has(x + dx) && pixels[y]?.[x + dx] === true).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
   it('ソート優先度が一意である', () => {
     const priorities = STATES.map((state) => CHARACTERS[state].priority);
     expect(new Set(priorities).size).toBe(priorities.length);
