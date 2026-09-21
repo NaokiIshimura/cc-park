@@ -53,7 +53,8 @@ for (const s of Object.keys(CHARACTERS)) {
 "
 ```
 
-GUI のスクリーンショット `docs/gui.png` も見た目が変わったら撮り直す。
+GUI のスクリーンショット `docs/gui.png` と、README 冒頭のアニメーション `docs/gui.gif` も
+見た目が変わったら撮り直す（撮り方は「GIF の撮り直し」）。
 
 ### AA の制約
 
@@ -114,3 +115,21 @@ ELECTRON_RUN_AS_NODE= npx electron dist/gui/main.js --remote-debugging-port=9222
 ```
 
 OS の画面収録権限が要らないので、`Page.captureScreenshot` を使う。
+
+### GIF の撮り直し
+
+README 冒頭の `docs/gui.gif` は、GUI をデモ用のダミーデータで動かして撮っている。
+実際に動いているセッションは状態が偏るので、見せたい状態を自分で作る。
+
+| 手順 | 内容 |
+| --- | --- |
+| ダミーの一覧 | `claude` を PATH の先頭で差し替え、`agents --json` の出力を固定する。1 回目を `busy`、2 回目を `idle` にすると `DONE!` のハイライトが出る |
+| プロンプト・利用率 | `HOME` をダミーへ向け、`<HOME>/.claude/projects/<cwd をエンコードした名前>/<sessionId>.jsonl` に `last-prompt` と `assistant` の `usage` を置く |
+| 表示を止める | `--cc-park-config` で `highlightMs` を大きく取り、経過時間は 10 分以上にする（10 分未満は秒まで出て 1 秒ごとに変わる） |
+| フレーム取得 | AA が変わるたびに `Page.captureScreenshot`。撮影前後で AA・時刻・取得中表示が揃ったものだけ採用する |
+| 採用する枚数 | **連続する 6 フレーム**（`BUSY` の 6 と `BLOCKED` の 2 の最小公倍数）。そのままループになる |
+| 組み立て | `magick -delay 20 -loop 0 frame-*.png -resize 480x640 -dither None -colors 128 +remap -layers Optimize docs/gui.gif`（`delay 20` = 200ms = `ANIMATION_INTERVAL_MS`） |
+| 静止画 | `docs/gui.png` も同じ 1 フレーム目から作る: `magick frame-00.png -resize 480x640 -dither None -colors 256 docs/gui.png` |
+
+`+remap` で全フレームを共通パレットに揃えないと、フレームごとにパレットが変わって
+差分圧縮が効かない（284KB → 52KB）。`-dither None` は平坦な背景に出る点状のノイズを防ぐ。
