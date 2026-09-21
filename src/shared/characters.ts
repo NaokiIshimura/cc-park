@@ -20,6 +20,16 @@ export const BODY = '▝▜██████▀';
 /** 足の行（桁 0-8）。起動バナーと同じ形で、状態によらず静止させる。 */
 export const LEGS = '  ▝▝ ▝▝  ';
 
+/*
+ * 歩くときの足。足は桁 2 / 3（右足）と桁 5 / 6（左足）に 2 本ずつある。
+ * 左右はキャラクター自身から見た向きで、手と同じく正面を向いているため入れ替わる。
+ * 「開く」はペアの手前、「閉じる」は奥の足が半セルぶん動く。
+ */
+const LEGS_RIGHT_OPEN = '  ▘▝ ▝▝  ';
+const LEGS_RIGHT_CLOSED = '  ▝▘ ▝▝  ';
+const LEGS_LEFT_OPEN = '  ▝▝ ▘▝  ';
+const LEGS_LEFT_CLOSED = '  ▝▝ ▝▘  ';
+
 /** 停止済みは足を消す。 */
 const NO_LEGS = '         ';
 
@@ -37,7 +47,7 @@ const RAISED = '▗';
 const LOWERED = ' ';
 
 /**
- * 手のポーズ。動きはすべてこの手で表し、足は動かさない。
+ * 手のポーズ。
  *
  * 左右はキャラクター自身から見た向き。正面を向いているため、
  * 桁 0（向かって左）が右手、桁 8（向かって右）が左手になる。
@@ -67,6 +77,9 @@ export interface CharacterAppearance {
 /*
  * 動くのは「作業中」と「こちらの操作待ち」だけ。
  * 動いている行だけを見れば済むよう、それ以外は 1 フレームで静止させる。
+ *
+ * 動かす部位で役割を分けている。
+ * こちらの操作を待つ `blocked` / `justFinished` は手、作業中の `working` は足。
  */
 export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> = {
   blocked: {
@@ -86,8 +99,17 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
     priority: 1,
   },
   working: {
-    // 片手ずつ交互に振る
-    frames: [frame('rightHand'), frame('down'), frame('leftHand'), frame('down')],
+    // 手は下ろしたまま、右足 → 左足 の順に開いて閉じて歩く
+    frames: [
+      frame('down', LEGS_RIGHT_OPEN),
+      frame('down'),
+      frame('down', LEGS_RIGHT_CLOSED),
+      frame('down'),
+      frame('down', LEGS_LEFT_OPEN),
+      frame('down'),
+      frame('down', LEGS_LEFT_CLOSED),
+      frame('down'),
+    ],
     color: 'cyan',
     label: 'BUSY',
     description: 'working...',
