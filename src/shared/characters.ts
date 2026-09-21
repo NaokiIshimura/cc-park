@@ -23,12 +23,15 @@ export const LEGS = '  ▝▝ ▝▝  ';
 /*
  * 歩くときの足。足は桁 2 / 3（右足）と桁 5 / 6（左足）に 2 本ずつある。
  * 左右はキャラクター自身から見た向きで、手と同じく正面を向いているため入れ替わる。
- * 「開く」はペアの手前、「閉じる」は奥の足が半セルぶん動く。
+ *
+ * 踏み出す向きは常に左手側（桁 8 の方向）。半セルぶん右へずらすので、
+ * 「開く」は外側の足が隣の桁へ出て `▘` になり、
+ * 「閉じる」は内側の足が寄ってペアが 1 つの `▀` に繋がる。
  */
-const LEGS_RIGHT_OPEN = '  ▘▝ ▝▝  ';
-const LEGS_RIGHT_CLOSED = '  ▝▘ ▝▝  ';
-const LEGS_LEFT_OPEN = '  ▝▝ ▘▝  ';
-const LEGS_LEFT_CLOSED = '  ▝▝ ▝▘  ';
+const LEGS_RIGHT_OPEN = '  ▝ ▘▝▝  ';
+const LEGS_RIGHT_CLOSED = '   ▀ ▝▝  ';
+const LEGS_LEFT_OPEN = '  ▝▝ ▝ ▘ ';
+const LEGS_LEFT_CLOSED = '  ▝▝  ▀  ';
 
 /** 未知の状態は足を不揃いにする。 */
 const UNEVEN_LEGS = '  ▘▝ ▝▘  ';
@@ -96,7 +99,7 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
     priority: 1,
   },
   working: {
-    // 手は下ろしたまま、右足 → 左足 の順に開いて閉じて歩く
+    // 手は下ろしたまま、右足 → 左足 の順に左手側へ開いて閉じて歩く
     frames: [
       frame('down', LEGS_RIGHT_OPEN),
       frame('down'),
