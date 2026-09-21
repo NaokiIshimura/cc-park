@@ -1,5 +1,4 @@
 import type { Agent } from '../types/agent.js';
-import { getAppearance } from './characters.js';
 import { sortAgents } from './sortAgents.js';
 
 /**
@@ -18,20 +17,9 @@ export interface AgentGroup {
   readonly agents: readonly Agent[];
 }
 
-/** グループの並び順に使う代表値。要対応のセッションを持つグループを上に出す。 */
-const groupPriority = (agents: readonly Agent[]): number =>
-  agents.reduce(
-    (best, agent) => Math.min(best, getAppearance(agent.state).priority),
-    Number.POSITIVE_INFINITY,
-  );
-
-/** 同じ優先度のグループ同士は、より新しいセッションを持つ方を上に出す。 */
-const groupStartedAt = (agents: readonly Agent[]): number =>
-  agents.reduce((latest, agent) => Math.max(latest, agent.startedAt), 0);
-
 /**
  * cwd ごとにまとめ、グループ内は従来どおり `sortAgents` で並べる。
- * cwd が空のグループは特定できないので必ず最後に置く。
+ * グループ同士は cwd の昇順。cwd が空のグループは特定できないので必ず最後に置く。
  */
 export const groupAgents = (agents: readonly Agent[]): AgentGroup[] => {
   const buckets = new Map<string, Agent[]>();
@@ -53,11 +41,11 @@ export const groupAgents = (agents: readonly Agent[]): AgentGroup[] => {
         return unknownDiff;
       }
 
-      const priorityDiff = groupPriority(a.agents) - groupPriority(b.agents);
-      if (priorityDiff !== 0) {
-        return priorityDiff;
+      // ロケールによる揺れを避けるため、単純な文字列比較で昇順に並べる
+      if (a.cwd === b.cwd) {
+        return 0;
       }
-      return groupStartedAt(b.agents) - groupStartedAt(a.agents);
+      return a.cwd < b.cwd ? -1 : 1;
     });
 };
 

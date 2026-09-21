@@ -125,6 +125,16 @@ describe('AgentRow の付加情報', () => {
     expect(container.querySelector('.agent-row__prompt')?.textContent).toBe('>');
   });
 
+  it('名前・状態・プロンプトの順に並べる', () => {
+    const { container } = setup({
+      agent: agent({ meta: { lastPrompt: 'やって', tokens: undefined } }),
+    });
+    const lines = container.querySelectorAll('.agent-row__line');
+    expect(lines[0]?.querySelector('.agent-row__name')).not.toBeNull();
+    expect(lines[1]?.querySelector('.status-badge')).not.toBeNull();
+    expect(lines[2]?.querySelector('.agent-row__prompt')).not.toBeNull();
+  });
+
   it('コンテキスト利用率をパーセントで表示する', () => {
     const { container } = setup({
       agent: agent({

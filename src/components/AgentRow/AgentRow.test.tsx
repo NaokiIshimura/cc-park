@@ -109,8 +109,8 @@ describe('AgentRow の付加情報', () => {
 
   it('最終プロンプトが無くても目印だけは出して行数を揃える', () => {
     const lines = renderRow().split('\n');
-    expect(lines[1]?.trimEnd().endsWith('>')).toBe(true);
-    expect(lines[1]).not.toContain('> ');
+    expect(lines[2]?.trimEnd().endsWith('>')).toBe(true);
+    expect(lines[2]).not.toContain('> ');
   });
 
   it('コンテキスト利用率をバーとパーセントで表示する', () => {
@@ -151,11 +151,11 @@ describe('AgentRow の付加情報', () => {
     expect(output).toContain('cc-park');
   });
 
-  it('showPrompt が有効なら 3 行になり 1 行目から名前が並ぶ', () => {
+  it('showPrompt が有効なら 3 行になり 名前・状態・プロンプトの順に並ぶ', () => {
     const lines = withMeta({ lastPrompt: 'やって', tokens: undefined }).split('\n');
     expect(lines[0]).toContain('cc-park');
-    expect(lines[1]).toContain('> やって');
-    expect(lines[2]).toContain('BUSY');
+    expect(lines[1]).toContain('BUSY');
+    expect(lines[2]).toContain('> やって');
   });
 
   it('showPrompt が無効なら 2 行になり下揃えで足の行に状態が並ぶ', () => {
