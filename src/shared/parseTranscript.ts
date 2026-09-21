@@ -22,7 +22,26 @@ interface AssistantEntry {
   readonly message?: { readonly usage?: RawUsage };
 }
 
-type Entry = LastPromptEntry | AssistantEntry | { readonly type?: unknown };
+/**
+ * 使用中のモデルを知らせる添付。transcript の先頭付近と、
+ * セッション途中でモデルを切り替えたときに現れる。
+ *
+ * `assistant` 行の `message.model` は `claude-opus-5` のように `[1m]` が落ちているが、
+ * こちらの `modelId` には残っているため、コンテキスト上限の判別に使える。
+ */
+interface ModelAttachmentEntry {
+  readonly type?: unknown;
+  readonly attachment?: {
+    readonly type?: unknown;
+    readonly identity?: { readonly modelId?: unknown };
+  };
+}
+
+type Entry =
+  | LastPromptEntry
+  | AssistantEntry
+  | ModelAttachmentEntry
+  | { readonly type?: unknown };
 
 /** 表示が崩れないよう、改行・タブを空白へ潰して 1 行にする。 */
 export const toSingleLine = (text: string): string => text.replace(/\s+/g, ' ').trim();
@@ -39,6 +58,7 @@ export const parseTranscript = (
 ): SessionMeta => {
   let lastPrompt: string | undefined;
   let usage: RawUsage | undefined;
+  let modelId: string | undefined;
 
   for (const line of chunk.split('\n')) {
     if (line === '') {
@@ -70,11 +90,23 @@ export const parseTranscript = (
       if (candidate !== undefined && candidate !== null && typeof candidate === 'object') {
         usage = candidate;
       }
+      continue;
+    }
+
+    // 文字列として同じ内容を含むだけの行（ツール出力の echo など）を拾わないよう、
+    // 構造で判定する
+    const attachment = (entry as ModelAttachmentEntry).attachment;
+    if (attachment?.type === 'model') {
+      const candidate = attachment.identity?.modelId;
+      if (typeof candidate === 'string' && candidate !== '') {
+        modelId = candidate;
+      }
     }
   }
 
   return {
     lastPrompt,
-    tokens: usage === undefined ? undefined : toTokenUsage(usage, options.contextLimit),
+    tokens:
+      usage === undefined ? undefined : toTokenUsage(usage, options.contextLimit, modelId),
   };
 };
