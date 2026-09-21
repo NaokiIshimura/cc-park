@@ -21,6 +21,13 @@ node dist/cli.js --once --all   # TUI を 1 回だけ描画（実描画の確認
 
 変更後は **テスト・型チェック・ビルドの 3 つ**を通すこと。
 
+## リリース
+
+`main` へマージすると `.github/workflows/release.yml` が arm64 / x64 の `.app` をビルドし、
+`package.json` の `version` に対応するタグ（`v<version>`）が未公開なら Releases へ公開する。
+既に公開済みならリリースは作らず、実行ログの artifact にだけ残す。
+**配布したいときは `package.json` の `version` を上げてからマージする。**
+
 ## キャラクター（AA）を変更するときの決まり
 
 AA の定義は `src/shared/characters.ts` の 1 箇所だけ。TUI と GUI が同じ定義を共有する。

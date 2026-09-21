@@ -11,5 +11,6 @@ dist/
 .DS_Store
 coverage/
 
-# パッケージ化した .app の出力先
+# パッケージ化した .app の出力先と、リリースへ上げる zip
 release/
+artifacts/

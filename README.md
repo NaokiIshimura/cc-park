@@ -42,6 +42,25 @@
   （GUI モードは Electron の API を使うため OS を問いません）
 - GUI モードは Electron を同梱します（`npm install` 時に約 100〜200MB の追加ダウンロードが発生します）
 
+## ダウンロード
+
+GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app` をダウンロードできます。
+
+| ファイル | 対象 |
+| --- | --- |
+| `cc-park-<version>-darwin-arm64.zip` | Apple シリコン（M1 以降） |
+| `cc-park-<version>-darwin-x64.zip` | Intel Mac |
+
+zip を展開して `cc-park.app` を `/Applications` に置いてください。
+配布用の証明書で署名・公証をしていないため、初回は Gatekeeper に止められます。
+その場合は隔離属性を外してください。
+
+```bash
+xattr -dr com.apple.quarantine /Applications/cc-park.app
+```
+
+CLI モード（`--cli`）を使う場合は、下記のインストールが必要です。
+
 ## インストール
 
 ```bash
@@ -298,6 +317,18 @@ open release/cc-park-darwin-arm64/cc-park.app
 | バンドル ID | `io.github.naokiishimura.cc-park` |
 | 同梱するもの | `dist/` と `package.json` のみ（GUI は `electron` と Node 標準モジュールしか使わない） |
 | 出力先 | `release/`（git 管理外） |
+
+`main` へマージすると GitHub Actions（`.github/workflows/release.yml`）が同じ手順で
+arm64 / x64 の `.app` をビルドし、Releases へ公開します。
+
+| 条件 | 動き |
+| --- | --- |
+| `package.json` の `version` に対応するタグ（`v<version>`）が未公開 | zip を添えてリリースを作成する |
+| 既に公開済み | リリースは作らず、実行ログの artifact にだけ残す |
+
+つまり**配布したいときは `package.json` の `version` を上げてからマージ**します。
+署名は配布用の証明書ではなく ad-hoc で付け直しているだけなので、
+利用者側で隔離属性を外す必要があります（「ダウンロード」を参照）。
 
 ### 制約
 
