@@ -305,7 +305,7 @@ npm run gui:package   # → release/cc-park-<platform>-<arch>/cc-park.app
 
 macOS のメニューバーや Dock に出るアプリ名は、実行中の `.app` バンドルの `CFBundleName` で決まります。
 `npm run gui` は `node_modules` の `Electron.app` をそのまま起動するため、開発中は **`Electron`** と表示されます。
-`cc-park` と表示させたい場合はパッケージ化したものを起動してください。
+`cc-park` と表示させたい場合はパッケージ化したものを起動してください（アイコンは開発中も揃えてあります）。
 
 ```bash
 open release/cc-park-darwin-arm64/cc-park.app
@@ -315,6 +315,7 @@ open release/cc-park-darwin-arm64/cc-park.app
 | --- | --- |
 | アプリ名（`CFBundleName`） | `cc-park` |
 | バンドル ID | `io.github.naokiishimura.cc-park` |
+| アイコン | `assets/icon.icns` |
 | 同梱するもの | `dist/` と `package.json` のみ（GUI は `electron` と Node 標準モジュールしか使わない） |
 | 出力先 | `release/`（git 管理外） |
 
@@ -329,6 +330,29 @@ arm64 / x64 の `.app` をビルドし、Releases へ公開します。
 つまり**配布したいときは `package.json` の `version` を上げてからマージ**します。
 署名は配布用の証明書ではなく ad-hoc で付け直しているだけなので、
 利用者側で隔離属性を外す必要があります（「ダウンロード」を参照）。
+
+### アイコン
+
+アプリのアイコンは一覧に出るキャラクターと同じもので、両手を上げた `DONE!` のフレームを使っています。
+AA の定義は `src/shared/characters.ts` の 1 箇所だけなので、アイコンも手で描かずにそこから生成します。
+
+```bash
+npm run icon:build   # → assets/icon.svg / icon.png / icon.icns
+```
+
+| ファイル | 用途 |
+| --- | --- |
+| `assets/icon.svg` | 生成の中間物。ブロック文字を 2x2 の矩形へ分解したもの |
+| `assets/icon.png` | 1024px の原寸。開発中（`npm run gui`）の Dock アイコンに使う |
+| `assets/icon.icns` | `.app` に埋め込むアイコン。`electron-packager` の `--icon` に渡す |
+
+生成には macOS 同梱の `sips` / `iconutil` と、SVG のラスタライズに `rsvg-convert`
+（`brew install librsvg`）を使います。出来上がったファイルはリポジトリに入れてあるため、
+**AA を変えない限り生成し直す必要はありません**。
+
+`.app` にした場合はバンドルの `CFBundleIconFile` が使われますが、`npm run gui` のように
+ファイルを直接指定して起動すると Electron 既定のアイコンになるため、
+main プロセスが未パッケージ時だけ `app.dock.setIcon()` で `assets/icon.png` を読ませています。
 
 ### 制約
 
@@ -565,6 +589,7 @@ npm run dev         # tsc --watch（CLI）
 npm run build       # TUI + GUI（preload / renderer）をまとめてビルド
 npm run gui:dev     # ビルドして GUI ウィンドウを起動する
 npm run gui:package # .app にパッケージ化する（release/ に出力）
+npm run icon:build  # AA からアプリアイコンを生成する（assets/ に出力）
 npm run typecheck   # 本体・テスト・GUI renderer の型チェック
 npm test            # テスト実行
 npx vitest run --coverage
