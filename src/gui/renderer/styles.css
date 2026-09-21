@@ -201,7 +201,7 @@ body {
 
 .agent-row {
   display: flex;
-  /* 情報が 3 行に満たないときも状態行が AA の足の行に並ぶよう下揃えにする */
+  /* 情報が 3 行に満たないときも最後の行が AA の足の行に並ぶよう下揃えにする */
   align-items: flex-end;
   gap: 8px;
   padding: 6px 8px;
@@ -323,7 +323,7 @@ body {
 
 .status-badge {
   font-weight: 700;
-  /* ラベル幅を固定して 2 行目の開始位置を揃える */
+  /* ラベル幅を固定して説明文の開始位置を揃える */
   min-width: 8ch;
   flex-shrink: 0;
 }

@@ -40,10 +40,10 @@ interface AgentRowProps {
 }
 
 /**
- * 1 セッション分の行。キャラクター・名前・トークン・最終プロンプト・状態を表示する。
+ * 1 セッション分の行。キャラクター・名前・トークン・状態・最終プロンプトを表示する。
  *
  * cwd はグループ見出しへ移したので行には出さない。
- * 情報が 3 行に満たないときは下揃えになり、状態行が AA の足の行に並ぶ。
+ * 情報が 3 行に満たないときは下揃えになり、最後の行が AA の足の行に並ぶ。
  */
 const AgentRowComponent = ({
   agent,
@@ -79,7 +79,7 @@ const AgentRowComponent = ({
       <Character state={agent.state} frame={frame} />
 
       {/*
-        AA の 3 行と 1 対 1 で対応させる（名前 / プロンプト / 状態）。
+        AA の 3 行と 1 対 1 で対応させる（名前 / 状態 / プロンプト）。
         プロンプトが取れない場合は 2 行になり、下揃えで足の行に状態が来る。
       */}
       <div className="agent-row__info">
@@ -109,16 +109,16 @@ const AgentRowComponent = ({
           )}
         </div>
 
+        <div className="agent-row__line">
+          <StatusBadge state={agent.state} />
+          <span className="agent-row__detail">{`${detail} ${elapsed}`}</span>
+        </div>
+
         {showPrompt ? (
           <div className="agent-row__line">
             <span className="agent-row__prompt">{promptLine(lastPrompt)}</span>
           </div>
         ) : null}
-
-        <div className="agent-row__line">
-          <StatusBadge state={agent.state} />
-          <span className="agent-row__detail">{`${detail} ${elapsed}`}</span>
-        </div>
       </div>
     </li>
   );

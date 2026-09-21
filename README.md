@@ -173,20 +173,20 @@ cc-park --cli --prompt --tokens
  ~
 
  > ▗▐▛███▛█  claude agents setup [bg]                                     ███████░ ctx  92%
-   ▝▜██████▀ > MCP サーバの設定を見直して
-     ▝▝ ▝▝   BLOCKED  needs your approval 10h39m
+   ▝▜██████▀ BLOCKED  needs your approval 10h39m
+     ▝▝ ▝▝   > MCP サーバの設定を見直して
 
  ~/GitHub/cc-park
 
     ▐▛███▛█  cc-park-bd [self]                                            ██░░░░░░ ctx  27%
-   ▝▜██████▀ > キャラクターの足のアニメーションを左右に分けて
-     ▘▝ ▝▝   BUSY     working... 21m
+   ▝▜██████▀ BUSY     working... 21m
+     ▘▝ ▝▝   > キャラクターの足のアニメーションを左右に分けて
 
  ~/GitHub/vscode-ai-coding-sidebar
 
     ▐▛███▛█  vscode-ai-coding-sidebar-3e                                  ████░░░░ ctx  45%
-   ▝▜██████▀ > サイドバーの折りたたみ状態を保存して
-     ▝▝ ▝▝   IDLE     waiting for input 37m
+   ▝▜██████▀ IDLE     waiting for input 37m
+     ▝▝ ▝▝   > サイドバーの折りたたみ状態を保存して
 ```
 
 | 表示 | 意味 |
