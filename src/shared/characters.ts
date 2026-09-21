@@ -99,15 +99,13 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
     priority: 1,
   },
   working: {
-    // 手は下ろしたまま、右足 → 左足 の順に左手側へ開いて閉じて歩く
+    // 手は下ろしたまま、右足 → 左足 の順に左手側へ閉じて開き、毎回標準へ戻って歩く
     frames: [
+      frame('down', LEGS_RIGHT_CLOSED),
       frame('down', LEGS_RIGHT_OPEN),
       frame('down'),
-      frame('down', LEGS_RIGHT_CLOSED),
-      frame('down'),
-      frame('down', LEGS_LEFT_OPEN),
-      frame('down'),
       frame('down', LEGS_LEFT_CLOSED),
+      frame('down', LEGS_LEFT_OPEN),
       frame('down'),
     ],
     color: 'cyan',
