@@ -11,14 +11,35 @@ import type { CharacterState } from '../types/agent.js';
 export const CHARACTER_HEIGHT = 3;
 export const CHARACTER_WIDTH = 9;
 
-/**
- * Claude Code のマーク（上 2 行）。顔の代わりに全フレームで共通にする。
- * 状態ごとに書き分けるとずれるため、定数から組み立てる。
- */
-export const MARK = ' ▐▛███▛█ \n▝▜██████▀';
+/** 頭の行の中央（桁 1-7）。両端の桁 0 / 8 には手が入る。 */
+const HEAD = '▐▛███▛█';
 
-/** 火花の行（3 行目）から 1 フレームを組み立てる。 */
-const frame = (sparks: string): string => `${MARK}\n${sparks}`;
+/** 身体の行（桁 0-8）。全フレーム共通。 */
+export const BODY = '▝▜██████▀';
+
+/** 足の行（桁 0-8）。起動バナーと同じ形で、状態によらず静止させる。 */
+export const LEGS = '  ▝▝ ▝▝  ';
+
+/** 停止済みは足を消す。 */
+const NO_LEGS = '         ';
+
+/** 未知の状態は足を不揃いにする。 */
+const UNEVEN_LEGS = '  ▘▝ ▝▘  ';
+
+/**
+ * 手の高さ。動きはすべてこの手で表し、足は動かさない。
+ *
+ * 左右で象限が鏡像になるため、桁ごとに使う文字が違う。
+ * どの高さでも身体と縦に繋がる文字だけを選んでいる
+ * （`▗` は桁 0 の身体 `▝` の真上、`▖` は桁 8 の身体 `▀` の真上に乗る）。
+ */
+type HandPose = 'down' | 'low' | 'high';
+const LEFT_HAND: Readonly<Record<HandPose, string>> = { down: ' ', low: '▗', high: '▐' };
+const RIGHT_HAND: Readonly<Record<HandPose, string>> = { down: ' ', low: '▖', high: '▌' };
+
+/** 手の高さと足の形から 1 フレームを組み立てる。 */
+const frame = (left: HandPose, right: HandPose, legs: string = LEGS): string =>
+  `${LEFT_HAND[left]}${HEAD}${RIGHT_HAND[right]}\n${BODY}\n${legs}`;
 
 export interface CharacterAppearance {
   /** アニメーションフレーム（各要素は改行区切りの 3 行） */
@@ -34,35 +55,33 @@ export interface CharacterAppearance {
 }
 
 /*
- * 足に使えるのは `▘`（左上） `▝`（右上） `▀`（上半分）と空白だけ。
- * `▗` `▖` のような下半分の文字はセルの下側に描かれるため、身体との間に
- * 半セルぶんの空白ができて足が浮いてしまう。
- * 動きは「左右の半セル移動」と「太さの変化」の 2 軸で作る。
+ * 動くのは「作業中」と「こちらの操作待ち」だけ。
+ * 動いている行だけを見れば済むよう、それ以外は 1 フレームで静止させる。
  */
 export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> = {
   blocked: {
-    // 足が太くなって点滅して見える
-    frames: [frame('  ▝▝ ▝▝  '), frame('  ▀▀ ▀▀  ')],
+    // 両手を大きく上下させて呼ぶ
+    frames: [frame('down', 'down'), frame('high', 'high')],
     color: 'yellow',
     label: 'BLOCKED',
     description: 'needs your approval',
     priority: 0,
   },
   justFinished: {
-    // 外側へ弾ける
-    frames: [frame('  ▝▝ ▝▝  '), frame(' ▝▝   ▝▝ ')],
+    // 両手を上げたまま揺らして喜ぶ
+    frames: [frame('low', 'low'), frame('high', 'high')],
     color: 'greenBright',
     label: 'DONE!',
     description: 'just finished - your turn',
     priority: 1,
   },
   working: {
-    // 太い足が左から右へ流れる
+    // 左右の手を交互に振る
     frames: [
-      frame('  ▀▝ ▝▝  '),
-      frame('  ▝▀ ▝▝  '),
-      frame('  ▝▝ ▀▝  '),
-      frame('  ▝▝ ▝▀  '),
+      frame('high', 'down'),
+      frame('down', 'down'),
+      frame('down', 'high'),
+      frame('down', 'down'),
     ],
     color: 'cyan',
     label: 'BUSY',
@@ -70,31 +89,28 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
     priority: 2,
   },
   waiting: {
-    // 入力待ちは動かさず、動いている＝作業中か要対応、と読めるようにする
-    frames: [frame('  ▝▝ ▝▝  ')],
+    frames: [frame('down', 'down')],
     color: 'gray',
     label: 'IDLE',
     description: 'waiting for input',
     priority: 3,
   },
   done: {
-    frames: [frame('  ▝▝ ▝▝  ')],
+    frames: [frame('down', 'down')],
     color: 'green',
     label: 'DONE',
     description: 'completed',
     priority: 4,
   },
   stopped: {
-    // 足が消える
-    frames: [frame('         ')],
+    frames: [frame('down', 'down', NO_LEGS)],
     color: 'gray',
     label: 'STOPPED',
     description: 'stopped',
     priority: 5,
   },
   unknown: {
-    // 不揃いのまま止まる
-    frames: [frame('  ▘▝ ▝▘  ')],
+    frames: [frame('down', 'down', UNEVEN_LEGS)],
     color: 'red',
     label: 'UNKNOWN',
     description: 'unknown state',

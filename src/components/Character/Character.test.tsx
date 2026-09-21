@@ -6,7 +6,7 @@ import {
   CHARACTERS,
   CHARACTER_HEIGHT,
   CHARACTER_WIDTH,
-  MARK,
+  BODY,
   getAppearance,
   getFrame,
 } from '../../shared/characters.js';
@@ -22,21 +22,69 @@ const STATES = Object.keys(CHARACTERS) as CharacterState[];
  */
 const ALLOWED_CHARS = new Set([' ', ...'▀▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▔▕▖▗▘▙▚▛▜▝▞▟']);
 
-/** 身体（マークの 2 行目）の各文字で、セルの下半分が塗られている領域。 */
-const BOTTOM_HALF: Readonly<Record<string, readonly string[]>> = {
+/** ブロック文字が塗る象限。1 セルを 2x2 のピクセルとして扱う。 */
+const QUADRANTS: Readonly<Record<string, readonly [number, number][]>> = {
   ' ': [],
-  '▝': [],
-  '▀': [],
-  '▜': ['right'],
-  '█': ['left', 'right'],
+  '▘': [[0, 0]],
+  '▝': [[0, 1]],
+  '▖': [[1, 0]],
+  '▗': [[1, 1]],
+  '▀': [[0, 0], [0, 1]],
+  '▄': [[1, 0], [1, 1]],
+  '▌': [[0, 0], [1, 0]],
+  '▐': [[0, 1], [1, 1]],
+  '▛': [[0, 0], [0, 1], [1, 0]],
+  '▜': [[0, 0], [0, 1], [1, 1]],
+  '▙': [[0, 0], [1, 0], [1, 1]],
+  '▟': [[0, 1], [1, 0], [1, 1]],
+  '█': [[0, 0], [0, 1], [1, 0], [1, 1]],
 };
 
-/** 足（3 行目）に使ってよい文字と、それがセルの上半分で塗る領域。 */
-const TOP_HALF: Readonly<Record<string, readonly string[]>> = {
-  ' ': [],
-  '▘': ['left'],
-  '▝': ['right'],
-  '▀': ['left', 'right'],
+/** 1 フレームを 2 倍解像度のピクセルへ展開する。 */
+const toPixels = (frame: string): boolean[][] => {
+  const rows = frame.split('\n');
+  const pixels = Array.from({ length: rows.length * 2 }, () =>
+    Array.from({ length: CHARACTER_WIDTH * 2 }, () => false),
+  );
+
+  rows.forEach((row, rowIndex) => {
+    [...row].forEach((char, column) => {
+      for (const [dy, dx] of QUADRANTS[char] ?? []) {
+        const line = pixels[rowIndex * 2 + dy];
+        if (line !== undefined) {
+          line[column * 2 + dx] = true;
+        }
+      }
+    });
+  });
+
+  return pixels;
+};
+
+/** 塗られたピクセルが 4 近傍で 1 つの塊になっているか。 */
+const isSingleShape = (pixels: readonly boolean[][]): boolean => {
+  const filled: [number, number][] = [];
+  pixels.forEach((row, y) => row.forEach((on, x) => on && filled.push([y, x])));
+
+  const start = filled[0];
+  if (start === undefined) {
+    return true;
+  }
+
+  const seen = new Set([start.join()]);
+  const stack = [start];
+  while (stack.length > 0) {
+    const [y, x] = stack.pop() as [number, number];
+    for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const key = [y + dy, x + dx].join();
+      if (pixels[y + dy]?.[x + dx] === true && !seen.has(key)) {
+        seen.add(key);
+        stack.push([y + dy, x + dx]);
+      }
+    }
+  }
+
+  return seen.size === filled.length;
 };
 
 describe('frames 定義', () => {
@@ -54,10 +102,14 @@ describe('frames 定義', () => {
     expect(CHARACTERS[state].frames.length).toBeGreaterThan(0);
   });
 
-  it.each(STATES)('%s は全フレームで Claude Code のマークが共通である', (state) => {
+  it.each(STATES)('%s は全フレームで身体と頭の中央が共通である', (state) => {
     for (const frame of CHARACTERS[state].frames) {
-      // マークがフレームごとに変わると、火花の行と桁が合わなくなる
-      expect(frame.split('\n').slice(0, 2).join('\n')).toBe(MARK);
+      const [head, body] = frame.split('\n');
+
+      // 身体はどのフレームでも変わらない
+      expect(body).toBe(BODY);
+      // 頭は両端（手）だけが変わり、中央は動かない
+      expect(head?.slice(1, -1)).toBe('▐▛███▛█');
     }
   });
 
@@ -69,25 +121,13 @@ describe('frames 定義', () => {
   });
 
   /*
-   * `▗` `▖` のようにセルの下半分へ描かれる文字を足に使うと、身体との間に
-   * 半セルぶんの空白ができて足が浮く。足が塗る領域が必ず身体の塗る領域に
-   * 含まれていることを検証する。
+   * 手や足に置く文字を間違えると、身体との間に半セルぶんの空白ができて
+   * 部品が浮く（例: 桁 0 の手に `▘` を使うと身体と接しない）。
+   * 塗られたピクセルが 1 つの塊になっていることで、浮きを検出する。
    */
-  it.each(STATES)('%s は足が身体と繋がっている', (state) => {
-    const body = [...(MARK.split('\n')[1] ?? '')];
-
+  it.each(STATES)('%s は全フレームで身体から離れた部品が無い', (state) => {
     for (const frame of CHARACTERS[state].frames) {
-      const legs = [...(frame.split('\n')[2] ?? '')];
-
-      legs.forEach((leg, column) => {
-        // 上半分に描かれない文字は足に使えない
-        expect(Object.keys(TOP_HALF)).toContain(leg);
-
-        const touching = BOTTOM_HALF[body[column] ?? ' '] ?? [];
-        for (const half of TOP_HALF[leg] ?? []) {
-          expect(touching).toContain(half);
-        }
-      });
+      expect(isSingleShape(toPixels(frame))).toBe(true);
     }
   });
 
