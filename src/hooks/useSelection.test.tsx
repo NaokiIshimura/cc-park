@@ -120,11 +120,11 @@ describe('useSelection', () => {
     unmount();
   });
 
-  it('Enter でもコピーする', async () => {
+  it('Enter ではコピーしない', async () => {
     const { stdin, copy, unmount } = setup();
     stdin.write(ENTER);
     await wait();
-    expect(copy).toHaveBeenCalledWith('claude --resume a');
+    expect(copy).not.toHaveBeenCalled();
     unmount();
   });
 

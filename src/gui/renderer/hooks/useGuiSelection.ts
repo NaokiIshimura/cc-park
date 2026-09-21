@@ -40,7 +40,6 @@ export const toGuiSelectionCommand = (event: KeyInput): GuiCommand | null => {
     case 'ArrowDown':
     case 'j':
       return 'down';
-    case 'Enter':
     case 'c':
       return 'copy';
     case 'r':

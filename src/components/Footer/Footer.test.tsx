@@ -8,7 +8,7 @@ const renderFooter = (props: Partial<Parameters<typeof Footer>[0]> = {}) =>
 describe('Footer', () => {
   it('キーバインドヘルプを表示する', () => {
     const output = renderFooter();
-    expect(output).toContain('Enter コピー');
+    expect(output).toContain('c コピー');
     expect(output).toContain('s stop');
     expect(output).toContain('q 終了');
   });
