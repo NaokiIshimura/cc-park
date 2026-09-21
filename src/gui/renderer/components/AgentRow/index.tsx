@@ -51,17 +51,24 @@ const AgentRowComponent = ({
     >
       <Character state={agent.state} frame={frame} />
 
+      {/*
+        Claude Code の起動バナーと同じ 3 行構成（名前 / 状態 / cwd）にして
+        AA の 3 行と 1 対 1 で対応させる。
+      */}
       <div className="agent-row__info">
         <div className="agent-row__line">
           <span className="agent-row__name">{agent.name}</span>
           {agent.kind === 'background' ? <span className="tag tag--bg">[bg]</span> : null}
           {isSelf ? <span className="tag tag--self">[self]</span> : null}
-          <span className="agent-row__cwd">{formatCwd(agent.cwd, CWD_MAX_WIDTH, home)}</span>
         </div>
 
         <div className="agent-row__line">
           <StatusBadge state={agent.state} />
           <span className="agent-row__detail">{`${detail} ${elapsed}`}</span>
+        </div>
+
+        <div className="agent-row__line">
+          <span className="agent-row__cwd">{formatCwd(agent.cwd, CWD_MAX_WIDTH, home)}</span>
         </div>
       </div>
     </li>

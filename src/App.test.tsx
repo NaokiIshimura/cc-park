@@ -184,8 +184,8 @@ describe('App', () => {
 
 describe('computeMaxVisible', () => {
   it('高さから表示件数を求める', () => {
-    // 40 行 - chrome 8 行 = 32 行 → floor((32+1)/3) = 11 件
-    expect(computeMaxVisible(40)).toBe(11);
+    // 40 行 - chrome 8 行 = 32 行 → floor((32+1)/4) = 8 件
+    expect(computeMaxVisible(40)).toBe(8);
   });
 
   it('端末が低くても最低 1 件は出す', () => {
@@ -194,7 +194,7 @@ describe('computeMaxVisible', () => {
   });
 
   it('chrome の行数を差し替えられる', () => {
-    expect(computeMaxVisible(20, 2)).toBe(6);
+    expect(computeMaxVisible(20, 2)).toBe(4);
   });
 
   it('高さが増えるほど件数も増える', () => {

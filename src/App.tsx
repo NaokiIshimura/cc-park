@@ -18,7 +18,7 @@ import { useTransitions } from './hooks/useTransitions.js';
 const ANIMATION_INTERVAL_MS = 200;
 
 /** 情報カラム以外が占める幅（左右 padding + カーソル + キャラクター + 余白） */
-const FIXED_COLUMNS_WIDTH = 13;
+const FIXED_COLUMNS_WIDTH = 14;
 
 /** 情報カラムの最小幅 */
 const MIN_INFO_WIDTH = 20;
@@ -35,7 +35,7 @@ const MIN_VISIBLE_AGENTS = 1;
 /** 端末の高さから同時に表示できるセッション数を求める。 */
 export const computeMaxVisible = (rows: number, chromeRows = CHROME_ROWS): number => {
   const available = rows - chromeRows;
-  // N 件は 2N + (N-1) = 3N-1 行を占める
+  // N 件は 3N + (N-1) = 4N-1 行を占める
   return Math.max(Math.floor((available + 1) / ROWS_PER_AGENT), MIN_VISIBLE_AGENTS);
 };
 

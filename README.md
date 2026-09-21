@@ -9,16 +9,19 @@
 GUI の画面は [GUI モード](#gui-モード) を参照してください。以下は `--cli` で起動した場合の表示です。
 
 ```
- CC Park 5 sessions                                         notify:on 0:51:04
+ CC Park 5 sessions                                        notify:ON 0:51:04
 
- > (\_/)    claude agents setup [bg] ~
-   ( oAo)!  BLOCKED  needs your approval 10h39m
+ >  ▐▛███▛█  claude agents setup [bg]
+   ▝▜██████▀ BLOCKED  needs your approval 10h39m
+     ▝▝ ▝▝   ~
 
-   (\_/)    cc-park-bd [self] ~/GitHub/cc-park
-   ( -v-)/  BUSY     working... 21m
+    ▐▛███▛█  cc-park-bd [self]
+   ▝▜██████▀ BUSY     working... 21m
+     ▀▝ ▝▝   ~/GitHub/cc-park
 
-   (\_/)    vscode-ai-coding-sidebar-3e ~/GitHub/vscode-ai-coding-sidebar
-   ( -v-)z  IDLE     waiting for input 37m
+    ▐▛███▛█  vscode-ai-coding-sidebar-3e
+   ▝▜██████▀ IDLE     waiting for input 37m
+     ▝▝ ▝▝   ~/GitHub/vscode-ai-coding-sidebar
 ```
 
 ## 必要環境
@@ -177,17 +180,38 @@ GUI では加えて次の操作ができます。
 
 ## 状態とキャラクター
 
-| 表示 | キャラクター | 意味 |
-| --- | --- | --- |
-| `BLOCKED` | `( oAo)!` | 承認・入力を待っている（要対応） |
-| `DONE!` | `\(\_/)/` `( ^v^)*` | 作業が完了した直後（既定 10 秒間） |
-| `BUSY` | `( -v-)/` `( ovo)_` | 作業中 |
-| `IDLE` | `( -v-)zZ` | 入力待ち |
-| `DONE` | `( ^v^)+` | バックグラウンドが完了（`--all`） |
-| `STOPPED` | `( xvx)` | 停止済み（`--all`） |
-| `UNKNOWN` | `( ?v?)?` | 未知の状態（生の状態文字列を併記） |
+キャラクターは Claude Code の起動バナーと同じマークです。上 2 行（身体）は全状態で共通で、
+**3 行目の足の動きと色**で状態を表します。
+
+アニメーションするのは `BLOCKED` / `DONE!` / `BUSY` の 3 つだけです。
+`IDLE` `DONE` `STOPPED` `UNKNOWN` は静止するので、**動いている行だけを見れば
+「作業中」か「こちらの操作待ち」かが分かります**。
+
+```
+ ▐▛███▛█
+▝▜██████▀
+  ▝▝ ▝▝
+```
+
+| 表示 | 色 | 足 | 意味 |
+| --- | --- | --- | --- |
+| `BLOCKED` | 黄 | `▝▝ ▝▝` ⇄ `▀▀ ▀▀`（太くなって点滅する） | 承認・入力を待っている（要対応） |
+| `DONE!` | 明るい緑 | `▝▝ ▝▝` ⇄ `▝▝   ▝▝`（外側へ弾ける） | 作業が完了した直後（既定 10 秒間） |
+| `BUSY` | シアン | `▀▝ ▝▝` → `▝▀ ▝▝` → `▝▝ ▀▝` → `▝▝ ▝▀`（左から右へ流れる） | 作業中 |
+| `IDLE` | 灰 | `▝▝ ▝▝`（静止） | 入力待ち |
+| `DONE` | 緑 | `▝▝ ▝▝`（静止） | バックグラウンドが完了（`--all`） |
+| `STOPPED` | 灰 | なし（足が消える） | 停止済み（`--all`） |
+| `UNKNOWN` | 赤 | `▘▝ ▝▘`（不揃いのまま静止） | 未知の状態（生の状態文字列を併記） |
 
 一覧は要対応のものが上に来るよう並べ替えられます。
+
+足に使えるのは `▘`（左上） `▝`（右上） `▀`（上半分）と空白だけです。
+`▗` `▖` のような下半分の文字はセルの下側に描かれるため、身体との間に半セルぶんの空白ができて
+足が浮いてしまいます。
+
+AA に使う文字は、`Menlo` と `SF Mono` の**両方**に収録されていて字送り幅が ASCII と同じことを
+実測で確認した Block Elements（U+2580–U+259F）だけに限定しています
+（`✻` などの星記号は `SF Mono` に無く、フォールバック描画で桁が崩れます）。
 
 ## OS 通知
 

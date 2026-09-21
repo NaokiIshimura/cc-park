@@ -41,6 +41,10 @@ const AgentRowComponent = ({
         <Character state={agent.state} frame={frame} bold={selected} />
       </Box>
 
+      {/*
+        Claude Code の起動バナーと同じ 3 行構成（名前 / 状態 / cwd）にして
+        AA の 3 行と 1 対 1 で対応させる。
+      */}
       <Box flexDirection="column" width={infoWidth}>
         {/*
           全角を含む名前でも行が折り返してキャラクターの枠が崩れないよう、
@@ -52,12 +56,15 @@ const AgentRowComponent = ({
           </Text>
           {agent.kind === 'background' ? <Text color="magenta"> [bg]</Text> : null}
           {isSelf ? <Text color="blueBright"> [self]</Text> : null}
-          <Text dimColor>{` ${formatCwd(agent.cwd)}`}</Text>
         </Text>
 
         <Text wrap="truncate-end">
           <StatusBadge state={agent.state} />
           <Text dimColor>{` ${detail} ${elapsed}`}</Text>
+        </Text>
+
+        <Text wrap="truncate-end" dimColor>
+          {formatCwd(agent.cwd)}
         </Text>
       </Box>
     </Box>

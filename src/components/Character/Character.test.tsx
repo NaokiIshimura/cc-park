@@ -6,12 +6,38 @@ import {
   CHARACTERS,
   CHARACTER_HEIGHT,
   CHARACTER_WIDTH,
-  HEAD,
+  MARK,
   getAppearance,
   getFrame,
 } from '../../shared/characters.js';
 
 const STATES = Object.keys(CHARACTERS) as CharacterState[];
+
+/**
+ * AA に使ってよい文字。
+ *
+ * Menlo / SF Mono の `cmap` と `hmtx` を実測し、**両方に収録されていて**
+ * 字送り幅が ASCII と同じことを確認した文字だけを並べている。
+ * `✻` などの星記号や `◡` は SF Mono に無く、フォールバック描画で桁が崩れるため入れない。
+ */
+const ALLOWED_CHARS = new Set([' ', ...'▀▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▔▕▖▗▘▙▚▛▜▝▞▟']);
+
+/** 身体（マークの 2 行目）の各文字で、セルの下半分が塗られている領域。 */
+const BOTTOM_HALF: Readonly<Record<string, readonly string[]>> = {
+  ' ': [],
+  '▝': [],
+  '▀': [],
+  '▜': ['right'],
+  '█': ['left', 'right'],
+};
+
+/** 足（3 行目）に使ってよい文字と、それがセルの上半分で塗る領域。 */
+const TOP_HALF: Readonly<Record<string, readonly string[]>> = {
+  ' ': [],
+  '▘': ['left'],
+  '▝': ['right'],
+  '▀': ['left', 'right'],
+};
 
 describe('frames 定義', () => {
   it.each(STATES)('%s の全フレームが %i 行 x %i 桁に揃っている', (state) => {
@@ -28,15 +54,40 @@ describe('frames 定義', () => {
     expect(CHARACTERS[state].frames.length).toBeGreaterThan(0);
   });
 
-  it.each(STATES)('%s は全フレームの頭の行が共通で顔と桁が揃っている', (state) => {
+  it.each(STATES)('%s は全フレームで Claude Code のマークが共通である', (state) => {
     for (const frame of CHARACTERS[state].frames) {
-      const [head, face] = frame.split('\n');
+      // マークがフレームごとに変わると、火花の行と桁が合わなくなる
+      expect(frame.split('\n').slice(0, 2).join('\n')).toBe(MARK);
+    }
+  });
 
-      // 頭の行がポーズごとにずれると、顔の括弧と桁が合わなくなる
-      expect(head).toBe(HEAD);
-      // 括弧の位置（0 桁目と 5 桁目）が頭と顔で一致している
-      expect(face?.[0]).toBe('(');
-      expect(face?.[5]).toBe(')');
+  it.each(STATES)('%s は等幅が保証された文字だけで構成されている', (state) => {
+    for (const frame of CHARACTERS[state].frames) {
+      const disallowed = [...frame.replaceAll('\n', '')].filter((char) => !ALLOWED_CHARS.has(char));
+      expect(disallowed).toEqual([]);
+    }
+  });
+
+  /*
+   * `▗` `▖` のようにセルの下半分へ描かれる文字を足に使うと、身体との間に
+   * 半セルぶんの空白ができて足が浮く。足が塗る領域が必ず身体の塗る領域に
+   * 含まれていることを検証する。
+   */
+  it.each(STATES)('%s は足が身体と繋がっている', (state) => {
+    const body = [...(MARK.split('\n')[1] ?? '')];
+
+    for (const frame of CHARACTERS[state].frames) {
+      const legs = [...(frame.split('\n')[2] ?? '')];
+
+      legs.forEach((leg, column) => {
+        // 上半分に描かれない文字は足に使えない
+        expect(Object.keys(TOP_HALF)).toContain(leg);
+
+        const touching = BOTTOM_HALF[body[column] ?? ' '] ?? [];
+        for (const half of TOP_HALF[leg] ?? []) {
+          expect(touching).toContain(half);
+        }
+      });
     }
   });
 
@@ -63,22 +114,41 @@ describe('getAppearance', () => {
 
 describe('getFrame', () => {
   it('フレーム番号でフレームを切り替える', () => {
-    expect(getFrame('waiting', 0)).toBe(CHARACTERS.waiting.frames[0]);
-    expect(getFrame('waiting', 1)).toBe(CHARACTERS.waiting.frames[1]);
+    expect(getFrame('blocked', 0)).toBe(CHARACTERS.blocked.frames[0]);
+    expect(getFrame('blocked', 1)).toBe(CHARACTERS.blocked.frames[1]);
   });
 
   it('フレーム番号が範囲を超えたら循環する', () => {
-    expect(getFrame('waiting', 2)).toBe(CHARACTERS.waiting.frames[0]);
-    expect(getFrame('waiting', 101)).toBe(CHARACTERS.waiting.frames[1]);
+    expect(getFrame('blocked', 2)).toBe(CHARACTERS.blocked.frames[0]);
+    expect(getFrame('blocked', 101)).toBe(CHARACTERS.blocked.frames[1]);
   });
 
   it('負のフレーム番号でも循環する', () => {
-    expect(getFrame('waiting', -1)).toBe(CHARACTERS.waiting.frames[1]);
+    expect(getFrame('blocked', -1)).toBe(CHARACTERS.blocked.frames[1]);
   });
 
   it('単一フレームの状態は常に同じフレームを返す', () => {
     expect(getFrame('done', 7)).toBe(CHARACTERS.done.frames[0]);
   });
+
+  /*
+   * 入力待ち・完了・停止・未知はこちらの操作を促さないので静止させる。
+   * 動いている行だけを見れば済むようにするための約束なので、テストで固定する。
+   */
+  it.each<CharacterState>(['waiting', 'done', 'stopped', 'unknown'])(
+    '%s は静止している',
+    (state) => {
+      expect(CHARACTERS[state].frames).toHaveLength(1);
+      expect(getFrame(state, 3)).toBe(getFrame(state, 0));
+    },
+  );
+
+  it.each<CharacterState>(['blocked', 'justFinished', 'working'])(
+    '%s はアニメーションする',
+    (state) => {
+      expect(CHARACTERS[state].frames.length).toBeGreaterThan(1);
+    },
+  );
 });
 
 describe('Character', () => {
