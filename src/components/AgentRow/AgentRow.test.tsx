@@ -168,6 +168,23 @@ describe('AgentRow の付加情報', () => {
 });
 
 describe('AgentRow のレイアウト', () => {
+  it('状態行は説明と経過時間を右端へ寄せる', () => {
+    const lines = renderRow().split('\n');
+    const status = lines[1] ?? '';
+
+    expect(status.trimEnd().endsWith('working... 3m12s')).toBe(true);
+    // ラベルと説明の間が空き、左詰めのままになっていない
+    expect(status).toMatch(/BUSY\s{2,}working\.\.\./);
+  });
+
+  it('状態行の右端は 1 行目のトークン表示と揃う', () => {
+    const lines = renderRow({
+      meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } },
+    }).split('\n');
+
+    expect(lines[1]?.trimEnd().length).toBe(lines[0]?.trimEnd().length);
+  });
+
   it('infoWidth を超える行は折り返さず切り詰める', () => {
     const output = renderRow(
       { name: 'とても長い日本語のセッション名です', cwd: '/Users/naoki/very/long/path/to/project' },
