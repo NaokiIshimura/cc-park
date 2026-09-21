@@ -44,7 +44,7 @@ export const toSelectionCommand = (input: string, key: InkKey): SelectionCommand
     return 'down';
   }
   // Ctrl+C は Ink 側が終了として処理するため、コピーとは衝突しない
-  if (key.return || (input === 'c' && !key.ctrl)) {
+  if (input === 'c' && !key.ctrl) {
     return 'copy';
   }
   if (input === 'r') {

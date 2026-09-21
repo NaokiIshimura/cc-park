@@ -190,10 +190,25 @@ body {
 
 .character {
   margin: 0;
-  /* 8 桁 2 行の AA をそのままの形で出す */
+  /* 9 桁 3 行の AA をそのままの形で出す */
   white-space: pre;
   font-family: var(--font-mono);
-  line-height: 1.25;
+  /*
+   * ブロック文字は字面が em ボックスいっぱいに描かれるため、行間が空くと
+   * マークが縦に途切れる。行間を詰めたうえで、1 行の高さが情報カラムの行
+   * （12px * 1.25 = 15px）と一致するよう font-size を 15px にする。
+   */
+  font-size: 15px;
+  line-height: 1;
+  /*
+   * 行間を詰めたぶんセルが平たくなり、端末（高さ / 幅 = 約 2）より横長に見える。
+   * ブロック文字は塗り潰しなので、横だけ端末のセル比まで縮めても劣化しない。
+   * transform はレイアウトの箱を変えないため、width も同じ比率にして
+   * 情報カラムの開始位置がずれないようにする（自然幅 9ch * 0.833 = 7.5ch）。
+   */
+  transform: scaleX(0.833);
+  transform-origin: left center;
+  width: 7.5ch;
   flex-shrink: 0;
 }
 
@@ -201,7 +216,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  /* AA の 3 行と行位置を揃えるため、行間は空けず line-height も合わせる */
   line-height: 1.25;
 }
 

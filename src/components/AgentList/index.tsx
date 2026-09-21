@@ -16,8 +16,8 @@ interface AgentListProps {
   readonly maxVisible: number;
 }
 
-/** 1 セッションが占める行数（本体 2 行 + 行間 1 行） */
-export const ROWS_PER_AGENT = 3;
+/** 1 セッションが占める行数（本体 3 行 + 行間 1 行） */
+export const ROWS_PER_AGENT = 4;
 
 export interface VisibleWindow {
   readonly start: number;

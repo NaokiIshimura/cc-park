@@ -87,7 +87,7 @@ describe('AgentRow', () => {
   });
 
   it('キャラクターの AA を表示する', () => {
-    expect(renderRow()).toContain('( \\_/)');
+    expect(renderRow()).toContain('▐▛███▛█');
   });
 });
 
@@ -99,8 +99,8 @@ describe('AgentRow のレイアウト', () => {
     );
     const lines = output.split('\n').filter((line) => line.trim() !== '');
 
-    // キャラクター 2 行分に収まり、折り返しで 3 行目が生まれない
-    expect(lines).toHaveLength(2);
+    // キャラクター 3 行分に収まり、折り返しで 4 行目が生まれない
+    expect(lines).toHaveLength(3);
     for (const line of lines) {
       expect(line.length).toBeLessThanOrEqual(30 + 12);
     }
@@ -108,6 +108,6 @@ describe('AgentRow のレイアウト', () => {
 
   it('幅が狭くてもキャラクターは欠けない', () => {
     const output = renderRow({}, { infoWidth: 20 });
-    expect(output).toContain('( \\_/)');
+    expect(output).toContain('▐▛███▛█');
   });
 });

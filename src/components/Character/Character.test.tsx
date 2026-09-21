@@ -6,12 +6,86 @@ import {
   CHARACTERS,
   CHARACTER_HEIGHT,
   CHARACTER_WIDTH,
-  HEAD,
+  BODY,
   getAppearance,
   getFrame,
 } from '../../shared/characters.js';
 
 const STATES = Object.keys(CHARACTERS) as CharacterState[];
+
+/**
+ * AA に使ってよい文字。
+ *
+ * Menlo / SF Mono の `cmap` と `hmtx` を実測し、**両方に収録されていて**
+ * 字送り幅が ASCII と同じことを確認した文字だけを並べている。
+ * `✻` などの星記号や `◡` は SF Mono に無く、フォールバック描画で桁が崩れるため入れない。
+ */
+const ALLOWED_CHARS = new Set([' ', ...'▀▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▔▕▖▗▘▙▚▛▜▝▞▟']);
+
+/** ブロック文字が塗る象限。1 セルを 2x2 のピクセルとして扱う。 */
+const QUADRANTS: Readonly<Record<string, readonly [number, number][]>> = {
+  ' ': [],
+  '▘': [[0, 0]],
+  '▝': [[0, 1]],
+  '▖': [[1, 0]],
+  '▗': [[1, 1]],
+  '▀': [[0, 0], [0, 1]],
+  '▄': [[1, 0], [1, 1]],
+  '▌': [[0, 0], [1, 0]],
+  '▐': [[0, 1], [1, 1]],
+  '▛': [[0, 0], [0, 1], [1, 0]],
+  '▜': [[0, 0], [0, 1], [1, 1]],
+  '▙': [[0, 0], [1, 0], [1, 1]],
+  '▟': [[0, 1], [1, 0], [1, 1]],
+  '█': [[0, 0], [0, 1], [1, 0], [1, 1]],
+};
+
+/** 1 フレームを 2 倍解像度のピクセルへ展開する。 */
+const toPixels = (frame: string): boolean[][] => {
+  const rows = frame.split('\n');
+  const pixels = Array.from({ length: rows.length * 2 }, () =>
+    Array.from({ length: CHARACTER_WIDTH * 2 }, () => false),
+  );
+
+  rows.forEach((row, rowIndex) => {
+    [...row].forEach((char, column) => {
+      for (const [dy, dx] of QUADRANTS[char] ?? []) {
+        const line = pixels[rowIndex * 2 + dy];
+        if (line !== undefined) {
+          line[column * 2 + dx] = true;
+        }
+      }
+    });
+  });
+
+  return pixels;
+};
+
+/** 塗られたピクセルが 4 近傍で 1 つの塊になっているか。 */
+const isSingleShape = (pixels: readonly boolean[][]): boolean => {
+  const filled: [number, number][] = [];
+  pixels.forEach((row, y) => row.forEach((on, x) => on && filled.push([y, x])));
+
+  const start = filled[0];
+  if (start === undefined) {
+    return true;
+  }
+
+  const seen = new Set([start.join()]);
+  const stack = [start];
+  while (stack.length > 0) {
+    const [y, x] = stack.pop() as [number, number];
+    for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const key = [y + dy, x + dx].join();
+      if (pixels[y + dy]?.[x + dx] === true && !seen.has(key)) {
+        seen.add(key);
+        stack.push([y + dy, x + dx]);
+      }
+    }
+  }
+
+  return seen.size === filled.length;
+};
 
 describe('frames 定義', () => {
   it.each(STATES)('%s の全フレームが %i 行 x %i 桁に揃っている', (state) => {
@@ -28,15 +102,58 @@ describe('frames 定義', () => {
     expect(CHARACTERS[state].frames.length).toBeGreaterThan(0);
   });
 
-  it.each(STATES)('%s は全フレームの頭の行が共通で顔と桁が揃っている', (state) => {
+  it.each(STATES)('%s は全フレームで身体と頭の中央が共通である', (state) => {
     for (const frame of CHARACTERS[state].frames) {
-      const [head, face] = frame.split('\n');
+      const [head, body] = frame.split('\n');
 
-      // 頭の行がポーズごとにずれると、顔の括弧と桁が合わなくなる
-      expect(head).toBe(HEAD);
-      // 括弧の位置（0 桁目と 5 桁目）が頭と顔で一致している
-      expect(face?.[0]).toBe('(');
-      expect(face?.[5]).toBe(')');
+      // 身体はどのフレームでも変わらない
+      expect(body).toBe(BODY);
+      // 頭は両端（手）だけが変わり、中央は動かない
+      expect(head?.slice(1, -1)).toBe('▐▛███▛█');
+    }
+  });
+
+  it.each(STATES)('%s は等幅が保証された文字だけで構成されている', (state) => {
+    for (const frame of CHARACTERS[state].frames) {
+      const disallowed = [...frame.replaceAll('\n', '')].filter((char) => !ALLOWED_CHARS.has(char));
+      expect(disallowed).toEqual([]);
+    }
+  });
+
+  /*
+   * 手や足に置く文字を間違えると、身体との間に半セルぶんの空白ができて
+   * 部品が浮く（例: 桁 0 の手に `▘` を使うと身体と接しない）。
+   * 塗られたピクセルが 1 つの塊になっていることで、浮きを検出する。
+   */
+  it.each(STATES)('%s は全フレームで身体から離れた部品が無い', (state) => {
+    for (const frame of CHARACTERS[state].frames) {
+      expect(isSingleShape(toPixels(frame))).toBe(true);
+    }
+  });
+
+  /*
+   * 逆に、手が頭と横に隣接すると手に見えなくなる（桁 8 に `▖` `▌` のような
+   * セルの左半分を使う文字を置くと、隣の `█` とくっつく）。
+   * 手は身体と縦に繋がりつつ、頭との間は空いていなければならない。
+   */
+  it.each(STATES)('%s は全フレームで手が頭とくっついていない', (state) => {
+    // 頭の中央（桁 1-7）が占めるピクセルの x 座標
+    const headX = new Set(Array.from({ length: 14 }, (_, i) => i + 2));
+
+    for (const frame of CHARACTERS[state].frames) {
+      const pixels = toPixels(frame);
+
+      // 手が入るのは頭の行（上 2 ピクセル）の両端の桁
+      for (const y of [0, 1]) {
+        for (const x of [0, 1, CHARACTER_WIDTH * 2 - 2, CHARACTER_WIDTH * 2 - 1]) {
+          if (pixels[y]?.[x] !== true) {
+            continue;
+          }
+          for (const dx of [-1, 1]) {
+            expect(headX.has(x + dx) && pixels[y]?.[x + dx] === true).toBe(false);
+          }
+        }
+      }
     }
   });
 
@@ -63,22 +180,41 @@ describe('getAppearance', () => {
 
 describe('getFrame', () => {
   it('フレーム番号でフレームを切り替える', () => {
-    expect(getFrame('waiting', 0)).toBe(CHARACTERS.waiting.frames[0]);
-    expect(getFrame('waiting', 1)).toBe(CHARACTERS.waiting.frames[1]);
+    expect(getFrame('blocked', 0)).toBe(CHARACTERS.blocked.frames[0]);
+    expect(getFrame('blocked', 1)).toBe(CHARACTERS.blocked.frames[1]);
   });
 
   it('フレーム番号が範囲を超えたら循環する', () => {
-    expect(getFrame('waiting', 2)).toBe(CHARACTERS.waiting.frames[0]);
-    expect(getFrame('waiting', 101)).toBe(CHARACTERS.waiting.frames[1]);
+    expect(getFrame('blocked', 2)).toBe(CHARACTERS.blocked.frames[0]);
+    expect(getFrame('blocked', 101)).toBe(CHARACTERS.blocked.frames[1]);
   });
 
   it('負のフレーム番号でも循環する', () => {
-    expect(getFrame('waiting', -1)).toBe(CHARACTERS.waiting.frames[1]);
+    expect(getFrame('blocked', -1)).toBe(CHARACTERS.blocked.frames[1]);
   });
 
   it('単一フレームの状態は常に同じフレームを返す', () => {
     expect(getFrame('done', 7)).toBe(CHARACTERS.done.frames[0]);
   });
+
+  /*
+   * 入力待ち・完了・停止・未知はこちらの操作を促さないので静止させる。
+   * 動いている行だけを見れば済むようにするための約束なので、テストで固定する。
+   */
+  it.each<CharacterState>(['waiting', 'done', 'stopped', 'unknown'])(
+    '%s は静止している',
+    (state) => {
+      expect(CHARACTERS[state].frames).toHaveLength(1);
+      expect(getFrame(state, 3)).toBe(getFrame(state, 0));
+    },
+  );
+
+  it.each<CharacterState>(['blocked', 'justFinished', 'working'])(
+    '%s はアニメーションする',
+    (state) => {
+      expect(CHARACTERS[state].frames.length).toBeGreaterThan(1);
+    },
+  );
 });
 
 describe('Character', () => {

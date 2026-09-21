@@ -100,17 +100,25 @@ describe('useGuiSelection', () => {
     expect(snapshot.selectedIndex).toBe(0);
   });
 
-  it('Enter で resume コマンドをコピーする', async () => {
+  it('c で resume コマンドをコピーする', async () => {
     const { copy } = setup();
-    press('Enter');
+    press('c');
     await act(async () => undefined);
     expect(copy).toHaveBeenCalledWith('claude --resume a');
     expect(snapshot.message).toBe('コピーしました: claude --resume a');
   });
 
+  it('Enter ではコピーしない', async () => {
+    const { copy } = setup();
+    press('Enter');
+    await act(async () => undefined);
+    expect(copy).not.toHaveBeenCalled();
+    expect(snapshot.message).toBeNull();
+  });
+
   it('コピーできない環境では非対応と伝える', async () => {
     setup({ copy: vi.fn(async () => false) });
-    press('Enter');
+    press('c');
     await act(async () => undefined);
     expect(snapshot.message).toBe('コピー非対応の環境です: claude --resume a');
   });
@@ -306,7 +314,7 @@ describe('アンマウント後の後始末', () => {
     );
     const { unmount } = setup({ copy });
 
-    press('Enter');
+    press('c');
     unmount();
     act(() => {
       resolveCopy?.(true);

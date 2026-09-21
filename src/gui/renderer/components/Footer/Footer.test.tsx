@@ -8,7 +8,7 @@ afterEach(cleanup);
 describe('Footer', () => {
   it('キーバインドのヘルプを表示する', () => {
     render(<Footer message={null} />);
-    expect(screen.getByText(/Enter コピー/)).toBeDefined();
+    expect(screen.getByText(/c コピー/)).toBeDefined();
   });
 
   it('最前面固定のキーを案内する', () => {

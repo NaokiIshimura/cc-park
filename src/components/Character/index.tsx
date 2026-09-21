@@ -23,7 +23,8 @@ export {
   CHARACTERS,
   CHARACTER_HEIGHT,
   CHARACTER_WIDTH,
-  HEAD,
+  BODY,
+  LEGS,
   getAppearance,
   getFrame,
 } from '../../shared/characters.js';
