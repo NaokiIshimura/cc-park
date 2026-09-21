@@ -34,20 +34,34 @@ describe('groupAgents', () => {
     expect(keys(groups[0]?.agents ?? [])).toEqual(['a', 'c']);
   });
 
-  it('要対応のセッションを持つグループを上に置く', () => {
+  it('グループは cwd の昇順に並べる', () => {
+    const groups = groupAgents([
+      agent('y', '/tmp/y'),
+      agent('x', '/tmp/x'),
+      agent('z', '/tmp/z'),
+    ]);
+    expect(groups.map((group) => group.cwd)).toEqual(['/tmp/x', '/tmp/y', '/tmp/z']);
+  });
+
+  it('親ディレクトリは配下のディレクトリより先に置く', () => {
+    const groups = groupAgents([
+      agent('child', '/Users/naoki/xxx'),
+      agent('home', '/Users/naoki'),
+      agent('sibling', '/Users/naoki/yyy'),
+    ]);
+    expect(groups.map((group) => group.cwd)).toEqual([
+      '/Users/naoki',
+      '/Users/naoki/xxx',
+      '/Users/naoki/yyy',
+    ]);
+  });
+
+  it('要対応のセッションを含んでいても cwd の昇順を崩さない', () => {
     const groups = groupAgents([
       agent('idle', '/tmp/x', 'waiting'),
       agent('blocked', '/tmp/y', 'blocked'),
     ]);
-    expect(groups.map((group) => group.cwd)).toEqual(['/tmp/y', '/tmp/x']);
-  });
-
-  it('優先度が同じなら新しいセッションを持つグループを上に置く', () => {
-    const groups = groupAgents([
-      agent('old', '/tmp/x', 'waiting', 100),
-      agent('new', '/tmp/y', 'waiting', 200),
-    ]);
-    expect(groups.map((group) => group.cwd)).toEqual(['/tmp/y', '/tmp/x']);
+    expect(groups.map((group) => group.cwd)).toEqual(['/tmp/x', '/tmp/y']);
   });
 
   it('グループ内は従来どおり優先度順に並べる', () => {
@@ -88,7 +102,7 @@ describe('flattenGroups', () => {
       agent('blocked', '/tmp/y', 'blocked'),
       agent('done', '/tmp/y', 'done'),
     ]);
-    expect(keys(flattenGroups(groups))).toEqual(['blocked', 'done', 'idle']);
+    expect(keys(flattenGroups(groups))).toEqual(['idle', 'blocked', 'done']);
   });
 
   it('件数はグループ化の前後で変わらない', () => {
