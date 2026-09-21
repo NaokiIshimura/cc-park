@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CHARACTER_HEIGHT, CHARACTER_WIDTH, getFrame } from '../src/shared/characters.ts';
+import { getFrame } from '../src/shared/characters.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ASSETS = join(ROOT, 'assets');
@@ -60,14 +60,11 @@ const QUADRANTS: Readonly<Record<string, readonly [boolean, boolean, boolean, bo
 /** AA 1 フレームを矩形の集合へ変換する。 */
 const toRects = (frame: string): string[] => {
   const rows = frame.split('\n');
-  const artWidth = CHARACTER_WIDTH * CELL_WIDTH;
-  const artHeight = CHARACTER_HEIGHT * CELL_HEIGHT;
-  const originX = (CANVAS - artWidth) / 2;
-  const originY = (CANVAS - artHeight) / 2;
   const halfWidth = CELL_WIDTH / 2;
   const halfHeight = CELL_HEIGHT / 2;
 
-  const rects: string[] = [];
+  /** 塗る小片の左上。AA の左上を原点とした座標で持つ。 */
+  const cells: { readonly x: number; readonly y: number }[] = [];
   rows.forEach((row, rowIndex) => {
     [...row].forEach((char, columnIndex) => {
       const quadrants = QUADRANTS[char];
@@ -78,15 +75,31 @@ const toRects = (frame: string): string[] => {
         if (!filled) {
           return;
         }
-        const x = originX + columnIndex * CELL_WIDTH + (quadrantIndex % 2) * halfWidth;
-        const y = originY + rowIndex * CELL_HEIGHT + Math.floor(quadrantIndex / 2) * halfHeight;
-        rects.push(
-          `<rect x="${x}" y="${y}" width="${halfWidth}" height="${halfHeight}" shape-rendering="crispEdges" />`,
-        );
+        cells.push({
+          x: columnIndex * CELL_WIDTH + (quadrantIndex % 2) * halfWidth,
+          y: rowIndex * CELL_HEIGHT + Math.floor(quadrantIndex / 2) * halfHeight,
+        });
       });
     });
   });
-  return rects;
+
+  if (cells.length === 0) {
+    throw new Error('アイコンにする AA が空です');
+  }
+
+  // 3 行 x 9 桁の枠ではなく、実際に塗った範囲の中心を画面の中心に合わせる。
+  // 枠で揃えると、手の左右の余白と足の下の余白のぶんだけ見た目が右上へ寄る。
+  const left = Math.min(...cells.map((cell) => cell.x));
+  const right = Math.max(...cells.map((cell) => cell.x + halfWidth));
+  const top = Math.min(...cells.map((cell) => cell.y));
+  const bottom = Math.max(...cells.map((cell) => cell.y + halfHeight));
+  const originX = (CANVAS - (right - left)) / 2 - left;
+  const originY = (CANVAS - (bottom - top)) / 2 - top;
+
+  return cells.map(
+    (cell) =>
+      `<rect x="${originX + cell.x}" y="${originY + cell.y}" width="${halfWidth}" height="${halfHeight}" shape-rendering="crispEdges" />`,
+  );
 };
 
 /** アイコン 1 枚ぶんの SVG を組み立てる。 */
