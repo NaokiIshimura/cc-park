@@ -6,6 +6,7 @@ import type { Agent } from '../types/agent.js';
 import {
   clearSessionMetaCache,
   fsTranscriptSource,
+  HEAD_BYTES,
   readSessionMeta,
   TAIL_BYTES,
   type TranscriptSource,
@@ -32,11 +33,12 @@ const TRANSCRIPT = [
   JSON.stringify({ type: 'assistant', message: { usage: { input_tokens: 100_000 } } }),
 ].join('\n');
 
-/** stat / readTail を数えられるモック。 */
-const source = (chunk = TRANSCRIPT, stats = { mtimeMs: 1, size: 10 }) => {
+/** stat / readTail / readHead を数えられるモック。 */
+const source = (chunk = TRANSCRIPT, stats = { mtimeMs: 1, size: 10 }, head = '') => {
   const readTail = vi.fn(async () => chunk);
+  const readHead = vi.fn(async () => head);
   const stat = vi.fn(async () => stats);
-  return { stat, readTail } satisfies TranscriptSource;
+  return { stat, readTail, readHead } satisfies TranscriptSource;
 };
 
 beforeEach(clearSessionMetaCache);
@@ -57,6 +59,32 @@ describe('readSessionMeta', () => {
     );
   });
 
+  it('末尾読みに収まるサイズなら先頭は読まない', async () => {
+    const fake = source();
+    await readSessionMeta(agent(), { home: HOME, source: fake });
+    expect(fake.readHead).not.toHaveBeenCalled();
+  });
+
+  it('末尾読みに収まらないサイズなら先頭も読む', async () => {
+    const fake = source(TRANSCRIPT, { mtimeMs: 1, size: TAIL_BYTES + 1 });
+    await readSessionMeta(agent(), { home: HOME, source: fake });
+    expect(fake.readHead).toHaveBeenCalledWith(
+      '/Users/naoki/.claude/projects/-Users-naoki-GitHub-app/session-1.jsonl',
+      HEAD_BYTES,
+    );
+  });
+
+  it('先頭にあるモデル ID からコンテキスト上限を決める', async () => {
+    const head = JSON.stringify({
+      type: 'attachment',
+      attachment: { type: 'model', identity: { modelId: 'claude-opus-5[1m]' } },
+    });
+    const fake = source(TRANSCRIPT, { mtimeMs: 1, size: TAIL_BYTES + 1 }, head);
+    const meta = await readSessionMeta(agent(), { home: HOME, source: fake });
+    expect(meta?.tokens?.limit).toBe(1_000_000);
+    expect(meta?.tokens?.ratio).toBeCloseTo(0.1);
+  });
+
   it('cwd が空なら読みに行かない', async () => {
     const fake = source();
     expect(await readSessionMeta(agent({ cwd: '' }), { home: HOME, source: fake })).toBeUndefined();
@@ -69,6 +97,7 @@ describe('readSessionMeta', () => {
         throw new Error('ENOENT');
       }),
       readTail: vi.fn(async () => ''),
+      readHead: vi.fn(async () => ''),
     };
     expect(await readSessionMeta(agent(), { home: HOME, source: fake })).toBeUndefined();
   });
@@ -79,6 +108,7 @@ describe('readSessionMeta', () => {
       readTail: vi.fn(async () => {
         throw new Error('EACCES');
       }),
+      readHead: vi.fn(async () => ''),
     };
     expect(await readSessionMeta(agent(), { home: HOME, source: fake })).toBeUndefined();
   });
@@ -107,6 +137,7 @@ describe('readSessionMeta のキャッシュ', () => {
     const fake: TranscriptSource = {
       stat: vi.fn(async () => stats),
       readTail: vi.fn(async () => chunk),
+      readHead: vi.fn(async () => ''),
     };
 
     await readSessionMeta(agent(), { home: HOME, source: fake });
@@ -157,6 +188,16 @@ describe('fsTranscriptSource', () => {
     expect(await fsTranscriptSource.readTail(path, 4)).toBe('6789');
   });
 
+  it('指定したバイト数ぶんだけ先頭を読む', async () => {
+    const path = await writeTemp('0123456789');
+    expect(await fsTranscriptSource.readHead(path, 4)).toBe('0123');
+  });
+
+  it('ファイル全体より大きいバイト数でも先頭読みは全文を返す', async () => {
+    const path = await writeTemp('hello');
+    expect(await fsTranscriptSource.readHead(path, HEAD_BYTES)).toBe('hello');
+  });
+
   it('実ファイルから付加情報を読み取れる', async () => {
     const path = await writeTemp(TRANSCRIPT);
     const meta = await readSessionMeta(agent(), {
@@ -165,6 +206,7 @@ describe('fsTranscriptSource', () => {
       source: {
         stat: async () => fsTranscriptSource.stat(path),
         readTail: async (_path, bytes) => fsTranscriptSource.readTail(path, bytes),
+        readHead: async (_path, bytes) => fsTranscriptSource.readHead(path, bytes),
       },
     });
     expect(meta?.lastPrompt).toBe('テストを書いて');

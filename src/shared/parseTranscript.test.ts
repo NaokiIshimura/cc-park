@@ -5,6 +5,10 @@ const line = (value: unknown): string => JSON.stringify(value);
 
 const lastPrompt = (text: string) => ({ type: 'last-prompt', lastPrompt: text });
 const assistant = (usage: unknown) => ({ type: 'assistant', message: { usage } });
+const modelAttachment = (modelId: unknown) => ({
+  type: 'attachment',
+  attachment: { type: 'model', identity: { modelId } },
+});
 
 describe('toSingleLine', () => {
   it('改行やタブを空白へ潰す', () => {
@@ -78,5 +82,54 @@ describe('parseTranscript', () => {
 
   it('空入力でも壊れない', () => {
     expect(parseTranscript('')).toEqual({ lastPrompt: undefined, tokens: undefined });
+  });
+});
+
+describe('parseTranscript のモデル ID', () => {
+  it('attachment からコンテキスト上限を決める', () => {
+    const chunk = [
+      line(modelAttachment('claude-opus-5[1m]')),
+      line(assistant({ input_tokens: 159_645 })),
+    ].join('\n');
+    expect(parseTranscript(chunk).tokens?.limit).toBe(1_000_000);
+  });
+
+  it('attachment が無ければ使用量からの推定に戻る', () => {
+    const chunk = line(assistant({ input_tokens: 159_645 }));
+    expect(parseTranscript(chunk).tokens?.limit).toBe(200_000);
+  });
+
+  it('後から現れたモデル ID で上書きする', () => {
+    const chunk = [
+      line(modelAttachment('claude-opus-5[1m]')),
+      line(modelAttachment('claude-opus-5')),
+      line(assistant({ input_tokens: 159_645 })),
+    ].join('\n');
+    expect(parseTranscript(chunk).tokens?.limit).toBe(200_000);
+  });
+
+  it('文字列の中身として現れるだけの行は拾わない', () => {
+    const echoed = line({
+      type: 'user',
+      message: { content: line(modelAttachment('claude-opus-5[1m]')) },
+    });
+    const chunk = [echoed, line(assistant({ input_tokens: 159_645 }))].join('\n');
+    expect(parseTranscript(chunk).tokens?.limit).toBe(200_000);
+  });
+
+  it('modelId が文字列でなければ無視する', () => {
+    const chunk = [
+      line(modelAttachment(42)),
+      line(assistant({ input_tokens: 159_645 })),
+    ].join('\n');
+    expect(parseTranscript(chunk).tokens?.limit).toBe(200_000);
+  });
+
+  it('明示指定はモデル ID より優先する', () => {
+    const chunk = [
+      line(modelAttachment('claude-opus-5[1m]')),
+      line(assistant({ input_tokens: 100_000 })),
+    ].join('\n');
+    expect(parseTranscript(chunk, { contextLimit: 400_000 }).tokens?.limit).toBe(400_000);
   });
 });

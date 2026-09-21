@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { resolveContextLimit, toTokenUsage, toUsedTokens } from './tokenUsage.js';
+import {
+  contextLimitFromModelId,
+  resolveContextLimit,
+  toTokenUsage,
+  toUsedTokens,
+} from './tokenUsage.js';
 
 describe('toUsedTokens', () => {
   it('コンテキストを占める 3 項目を合計する', () => {
@@ -51,6 +56,32 @@ describe('resolveContextLimit', () => {
     expect(resolveContextLimit(100, 0)).toBe(200_000);
     expect(resolveContextLimit(100, Number.NaN)).toBe(200_000);
   });
+
+  it('[1m] 付きのモデル ID なら 200k 未満でも 1M を上限にする', () => {
+    expect(resolveContextLimit(159_645, undefined, 'claude-opus-5[1m]')).toBe(1_000_000);
+  });
+
+  it('[1m] が付かないモデル ID では段推定のままにする', () => {
+    expect(resolveContextLimit(159_645, undefined, 'claude-opus-5')).toBe(200_000);
+  });
+
+  it('モデル ID より明示指定を優先する', () => {
+    expect(resolveContextLimit(100, 500_000, 'claude-opus-5[1m]')).toBe(500_000);
+  });
+});
+
+describe('contextLimitFromModelId', () => {
+  it('[1m] 付きなら 1M', () => {
+    expect(contextLimitFromModelId('claude-opus-5[1m]')).toBe(1_000_000);
+  });
+
+  it('付いていなければ null', () => {
+    expect(contextLimitFromModelId('claude-opus-5')).toBeNull();
+  });
+
+  it('未指定なら null', () => {
+    expect(contextLimitFromModelId(undefined)).toBeNull();
+  });
 });
 
 describe('toTokenUsage', () => {
@@ -72,5 +103,13 @@ describe('toTokenUsage', () => {
 
   it('上限を明示指定できる', () => {
     expect(toTokenUsage({ input_tokens: 50_000 }, 100_000)?.ratio).toBe(0.5);
+  });
+
+  it('モデル ID から上限を決められる', () => {
+    expect(toTokenUsage({ input_tokens: 500_000 }, undefined, 'claude-opus-5[1m]')).toEqual({
+      used: 500_000,
+      limit: 1_000_000,
+      ratio: 0.5,
+    });
   });
 });
