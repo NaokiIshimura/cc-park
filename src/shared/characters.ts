@@ -27,19 +27,29 @@ const NO_LEGS = '         ';
 const UNEVEN_LEGS = '  ▘▝ ▝▘  ';
 
 /**
- * 手の高さ。動きはすべてこの手で表し、足は動かさない。
+ * 上げた手。左右とも身体の端（桁 0 の `▝` と桁 8 の `▀`）の真上に乗るよう、
+ * セルの右下を使う。
  *
- * 左右で鏡像にはできず、どちらもセルの**右**半分を使う。
- * 桁 0 は身体の `▝`（右半分）の真上に乗せる必要があり、
+ * 左右で鏡像にはできない。桁 0 の身体は右半分しか無いので手も右半分に置く必要があり、
  * 桁 8 を左半分（`▖` `▌`）にすると隣の `█` と横に隣接して頭とくっついてしまう。
- * 右半分に寄せれば、身体とは縦に繋がったまま頭との間に 1 ピクセル空く。
  */
-type HandPose = 'down' | 'low' | 'high';
-const HAND: Readonly<Record<HandPose, string>> = { down: ' ', low: '▗', high: '▐' };
+const RAISED = '▗';
+const LOWERED = ' ';
 
-/** 手の高さと足の形から 1 フレームを組み立てる。 */
-const frame = (left: HandPose, right: HandPose, legs: string = LEGS): string =>
-  `${HAND[left]}${HEAD}${HAND[right]}\n${BODY}\n${legs}`;
+/**
+ * 手のポーズ。動きはすべてこの手で表し、足は動かさない。
+ *
+ * 左右はキャラクター自身から見た向き。正面を向いているため、
+ * 桁 0（向かって左）が右手、桁 8（向かって右）が左手になる。
+ */
+type Pose = 'down' | 'rightHand' | 'leftHand' | 'both';
+
+/** ポーズと足の形から 1 フレームを組み立てる。 */
+const frame = (pose: Pose, legs: string = LEGS): string => {
+  const rightHand = pose === 'rightHand' || pose === 'both' ? RAISED : LOWERED;
+  const leftHand = pose === 'leftHand' || pose === 'both' ? RAISED : LOWERED;
+  return `${rightHand}${HEAD}${leftHand}\n${BODY}\n${legs}`;
+};
 
 export interface CharacterAppearance {
   /** アニメーションフレーム（各要素は改行区切りの 3 行） */
@@ -60,57 +70,52 @@ export interface CharacterAppearance {
  */
 export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> = {
   blocked: {
-    // 両手を大きく上下させて呼ぶ
-    frames: [frame('down', 'down'), frame('high', 'high')],
+    // 右手を上げ下げして呼ぶ
+    frames: [frame('rightHand'), frame('down')],
     color: 'yellow',
     label: 'BLOCKED',
     description: 'needs your approval',
     priority: 0,
   },
   justFinished: {
-    // 両手を上げたまま揺らして喜ぶ
-    frames: [frame('low', 'low'), frame('high', 'high')],
+    // 両手を上げ下げして喜ぶ
+    frames: [frame('down'), frame('both')],
     color: 'greenBright',
     label: 'DONE!',
     description: 'just finished - your turn',
     priority: 1,
   },
   working: {
-    // 左右の手を交互に振る
-    frames: [
-      frame('high', 'down'),
-      frame('down', 'down'),
-      frame('down', 'high'),
-      frame('down', 'down'),
-    ],
+    // 片手ずつ交互に振る
+    frames: [frame('rightHand'), frame('down'), frame('leftHand'), frame('down')],
     color: 'cyan',
     label: 'BUSY',
     description: 'working...',
     priority: 2,
   },
   waiting: {
-    frames: [frame('down', 'down')],
+    frames: [frame('down')],
     color: 'gray',
     label: 'IDLE',
     description: 'waiting for input',
     priority: 3,
   },
   done: {
-    frames: [frame('down', 'down')],
+    frames: [frame('down')],
     color: 'green',
     label: 'DONE',
     description: 'completed',
     priority: 4,
   },
   stopped: {
-    frames: [frame('down', 'down', NO_LEGS)],
+    frames: [frame('down', NO_LEGS)],
     color: 'gray',
     label: 'STOPPED',
     description: 'stopped',
     priority: 5,
   },
   unknown: {
-    frames: [frame('down', 'down', UNEVEN_LEGS)],
+    frames: [frame('down', UNEVEN_LEGS)],
     color: 'red',
     label: 'UNKNOWN',
     description: 'unknown state',
