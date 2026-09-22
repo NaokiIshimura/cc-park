@@ -101,7 +101,7 @@ ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequ
   fetchAgents({
     all: request.all,
     cwd: request.cwd,
-    meta: config.prompt || config.tokens,
+    meta: config.prompt || config.tokens || config.subagents,
     home: config.home,
     contextLimit: config.contextLimit === 0 ? undefined : config.contextLimit,
   }),

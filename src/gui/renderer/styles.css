@@ -200,10 +200,10 @@ body {
 }
 
 .agent-row {
+  /* AA + 情報カラムの行と、その下のミニキャラクターの行を縦に積む */
   display: flex;
-  /* 情報が 3 行に満たないときも最後の行が AA の足の行に並ぶよう下揃えにする */
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -243,6 +243,40 @@ body {
   transform-origin: left center;
   width: 7.5ch;
   flex-shrink: 0;
+}
+
+/*
+ * サブエージェントのミニキャラクター。AA の左端から行の幅いっぱいまで横に並べ、
+ * 入りきらなくなったところで折り返す。折り返した行同士がくっついて 1 体に
+ * 見えないよう、row-gap で上下に margin を入れる。
+ */
+.agent-row__subagents {
+  display: flex;
+  flex-wrap: wrap;
+  /* 端末の 1 桁ぶん（1ch * 0.833）を体の間に空ける */
+  column-gap: 0.83ch;
+  row-gap: 5px;
+}
+
+.mini {
+  margin: 0;
+  /* 2 桁 1 行。AA と同じ拡大率・行高にして同じ大きさに見せる */
+  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1;
+  transform: scaleX(0.833);
+  transform-origin: left center;
+  width: 1.67ch;
+  flex-shrink: 0;
+}
+
+/* AA と情報カラム。情報が 3 行に満たないときも足の行に並ぶよう下揃えにする */
+.agent-row__main {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
 .agent-row__info {

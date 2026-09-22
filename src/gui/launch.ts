@@ -82,6 +82,9 @@ export const resolveGuiFlags = (
   all: isFlagGiven(argv, 'all') ? flags.all : GUI_DEFAULT_FLAGS.all,
   prompt: isFlagGiven(argv, 'prompt') ? flags.prompt : GUI_DEFAULT_FLAGS.prompt,
   tokens: isFlagGiven(argv, 'tokens') ? flags.tokens : GUI_DEFAULT_FLAGS.tokens,
+  subagents: isFlagGiven(argv, 'subagents')
+    ? flags.subagents
+    : GUI_DEFAULT_FLAGS.subagents,
 });
 
 /** Electron へ渡す引数を組み立てる。 */

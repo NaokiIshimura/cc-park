@@ -49,6 +49,21 @@ export interface TokenUsage {
 }
 
 /**
+ * 実行中のサブエージェント。
+ *
+ * `claude agents --json` はサブエージェントを出力しないため、transcript の
+ * `tool_use` と `tool_result` の対応から導出する。
+ */
+export interface Subagent {
+  /** 起動した `tool_use` の ID。完了判定のキーになる */
+  readonly toolUseId: string;
+  /** `subagent_type`（`general-purpose` など）。取れなければ空文字 */
+  readonly type: string;
+  /** 呼び出し時の短い説明。取れなければ空文字 */
+  readonly description: string;
+}
+
+/**
  * transcript から補完したセッションの付加情報。
  *
  * `claude agents --json` には含まれないため、取得できないことを前提に
@@ -58,6 +73,8 @@ export interface SessionMeta {
   /** 最後にユーザーが与えたプロンプト。改行は空白へ潰して 1 行にしてある */
   readonly lastPrompt: string | undefined;
   readonly tokens: TokenUsage | undefined;
+  /** まだ結果が返っていないサブエージェント。いなければ空配列 */
+  readonly subagents: readonly Subagent[];
 }
 
 /** 正規化後のセッション情報 */

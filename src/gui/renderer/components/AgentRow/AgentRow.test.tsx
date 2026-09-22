@@ -2,7 +2,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Agent } from '../../../../types/agent.js';
+import type { Agent, Subagent } from '../../../../types/agent.js';
+import { getMiniFrame } from '../../../../shared/characters.js';
 import { AgentRow } from './index.js';
 
 const HOME = '/Users/naoki';
@@ -36,6 +37,7 @@ const setup = (overrides: Partial<Parameters<typeof AgentRow>[0]> = {}) => {
       isSelf={false}
       showPrompt
       showTokens
+      showSubagents
       onSelect={onSelect}
       onCopy={onCopy}
       {...overrides}
@@ -116,7 +118,7 @@ describe('AgentRow', () => {
 
 describe('AgentRow の付加情報', () => {
   it('最終プロンプトを目印付きで表示する', () => {
-    setup({ agent: agent({ meta: { lastPrompt: 'テストを書いて', tokens: undefined } }) });
+    setup({ agent: agent({ meta: { lastPrompt: 'テストを書いて', tokens: undefined , subagents: [] } }) });
     expect(screen.getByText('> テストを書いて')).toBeDefined();
   });
 
@@ -127,7 +129,7 @@ describe('AgentRow の付加情報', () => {
 
   it('名前・状態・プロンプトの順に並べる', () => {
     const { container } = setup({
-      agent: agent({ meta: { lastPrompt: 'やって', tokens: undefined } }),
+      agent: agent({ meta: { lastPrompt: 'やって', tokens: undefined , subagents: [] } }),
     });
     const lines = container.querySelectorAll('.agent-row__line');
     expect(lines[0]?.querySelector('.agent-row__name')).not.toBeNull();
@@ -138,7 +140,7 @@ describe('AgentRow の付加情報', () => {
   it('コンテキスト利用率をパーセントで表示する', () => {
     const { container } = setup({
       agent: agent({
-        meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } },
+        meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } , subagents: [] },
       }),
     });
     // 桁を揃えるための空白が潰れないよう、要素の textContent を直接見る
@@ -148,7 +150,7 @@ describe('AgentRow の付加情報', () => {
   it('バーは使用率のぶんだけセグメントを塗る', () => {
     const { container } = setup({
       agent: agent({
-        meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } },
+        meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } , subagents: [] },
       }),
     });
     expect(container.querySelectorAll('.token__segment')).toHaveLength(8);
@@ -162,7 +164,7 @@ describe('AgentRow の付加情報', () => {
 
   it('showPrompt が false ならプロンプト行を出さない', () => {
     const { container } = setup({
-      agent: agent({ meta: { lastPrompt: 'やって', tokens: undefined } }),
+      agent: agent({ meta: { lastPrompt: 'やって', tokens: undefined , subagents: [] } }),
       showPrompt: false,
     });
     expect(container.querySelector('.agent-row__prompt')).toBeNull();
@@ -171,10 +173,78 @@ describe('AgentRow の付加情報', () => {
   it('showTokens が false なら ctx を出さない', () => {
     const { container } = setup({
       agent: agent({
-        meta: { lastPrompt: undefined, tokens: { used: 1, limit: 200_000, ratio: 0.5 } },
+        meta: { lastPrompt: undefined, tokens: { used: 1, limit: 200_000, ratio: 0.5 } , subagents: [] },
       }),
       showTokens: false,
     });
     expect(container.querySelector('.token')).toBeNull();
+  });
+});
+
+describe('AgentRow のミニキャラクター', () => {
+  const subagent = (toolUseId: string, description: string): Subagent => ({
+    toolUseId,
+    type: 'general-purpose',
+    description,
+  });
+
+  const withSubagents = (subagents: readonly Subagent[], state: Agent['state'] = 'working') =>
+    agent({ state, meta: { lastPrompt: undefined, tokens: undefined, subagents } });
+
+  const many = (count: number) =>
+    Array.from({ length: count }, (_, index) => subagent(`toolu_${index}`, `作業${index}`));
+
+  /** 描画されたミニキャラクターの並び。 */
+  const minis = (container: HTMLElement) =>
+    [...container.querySelectorAll('.mini')].map((element) => element.textContent);
+
+  it('サブエージェントが走っていれば体数ぶんミニキャラクターを出す', () => {
+    const { container } = setup({ agent: withSubagents(many(2)) });
+    expect(minis(container)).toEqual([getMiniFrame(0), getMiniFrame(1)]);
+  });
+
+  it('3 体を超えても省略しない', () => {
+    const { container } = setup({ agent: withSubagents(many(7)) });
+    expect(minis(container)).toHaveLength(7);
+  });
+
+  /*
+   * 折り返しは CSS（flex-wrap）に任せる。jsdom はレイアウトを計算しないので、
+   * ここでは折り返しの受け皿になる入れ物が出ていることだけ確かめる。
+   */
+  it('ミニキャラクターは折り返せる入れ物に入れる', () => {
+    const { container } = setup({ agent: withSubagents(many(2)) });
+    expect(container.querySelector('.agent-row__subagents')).not.toBeNull();
+  });
+
+  it('サブエージェントがいなければ入れ物ごと出さない', () => {
+    const { container } = setup({ agent: withSubagents([]) });
+    expect(container.querySelector('.agent-row__subagents')).toBeNull();
+    expect(minis(container)).toEqual([]);
+  });
+
+  it('working 以外では出さない', () => {
+    const { container } = setup({ agent: withSubagents(many(2), 'waiting') });
+    expect(minis(container)).toEqual([]);
+  });
+
+  it('showSubagents が false なら出さない', () => {
+    const { container } = setup({ agent: withSubagents(many(2)), showSubagents: false });
+    expect(minis(container)).toEqual([]);
+  });
+
+  it('何を走らせているかをツールチップに出す', () => {
+    const { container } = setup({
+      agent: withSubagents([subagent('toolu_1', '調査'), subagent('toolu_2', '検証')]),
+    });
+
+    expect(container.querySelector('.agent-row')?.getAttribute('title')).toBe(
+      'general-purpose: 調査\ngeneral-purpose: 検証',
+    );
+  });
+
+  it('サブエージェントがいなければツールチップを付けない', () => {
+    const { container } = setup({ agent: withSubagents([]) });
+    expect(container.querySelector('.agent-row')?.getAttribute('title')).toBeNull();
   });
 });

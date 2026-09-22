@@ -17,6 +17,7 @@ const config: GuiConfig = {
   notify: true,
   highlightMs: 10_000,
   selfSessionId: null,
+  subagents: false,
   home: HOME,
   platform: 'darwin',
   alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,

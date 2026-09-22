@@ -38,6 +38,7 @@ const setup = (overrides: Partial<Parameters<typeof AgentList>[0]> = {}) => {
       now={0}
       selfSessionId={null}
       home={HOME}
+      showSubagents
       showPrompt={false}
       showTokens={false}
       onSelect={onSelect}

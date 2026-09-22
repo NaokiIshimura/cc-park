@@ -144,7 +144,7 @@ describe('transcript 由来の付加情報', () => {
   const runner = runnerReturning(JSON.stringify(raw));
 
   it('既定では transcript を読まない', async () => {
-    const metaReader = vi.fn(async () => ({ lastPrompt: 'x', tokens: undefined }));
+    const metaReader = vi.fn(async () => ({ lastPrompt: 'x', tokens: undefined, subagents: [] }));
     const result = await fetchAgents({ runner, metaReader });
 
     expect(metaReader).not.toHaveBeenCalled();
@@ -155,6 +155,7 @@ describe('transcript 由来の付加情報', () => {
     const metaReader = vi.fn(async (agent: Agent) => ({
       lastPrompt: `prompt-${agent.sessionId}`,
       tokens: undefined,
+      subagents: [],
     }));
     const result = await fetchAgents({ runner, meta: true, metaReader });
 

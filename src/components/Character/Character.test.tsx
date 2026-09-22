@@ -7,6 +7,12 @@ import {
   CHARACTER_HEIGHT,
   CHARACTER_WIDTH,
   BODY,
+  MINI_WIDTH,
+  getMiniFrame,
+  miniPerRow,
+  buildMiniRows,
+  countMiniRows,
+  countMiniHeight,
   getAppearance,
   getFrame,
 } from '../../shared/characters.js';
@@ -244,5 +250,118 @@ describe('Character', () => {
     const plain = render(<Character state="waiting" frame={0} />).lastFrame();
     const bold = render(<Character state="waiting" frame={0} bold />).lastFrame();
     expect(bold).toBe(plain);
+  });
+});
+
+describe('ミニキャラクター', () => {
+  /** フレーム番号から 1 体ぶんを取り出す。 */
+  const mini = (frame: number) => getMiniFrame(frame);
+
+  it('1 行 x 2 桁に収まっている', () => {
+    for (let frame = 0; frame < 4; frame += 1) {
+      expect(mini(frame)).not.toContain('\n');
+      expect([...mini(frame)]).toHaveLength(MINI_WIDTH);
+    }
+  });
+
+  it('等幅が保証された文字だけで構成されている', () => {
+    for (let frame = 0; frame < 4; frame += 1) {
+      expect([...mini(frame)].filter((char) => !ALLOWED_CHARS.has(char))).toEqual([]);
+    }
+  });
+
+  /* 親と同じく、部品が浮いていないことを確かめる。 */
+  it('離れた部品が無い', () => {
+    for (let frame = 0; frame < 4; frame += 1) {
+      expect(isSingleShape(toPixels(mini(frame)))).toBe(true);
+    }
+  });
+
+  it('フレームを進めると足の形が変わる', () => {
+    expect(mini(0)).not.toBe(mini(1));
+  });
+
+  it('フレーム番号が範囲を超えたら循環する', () => {
+    expect(mini(2)).toBe(mini(0));
+    expect(mini(-1)).toBe(mini(1));
+  });
+});
+
+describe('miniPerRow', () => {
+  it('表示幅に並ぶ体数を求める', () => {
+    // 1 体 2 桁 + 体の間 1 桁
+    expect(miniPerRow(2)).toBe(1);
+    expect(miniPerRow(4)).toBe(1);
+    expect(miniPerRow(5)).toBe(2);
+    expect(miniPerRow(8)).toBe(3);
+    expect(miniPerRow(70)).toBe(23);
+  });
+
+  it('幅が足りなくても 1 体は並べる', () => {
+    expect(miniPerRow(0)).toBe(1);
+    expect(miniPerRow(-10)).toBe(1);
+  });
+});
+
+describe('buildMiniRows', () => {
+  // 右端まで横に並べ、入りきらなくなったところで折り返す
+  it('入りきる間は折り返さない', () => {
+    expect(buildMiniRows(5, 0, 10)).toEqual([
+      [0, 1, 2, 3, 4].map((i) => getMiniFrame(i)).join(' '),
+    ]);
+  });
+
+  it('入りきらなくなったら折り返す', () => {
+    expect(buildMiniRows(5, 0, 3)).toEqual([
+      [0, 1, 2].map((i) => getMiniFrame(i)).join(' '),
+      // 2 行目は「行 + 列」でずらすので先頭が 1 から始まる
+      [1, 2].map((i) => getMiniFrame(i)).join(' '),
+    ]);
+  });
+
+  it('0 体なら行そのものを出さない', () => {
+    expect(buildMiniRows(0, 0, 3)).toEqual([]);
+    expect(buildMiniRows(-1, 0, 3)).toEqual([]);
+  });
+
+  it('体数が増えても省略しない', () => {
+    const bodies = (count: number, perRow: number) =>
+      buildMiniRows(count, 0, perRow).join('').match(/[▛▜]{2}/g)?.length ?? 0;
+
+    for (const count of [1, 3, 4, 10, 25]) {
+      expect(bodies(count, 3)).toBe(count);
+      expect(bodies(count, 23)).toBe(count);
+    }
+  });
+
+  it('隣り合う体は足が揃わないようフレームをずらす', () => {
+    const row = buildMiniRows(3, 0, 3)[0] ?? '';
+    expect(row.slice(0, MINI_WIDTH)).not.toBe(row.slice(MINI_WIDTH + 1, MINI_WIDTH * 2 + 1));
+  });
+
+  it('上下に重なる体も足が揃わない', () => {
+    const [first, second] = buildMiniRows(4, 0, 3);
+    expect(first?.slice(0, MINI_WIDTH)).not.toBe(second?.slice(0, MINI_WIDTH));
+  });
+});
+
+describe('countMiniRows / countMiniHeight', () => {
+  it('体数と 1 行あたりの体数から行数を求める', () => {
+    expect(countMiniRows(0, 3)).toBe(0);
+    expect(countMiniRows(1, 3)).toBe(1);
+    expect(countMiniRows(3, 3)).toBe(1);
+    expect(countMiniRows(4, 3)).toBe(2);
+  });
+
+  it('負の体数は 0 行にする', () => {
+    expect(countMiniRows(-1, 3)).toBe(0);
+  });
+
+  it('折り返したときの空行を足した高さを返す', () => {
+    expect(countMiniHeight(0, 3)).toBe(0);
+    expect(countMiniHeight(3, 3)).toBe(1);
+    // 2 行 + 間の空行 1 行
+    expect(countMiniHeight(4, 3)).toBe(3);
+    expect(countMiniHeight(7, 3)).toBe(5);
   });
 });

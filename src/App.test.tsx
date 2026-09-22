@@ -197,6 +197,13 @@ describe('App', () => {
     unmount();
   });
 
+  it('--subagents だけでも transcript を読ませる', async () => {
+    // ミニキャラクターの判定も transcript 由来のため
+    const { unmount } = await renderApp({ subagents: true });
+    expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ meta: true });
+    unmount();
+  });
+
   it('コンテキスト上限の明示指定を取得処理へ渡す', async () => {
     const { unmount } = await renderApp({ tokens: true, contextLimit: 200_000 });
     expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ contextLimit: 200_000 });
@@ -222,6 +229,11 @@ describe('computeMaxVisible', () => {
 
   it('chrome の行数を差し替えられる', () => {
     expect(computeMaxVisible(20, 0, 2)).toBe(4);
+  });
+
+  it('ミニキャラクターで増える行数を差し引く', () => {
+    // 40 行 - chrome 8 行 - ミニ 4 行 = 28 行 → floor((28+1)/4) = 7 件
+    expect(computeMaxVisible(40, 0, 8, 4)).toBe(7);
   });
 
   it('高さが増えるほど件数も増える', () => {

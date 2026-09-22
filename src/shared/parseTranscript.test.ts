@@ -10,6 +10,18 @@ const modelAttachment = (modelId: unknown) => ({
   attachment: { type: 'model', identity: { modelId } },
 });
 
+/** サブエージェントを起動する assistant 行。 */
+const spawn = (id: string, name = 'Agent', input: unknown = {}) => ({
+  type: 'assistant',
+  message: { content: [{ type: 'tool_use', id, name, input }] },
+});
+
+/** 結果が返った user 行。 */
+const toolResult = (toolUseId: string) => ({
+  type: 'user',
+  message: { content: [{ type: 'tool_result', tool_use_id: toolUseId }] },
+});
+
 describe('toSingleLine', () => {
   it('改行やタブを空白へ潰す', () => {
     expect(toSingleLine('a\nb\tc')).toBe('a b c');
@@ -69,7 +81,7 @@ describe('parseTranscript', () => {
     const meta = parseTranscript(
       [line({ type: 'user', message: {} }), line({ type: 'mode', mode: 'normal' })].join('\n'),
     );
-    expect(meta).toEqual({ lastPrompt: undefined, tokens: undefined });
+    expect(meta).toEqual({ lastPrompt: undefined, tokens: undefined, subagents: [] });
   });
 
   it('usage を持たない assistant 行は無視する', () => {
@@ -81,7 +93,11 @@ describe('parseTranscript', () => {
   });
 
   it('空入力でも壊れない', () => {
-    expect(parseTranscript('')).toEqual({ lastPrompt: undefined, tokens: undefined });
+    expect(parseTranscript('')).toEqual({
+      lastPrompt: undefined,
+      tokens: undefined,
+      subagents: [],
+    });
   });
 });
 
@@ -131,5 +147,94 @@ describe('parseTranscript のモデル ID', () => {
       line(assistant({ input_tokens: 100_000 })),
     ].join('\n');
     expect(parseTranscript(chunk, { contextLimit: 400_000 }).tokens?.limit).toBe(400_000);
+  });
+});
+
+describe('parseTranscript の実行中サブエージェント', () => {
+  it('結果が返っていない Agent の呼び出しを実行中として拾う', () => {
+    const chunk = line(
+      spawn('toolu_1', 'Agent', { subagent_type: 'general-purpose', description: '調査' }),
+    );
+
+    expect(parseTranscript(chunk).subagents).toEqual([
+      { toolUseId: 'toolu_1', type: 'general-purpose', description: '調査' },
+    ]);
+  });
+
+  it('結果が返った呼び出しは実行中に含めない', () => {
+    const chunk = [line(spawn('toolu_1')), line(toolResult('toolu_1'))].join('\n');
+    expect(parseTranscript(chunk).subagents).toEqual([]);
+  });
+
+  it('複数走っていれば起動した順に並べる', () => {
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(spawn('toolu_2')),
+      line(spawn('toolu_3')),
+      line(toolResult('toolu_2')),
+    ].join('\n');
+
+    expect(parseTranscript(chunk).subagents.map((item) => item.toolUseId)).toEqual([
+      'toolu_1',
+      'toolu_3',
+    ]);
+  });
+
+  it('旧版のツール名 Task も拾う', () => {
+    expect(parseTranscript(line(spawn('toolu_1', 'Task'))).subagents).toHaveLength(1);
+  });
+
+  it('サブエージェント以外のツールは拾わない', () => {
+    expect(parseTranscript(line(spawn('toolu_1', 'Bash'))).subagents).toEqual([]);
+  });
+
+  it('subagent_type や description が無くても空文字で埋める', () => {
+    expect(parseTranscript(line(spawn('toolu_1', 'Agent', {}))).subagents).toEqual([
+      { toolUseId: 'toolu_1', type: '', description: '' },
+    ]);
+  });
+
+  it('description の改行は空白へ潰す', () => {
+    const chunk = line(spawn('toolu_1', 'Agent', { description: 'a\nb' }));
+    expect(parseTranscript(chunk).subagents[0]?.description).toBe('a b');
+  });
+
+  it('head 側の呼び出しは見ない（結果が切れた先にあり実行中と誤認するため）', () => {
+    const meta = parseTranscript('', { head: line(spawn('toolu_1')) });
+    expect(meta.subagents).toEqual([]);
+  });
+
+  it('content が配列でなくても壊れない', () => {
+    const chunk = line({ type: 'assistant', message: { content: 'text' } });
+    expect(parseTranscript(chunk).subagents).toEqual([]);
+  });
+
+  it('id が無い tool_use は拾わない', () => {
+    const chunk = line({
+      type: 'assistant',
+      message: { content: [{ type: 'tool_use', name: 'Agent' }] },
+    });
+    expect(parseTranscript(chunk).subagents).toEqual([]);
+  });
+});
+
+describe('parseTranscript の head', () => {
+  it('末尾に無いモデル ID は head から拾う', () => {
+    const meta = parseTranscript(line(assistant({ input_tokens: 100_000 })), {
+      head: line(modelAttachment('claude-opus-5[1m]')),
+    });
+    expect(meta.tokens?.limit).toBe(1_000_000);
+  });
+
+  it('末尾に無い最終プロンプトは head から拾う', () => {
+    const meta = parseTranscript('', { head: line(lastPrompt('古いプロンプト')) });
+    expect(meta.lastPrompt).toBe('古いプロンプト');
+  });
+
+  it('同じ項目があれば末尾を優先する', () => {
+    const meta = parseTranscript(line(lastPrompt('新しい')), {
+      head: line(lastPrompt('古い')),
+    });
+    expect(meta.lastPrompt).toBe('新しい');
   });
 });

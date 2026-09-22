@@ -21,6 +21,8 @@ interface AgentListProps {
   readonly showPrompt: boolean;
   /** コンテキスト利用率を表示するか */
   readonly showTokens: boolean;
+  /** 実行中のサブエージェントをミニキャラクターで表示するか */
+  readonly showSubagents: boolean;
   /** 同時に表示できる最大件数。端末の高さから算出する */
   readonly maxVisible: number;
 }
@@ -83,6 +85,7 @@ export const AgentList = ({
   headerWidth,
   showPrompt,
   showTokens,
+  showSubagents,
   maxVisible,
 }: AgentListProps) => {
   if (agents.length === 0) {
@@ -119,6 +122,7 @@ export const AgentList = ({
                 infoWidth={infoWidth}
                 showPrompt={showPrompt}
                 showTokens={showTokens}
+                showSubagents={showSubagents}
               />
             </Box>
           );

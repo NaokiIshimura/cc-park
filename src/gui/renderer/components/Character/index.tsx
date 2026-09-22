@@ -10,6 +10,9 @@ interface CharacterProps {
 /**
  * 状態とフレーム番号から AA を描画する。
  * 桁が崩れないよう等幅フォント＋`white-space: pre`（CSS 側で指定）で出す。
+ *
+ * サブエージェントのミニキャラクターは行の幅いっぱいまで横に並べるため、
+ * ここではなく AgentRow が AA の下へ別の行として描く。
  */
 export const Character = ({ state, frame }: CharacterProps) => (
   <pre className="character" style={{ color: inkColor(getAppearance(state).color) }}>

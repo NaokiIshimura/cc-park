@@ -31,6 +31,7 @@ const cli = meow(
     --no-notify                  OS 通知を無効化する
     --prompt                     最後に与えたプロンプトを表示する (GUI は既定で ON)
     --tokens                     コンテキスト利用率を表示する (GUI は既定で ON)
+    --subagents                  実行中のサブエージェントをミニキャラクターで表示する (GUI は既定で ON)
     --context-limit <tokens>     コンテキスト上限を明示指定する (既定: 使用量から推定)
     --finished-highlight <sec>   作業完了ハイライトの保持秒数 (既定: ${DEFAULT_HIGHLIGHT_MS / 1000})
     --once                       1 回だけ取得して描画し終了する (CLI モード)
@@ -40,8 +41,8 @@ const cli = meow(
     $ cc-park --cli
     $ cc-park --cli --interval 1000 --no-notify
     $ cc-park --all --cwd ~/GitHub
-    $ cc-park --cli --prompt --tokens
-    $ cc-park --no-prompt --no-tokens
+    $ cc-park --cli --prompt --tokens --subagents
+    $ cc-park --no-prompt --no-tokens --no-subagents
 `,
   {
     importMeta: import.meta,
@@ -52,6 +53,7 @@ const cli = meow(
       notify: { type: 'boolean', default: true },
       prompt: { type: 'boolean', default: false },
       tokens: { type: 'boolean', default: false },
+      subagents: { type: 'boolean', default: false },
       contextLimit: { type: 'number', default: 0 },
       finishedHighlight: { type: 'number', default: DEFAULT_HIGHLIGHT_MS / 1000 },
       once: { type: 'boolean', default: false },
@@ -71,7 +73,12 @@ const contextLimit = Math.max(cli.flags.contextLimit, 0);
 const startGui = async (): Promise<void> => {
   // 明示されなかった表示オプションは GUI 用の既定へ倒す
   const display = resolveGuiFlags(
-    { all: cli.flags.all, prompt: cli.flags.prompt, tokens: cli.flags.tokens },
+    {
+      all: cli.flags.all,
+      prompt: cli.flags.prompt,
+      tokens: cli.flags.tokens,
+      subagents: cli.flags.subagents,
+    },
     process.argv.slice(2),
   );
 
@@ -119,6 +126,7 @@ const startCli = async (): Promise<void> => {
       platform={process.platform}
       prompt={cli.flags.prompt}
       tokens={cli.flags.tokens}
+      subagents={cli.flags.subagents}
       contextLimit={contextLimit}
     />,
     {

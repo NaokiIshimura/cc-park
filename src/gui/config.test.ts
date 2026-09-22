@@ -17,6 +17,7 @@ const options: GuiOptions = {
   selfSessionId: 'self-1',
   prompt: true,
   tokens: true,
+  subagents: true,
   contextLimit: 200_000,
 };
 

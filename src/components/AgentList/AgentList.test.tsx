@@ -123,6 +123,7 @@ describe('AgentList', () => {
         infoWidth={60}
         headerWidth={70}
         showPrompt={false}
+        showSubagents={false}
         showTokens={false}
         maxVisible={maxVisible}
       />,
@@ -203,6 +204,7 @@ describe('AgentList', () => {
           selfSessionId="alpha"
           infoWidth={60}
           headerWidth={70}
+          showSubagents={false}
           showPrompt={false}
           showTokens={false}
           maxVisible={100}
