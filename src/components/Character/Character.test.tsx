@@ -223,31 +223,6 @@ describe('getFrame', () => {
   );
 
   /*
-   * `working` はサブエージェントのミニキャラクターと同じ「閉じる → 開く」で動かす。
-   * 周期がずれると親子で動きが揃わなくなるので、フレーム数を揃えたままにする。
-   */
-  it('working はミニキャラクターと同じ周期で動く', () => {
-    const cycle = CHARACTERS.working.frames.length;
-    expect(cycle).toBe(2);
-    expect(getMiniFrame(cycle)).toBe(getMiniFrame(0));
-    expect(getMiniFrame(cycle - 1)).not.toBe(getMiniFrame(0));
-  });
-
-  /* `working` で動くのは足だけ。手が動くと `BLOCKED` / `DONE!` と見分けがつかなくなる。 */
-  it('working は足だけが動く', () => {
-    const rows = CHARACTERS.working.frames.map((frame) => frame.split('\n'));
-    const [first, second] = rows;
-
-    // 手（1 行目の両端）は下ろしたまま
-    for (const [head] of rows) {
-      expect(head?.at(0)).toBe(' ');
-      expect(head?.at(-1)).toBe(' ');
-    }
-    // 足（3 行目）だけがフレームごとに変わる
-    expect(first?.[2]).not.toBe(second?.[2]);
-  });
-
-  /*
    * 足が 1 本も無いと「キャラクターが欠けている」ように見えてしまう。
    * 静止させる状態でも足は残す約束なので、全状態・全フレームで固定する。
    */

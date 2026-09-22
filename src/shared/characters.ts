@@ -17,18 +17,21 @@ const HEAD = '▐▛███▛█';
 /** 身体の行（桁 0-8）。全フレーム共通。 */
 export const BODY = '▝▜██████▀';
 
-/** 足の行（桁 0-8）。起動バナーと同じ形。静止する状態と、`working` の開いたフレームで使う。 */
+/** 足の行（桁 0-8）。起動バナーと同じ形で、状態によらず静止させる。 */
 export const LEGS = '  ▝▝ ▝▝  ';
 
 /*
- * 閉じたときの足。足は桁 2 / 3（右足）と桁 5 / 6（左足）に 2 本ずつある。
+ * 歩くときの足。足は桁 2 / 3（右足）と桁 5 / 6（左足）に 2 本ずつある。
  * 左右はキャラクター自身から見た向きで、手と同じく正面を向いているため入れ替わる。
  *
- * サブエージェントのミニキャラクターと同じく、左右の足を同時に開閉させる。
- * 4 本まとめて半セルぶん中央へ寄せ、開くときは標準（`LEGS`）へ戻す。
- * 半セルより細かくは動かせないので、開いた形を標準そのものにして振り幅を抑えている。
+ * 踏み出す向きは常に左手側（桁 8 の方向）。半セルぶん右へずらすので、
+ * 「開く」は外側の足が隣の桁へ出て `▘` になり、
+ * 「閉じる」は内側の足が寄ってペアが 1 つの `▀` に繋がる。
  */
-const LEGS_CLOSED = '   ▘▘▘▘  ';
+const LEGS_RIGHT_OPEN = '  ▝ ▘▝▝  ';
+const LEGS_RIGHT_CLOSED = '   ▀ ▝▝  ';
+const LEGS_LEFT_OPEN = '  ▝▝ ▝ ▘ ';
+const LEGS_LEFT_CLOSED = '  ▝▝  ▀  ';
 
 /** 未知の状態は足を不揃いにする。 */
 const UNEVEN_LEGS = '  ▘▝ ▝▘  ';
@@ -96,8 +99,15 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
     priority: 1,
   },
   working: {
-    // 手は下ろしたまま、ミニキャラクターと同じく左右の足を閉じて開く（開いた形は標準）
-    frames: [frame('down', LEGS_CLOSED), frame('down')],
+    // 手は下ろしたまま、右足 → 左足 の順に左手側へ閉じて開き、毎回標準へ戻って歩く
+    frames: [
+      frame('down', LEGS_RIGHT_CLOSED),
+      frame('down', LEGS_RIGHT_OPEN),
+      frame('down'),
+      frame('down', LEGS_LEFT_CLOSED),
+      frame('down', LEGS_LEFT_OPEN),
+      frame('down'),
+    ],
     color: 'cyan',
     label: 'BUSY',
     description: 'working...',
@@ -137,7 +147,7 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
  * ミニキャラクター。実行中のサブエージェント 1 体を表す。
  *
  * 親の AA の下へ 1 行だけ並べるので、1 行 x 2 桁に収める。
- * 上半分が身体、下半分が足で、親と同じく左右の足を同時に開閉させる。
+ * 上半分が身体、下半分が足で、親と同じ「開く / 閉じる」で歩かせる。
  * 動く部位を足に揃えることで、動いている = 作業中、という役割分担を崩さない。
  */
 
