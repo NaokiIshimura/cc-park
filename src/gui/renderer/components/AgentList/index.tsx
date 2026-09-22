@@ -18,6 +18,8 @@ interface AgentListProps {
   readonly showPrompt: boolean;
   /** コンテキスト利用率を表示するか */
   readonly showTokens: boolean;
+  /** 実行中のサブエージェントをミニキャラクターで表示するか */
+  readonly showSubagents: boolean;
   readonly onSelect: (index: number) => void;
   readonly onCopy: (index: number) => void;
 }
@@ -39,6 +41,7 @@ export const AgentList = ({
   home,
   showPrompt,
   showTokens,
+  showSubagents,
   onSelect,
   onCopy,
 }: AgentListProps) => {
@@ -69,6 +72,7 @@ export const AgentList = ({
                   isSelf={agent.sessionId === selfSessionId}
                   showPrompt={showPrompt}
                   showTokens={showTokens}
+                  showSubagents={showSubagents}
                   onSelect={() => {
                     onSelect(index);
                   }}

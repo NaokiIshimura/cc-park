@@ -98,10 +98,15 @@ describe('isFlagGiven', () => {
 });
 
 describe('resolveGuiFlags', () => {
-  const off = { all: false, prompt: false, tokens: false };
+  const off = { all: false, prompt: false, tokens: false, subagents: false };
 
   it('指定が無ければ GUI の既定（all のみ無効）にする', () => {
-    expect(resolveGuiFlags(off, [])).toEqual({ all: false, prompt: true, tokens: true });
+    expect(resolveGuiFlags(off, [])).toEqual({
+      all: false,
+      prompt: true,
+      tokens: true,
+      subagents: true,
+    });
   });
 
   it('明示した否定はそのまま尊重する', () => {
@@ -109,11 +114,14 @@ describe('resolveGuiFlags', () => {
       all: false,
       prompt: false,
       tokens: true,
+      subagents: true,
     });
   });
 
   it('すべて否定できる', () => {
-    expect(resolveGuiFlags(off, ['--no-all', '--no-prompt', '--no-tokens'])).toEqual(off);
+    expect(
+      resolveGuiFlags(off, ['--no-all', '--no-prompt', '--no-tokens', '--no-subagents']),
+    ).toEqual(off);
   });
 
   it('明示した有効化もそのまま尊重する', () => {
@@ -121,6 +129,7 @@ describe('resolveGuiFlags', () => {
       all: true,
       prompt: true,
       tokens: true,
+      subagents: true,
     });
   });
 });

@@ -13,6 +13,8 @@ export interface GuiOptions {
   readonly prompt: boolean;
   /** コンテキスト利用率を表示する */
   readonly tokens: boolean;
+  /** 実行中のサブエージェントをミニキャラクターで表示する */
+  readonly subagents: boolean;
   /** コンテキスト上限の明示指定。0 なら使用量から推定する */
   readonly contextLimit: number;
 }
@@ -39,7 +41,7 @@ export interface GuiConfig extends GuiOptions {
  * GUI で既定から有効にする表示オプション。
  *
  * GUI は常時開いたまま眺める使い方が主なので、`cc-park` だけで
- * `--prompt --tokens` と同じ状態になるようにする。
+ * `--prompt --tokens --subagents` と同じ状態になるようにする。
  * 端末を占有する CLI 側はこれまでどおり最小限の表示から始める。
  *
  * `all` だけは既定で無効にする。完了済みの background セッションは
@@ -51,6 +53,7 @@ export const GUI_DEFAULT_FLAGS = {
   all: false,
   prompt: true,
   tokens: true,
+  subagents: true,
 } as const;
 
 /** `npm run gui` のように CLI を経由せず起動した場合の既定値。 */
@@ -113,6 +116,7 @@ export const parseGuiOptions = (argv: readonly string[]): GuiOptions => {
     ),
     prompt: pick(source.prompt, isBoolean, DEFAULT_GUI_OPTIONS.prompt),
     tokens: pick(source.tokens, isBoolean, DEFAULT_GUI_OPTIONS.tokens),
+    subagents: pick(source.subagents, isBoolean, DEFAULT_GUI_OPTIONS.subagents),
     contextLimit: pick(source.contextLimit, isNumber, DEFAULT_GUI_OPTIONS.contextLimit),
   };
 };

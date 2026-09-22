@@ -123,6 +123,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
             home={config.home}
             showPrompt={config.prompt}
             showTokens={config.tokens}
+            showSubagents={config.subagents}
             onSelect={select}
             onCopy={handleCopy}
           />

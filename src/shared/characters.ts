@@ -143,6 +143,70 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
   },
 };
 
+/*
+ * ミニキャラクター。実行中のサブエージェント 1 体を表す。
+ *
+ * 親の AA の下へ 1 行だけ並べるので、1 行 x 2 桁に収める。
+ * 上半分が身体、下半分が足で、親と同じ「開く / 閉じる」で歩かせる。
+ * 動く部位を足に揃えることで、動いている = 作業中、という役割分担を崩さない。
+ */
+
+/** ミニキャラクター 1 体の桁数。 */
+export const MINI_WIDTH = 2;
+
+/** 体と体の間に空ける桁数。 */
+const MINI_GAP = 1;
+
+/** 足を開いた形（外向きに 1 本ずつ）と、閉じた形（中央で 1 本に繋がる）。 */
+const MINI_FRAMES: readonly string[] = ['▛▜', '▜▛'];
+
+/** フレーム番号からミニキャラクター 1 体を取り出す。負の番号でも循環させる。 */
+export const getMiniFrame = (frame: number): string => {
+  const index = ((frame % MINI_FRAMES.length) + MINI_FRAMES.length) % MINI_FRAMES.length;
+  return MINI_FRAMES[index] ?? '';
+};
+
+/**
+ * 表示幅に並ぶ体数。
+ *
+ * ミニキャラクターは行の幅いっぱいまで横に並べ、入りきらなくなったときだけ折り返す。
+ * 幅がどれだけ狭くても 1 体は出す（0 にすると折り返しが終わらない）。
+ */
+export const miniPerRow = (width: number): number =>
+  Math.max(Math.floor((width + MINI_GAP) / (MINI_WIDTH + MINI_GAP)), 1);
+
+/** 実行中の体数を並べるのに要る行数。 */
+export const countMiniRows = (count: number, perRow: number): number =>
+  count <= 0 ? 0 : Math.ceil(count / Math.max(perRow, 1));
+
+/**
+ * ミニキャラクターが占める行数。折り返したときは行の間に空行を 1 つ入れる。
+ * 端末の高さから表示件数を出すときに使う。
+ */
+export const countMiniHeight = (count: number, perRow: number): number => {
+  const rows = countMiniRows(count, perRow);
+  return rows === 0 ? 0 : rows * 2 - 1;
+};
+
+/**
+ * 実行中のサブエージェントの数だけミニキャラクターを並べる。
+ *
+ * 省略はせず、走っている体数ぶんすべて出す。`perRow` 体で折り返す。
+ * 位相は「行 + 列」でずらすので、横にも縦にも隣り合う体の足が揃うことはない。
+ */
+export const buildMiniRows = (
+  count: number,
+  frame: number,
+  perRow: number,
+): readonly string[] =>
+  Array.from({ length: countMiniRows(count, perRow) }, (_, row) => {
+    const first = row * perRow;
+    const slots = Array.from({ length: Math.min(perRow, count - first) }, (_, column) =>
+      getMiniFrame(frame + row + column),
+    );
+    return slots.join(' '.repeat(MINI_GAP));
+  });
+
 /** 状態に対応する見た目を取得する。 */
 export const getAppearance = (state: CharacterState): CharacterAppearance =>
   CHARACTERS[state] ?? CHARACTERS.unknown;

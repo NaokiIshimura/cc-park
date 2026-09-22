@@ -11,7 +11,9 @@ import { notify as osNotify } from './core/notify.js';
 import { ErrorView } from './components/ErrorView/index.js';
 import { Footer } from './components/Footer/index.js';
 import { Header } from './components/Header/index.js';
+import { CHARACTER_WIDTH, countMiniHeight, miniPerRow } from './shared/characters.js';
 import { flattenGroups, groupAgents } from './shared/groupAgents.js';
+import { visibleSubagentCount } from './shared/subagents.js';
 import { useAgents } from './hooks/useAgents.js';
 import { useAnimationTick } from './hooks/useAnimationTick.js';
 import { useNotifications } from './hooks/useNotifications.js';
@@ -43,13 +45,18 @@ const MIN_VISIBLE_AGENTS = 1;
 /**
  * 端末の高さから同時に表示できるセッション数を求める。
  * グループ見出しも行を消費するため、グループ数ぶんを先に差し引く。
+ *
+ * `extraRows` にはミニキャラクターの行のように、セッションごとに増減する行数を渡す。
+ * どのセッションが窓に入るかは件数が決まるまで分からないため、一覧全体ぶんを
+ * 差し引く安全側の見積もりにして、端末からはみ出さないことを優先する。
  */
 export const computeMaxVisible = (
   rows: number,
   groupCount = 0,
   chromeRows = CHROME_ROWS,
+  extraRows = 0,
 ): number => {
-  const available = rows - chromeRows - groupCount * ROWS_PER_GROUP_HEADER;
+  const available = rows - chromeRows - groupCount * ROWS_PER_GROUP_HEADER - extraRows;
   // N 件は 3N + (N-1) = 4N-1 行を占める
   return Math.max(Math.floor((available + 1) / ROWS_PER_AGENT), MIN_VISIBLE_AGENTS);
 };
@@ -68,6 +75,8 @@ export interface AppProps {
   readonly prompt?: boolean;
   /** コンテキスト利用率を表示する */
   readonly tokens?: boolean;
+  /** 実行中のサブエージェントをミニキャラクターで表示する */
+  readonly subagents?: boolean;
   /** コンテキスト上限の明示指定。0 なら使用量から推定する */
   readonly contextLimit?: number;
   /** セッション取得の実装。既定は `claude agents --json` の実行 */
@@ -85,6 +94,7 @@ export const App = ({
   platform,
   prompt = false,
   tokens = false,
+  subagents = false,
   contextLimit = 0,
   fetcher = fetchAgents,
 }: AppProps) => {
@@ -105,7 +115,7 @@ export const App = ({
     cwd,
     poll: interactive,
     fetcher,
-    meta: prompt || tokens,
+    meta: prompt || tokens || subagents,
     contextLimit: contextLimit === 0 ? undefined : contextLimit,
   });
 
@@ -119,7 +129,18 @@ export const App = ({
   // 描画は cwd ごとのグループ、選択はフラットな添字。順序を必ず一致させる
   const groups = useMemo(() => groupAgents(decorated), [decorated]);
   const sorted = useMemo(() => flattenGroups(groups), [groups]);
-  const maxVisible = computeMaxVisible(rows, groups.length);
+  /*
+   * ミニキャラクターが付くセッションは、その行数ぶん（折り返しの空行を含む）高くなる。
+   * 並ぶ体数は AA の左端から情報カラムの右端までの幅で決まる。
+   */
+  const perRow = miniPerRow(CHARACTER_WIDTH + 1 + infoWidth);
+  const miniRows = subagents
+    ? sorted.reduce(
+        (total, agent) => total + countMiniHeight(visibleSubagentCount(agent), perRow),
+        0,
+      )
+    : 0;
+  const maxVisible = computeMaxVisible(rows, groups.length, CHROME_ROWS, miniRows);
 
   // 切り替え後の状態を返し、フッタのメッセージに使わせる
   const toggleNotify = useCallback(() => {
@@ -156,6 +177,7 @@ export const App = ({
           headerWidth={headerWidth}
           showPrompt={prompt}
           showTokens={tokens}
+          showSubagents={subagents}
           maxVisible={maxVisible}
         />
       ) : (

@@ -5,7 +5,7 @@ import { buildTranscriptPath } from '../shared/transcriptPath.js';
 import type { Agent, SessionMeta } from '../types/agent.js';
 
 /**
- * セッション transcript から最終プロンプトとトークン使用量を読む。
+ * セッション transcript から最終プロンプト・トークン使用量・実行中のサブエージェントを読む。
  *
  * transcript は数 MB に達するので、毎回の全読みは避けて先頭と末尾だけを切り出す。
  * 末尾 64KB あれば `last-prompt` と直近の `usage` の双方が入ることを実測で確認した。
@@ -105,12 +105,14 @@ export const readSessionMeta = async (
       return cached.meta;
     }
 
-    // 先頭（モデル ID）→ 末尾（最新のプロンプトと使用量）の順に繋ぐ。
+    // 末尾（最新のプロンプト・使用量・実行中のサブエージェント）と、
+    // モデル ID を拾うためだけの先頭を別々に渡す。繋いで渡すと、先頭の切れ目で
+    // 結果が失われたサブエージェントを実行中と誤認する。
     // 行単位のパーサなので、切れ目で壊れた行は JSON.parse に失敗して捨てられる。
     // 末尾読みに全部入るサイズなら先頭は読まない
     const tail = await source.readTail(path, TAIL_BYTES);
     const head = current.size > TAIL_BYTES ? await source.readHead(path, HEAD_BYTES) : '';
-    const meta = parseTranscript(`${head}\n${tail}`, { contextLimit: options.contextLimit });
+    const meta = parseTranscript(tail, { head, contextLimit: options.contextLimit });
     cache.set(path, { ...current, meta });
     return meta;
   } catch {

@@ -12,6 +12,9 @@ interface CharacterProps {
 /**
  * 状態とフレーム番号から AA を描画するだけの純粋コンポーネント。
  * AA は読み取れることが最優先なので、未選択でも暗くしない。
+ *
+ * サブエージェントのミニキャラクターは行の幅いっぱいまで横に並べるため、
+ * ここではなく AgentRow が AA の下へ別の行として描く。
  */
 export const Character = ({ state, frame, bold = false }: CharacterProps) => (
   <Text color={getAppearance(state).color} bold={bold}>
@@ -25,6 +28,12 @@ export {
   CHARACTER_WIDTH,
   BODY,
   LEGS,
+  MINI_WIDTH,
+  getMiniFrame,
+  miniPerRow,
+  buildMiniRows,
+  countMiniRows,
+  countMiniHeight,
   getAppearance,
   getFrame,
 } from '../../shared/characters.js';
