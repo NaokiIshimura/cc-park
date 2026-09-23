@@ -1,11 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildResumeCommand, copyToClipboard, createCommandWriter } from './clipboard.js';
-
-describe('buildResumeCommand', () => {
-  it('claude --resume 形式の文字列を返す', () => {
-    expect(buildResumeCommand('40e18e35')).toBe('claude --resume 40e18e35');
-  });
-});
+import { copyToClipboard, createCommandWriter } from './clipboard.js';
 
 describe('copyToClipboard', () => {
   it('darwin ではライターへテキストを渡す', () => {

@@ -117,8 +117,8 @@ describe('useGuiSelection', () => {
     const { copy } = setup();
     press('c');
     await act(async () => undefined);
-    expect(copy).toHaveBeenCalledWith('claude --resume a');
-    expect(snapshot.message).toBe('コピーしました: claude --resume a');
+    expect(copy).toHaveBeenCalledWith('cd /tmp && claude --resume a');
+    expect(snapshot.message).toBe('コピーしました: cd /tmp && claude --resume a');
   });
 
   it('Enter ではコピーしない', async () => {
@@ -133,7 +133,7 @@ describe('useGuiSelection', () => {
     setup({ copy: vi.fn(async () => false) });
     press('c');
     await act(async () => undefined);
-    expect(snapshot.message).toBe('コピー非対応の環境です: claude --resume a');
+    expect(snapshot.message).toBe('コピー非対応の環境です: cd /tmp && claude --resume a');
   });
 
   it('r で再取得する', () => {

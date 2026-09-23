@@ -77,7 +77,7 @@ export interface UseSelectionCoreResult {
   readonly run: (command: SelectionCommand) => void;
   /** 一覧上の位置を直接指定して選択する（クリック操作用） */
   readonly select: (index: number) => void;
-  /** 位置を指定して resume コマンドをコピーする（ダブルクリック操作用） */
+  /** 位置を指定してセッションを開くコマンドをコピーする（ダブルクリック操作用） */
   readonly copyAt: (index: number) => void;
 }
 
@@ -151,7 +151,7 @@ export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelection
       if (agent === undefined) {
         return;
       }
-      const command = buildResumeCommand(agent.sessionId);
+      const command = buildResumeCommand(agent);
       const toMessage = (copied: boolean) =>
         copied ? `コピーしました: ${command}` : `コピー非対応の環境です: ${command}`;
 
