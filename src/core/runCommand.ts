@@ -4,7 +4,12 @@ import { execFile } from 'node:child_process';
 export type CommandRunner = (
   command: string,
   args: readonly string[],
-  options: { readonly timeoutMs: number; readonly signal: AbortSignal | undefined },
+  options: {
+    readonly timeoutMs: number;
+    readonly signal: AbortSignal | undefined;
+    /** 実行時の作業ディレクトリ。未指定なら呼び出し元のまま */
+    readonly cwd?: string;
+  },
 ) => Promise<string>;
 
 /** 外部コマンド実行で起こりうる失敗の種別。 */
@@ -27,6 +32,7 @@ export const execFileRunner: CommandRunner = (command, args, options) =>
         timeout: options.timeoutMs,
         maxBuffer: MAX_BUFFER,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
+        ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
       },
       (error, stdout) => {
         if (error) {

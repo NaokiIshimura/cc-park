@@ -1,7 +1,9 @@
 import type { FetchAgentsResult } from '../core/fetchAgents.js';
 import type { KillAgentResult } from '../core/killAgent.js';
 import type { StopAgentResult } from '../core/stopAgent.js';
+import type { ScheduleFiredEvent } from '../core/scheduler.js';
 import type { NotificationPayload } from '../shared/notification.js';
+import type { Schedule } from '../shared/schedule.js';
 import type { Agent } from '../types/agent.js';
 import type { GuiConfig } from './config.js';
 
@@ -22,6 +24,16 @@ export const IPC_CHANNELS = {
   writeClipboard: 'clipboard:write',
   /** ウィンドウの最前面固定の切り替え */
   setAlwaysOnTop: 'window:alwaysOnTop',
+  /** 予約一覧の取得 */
+  listSchedules: 'schedule:list',
+  /** 予約の追加・更新 */
+  saveSchedule: 'schedule:save',
+  /** 予約の削除 */
+  deleteSchedule: 'schedule:delete',
+  /** 予約の有効 / 無効の切り替え */
+  setScheduleEnabled: 'schedule:setEnabled',
+  /** 予約が発火したことの通達（main → renderer） */
+  scheduleFired: 'schedule:fired',
   /** OS 通知の表示 */
   notify: 'notify:show',
   /** アプリの終了 */
@@ -43,6 +55,16 @@ export interface CcParkBridge {
   readonly writeClipboard: (text: string) => Promise<boolean>;
   /** ウィンドウを最前面に固定する / 解除する。適用後の状態を返す */
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;
+  readonly listSchedules: () => Promise<Schedule[]>;
+  /** 予約を追加・更新し、更新後の一覧を返す */
+  readonly saveSchedule: (schedule: Schedule) => Promise<Schedule[]>;
+  readonly deleteSchedule: (id: string) => Promise<Schedule[]>;
+  readonly setScheduleEnabled: (id: string, enabled: boolean) => Promise<Schedule[]>;
+  /**
+   * 予約の発火を購読する。購読を解除する関数を返す。
+   * 発火は main 側のタイマーで起こるため、renderer からは待ち受けるしかない。
+   */
+  readonly onScheduleFired: (listener: (event: ScheduleFiredEvent) => void) => () => void;
   readonly notify: (payload: NotificationPayload) => void;
   readonly quit: () => void;
 }

@@ -10,6 +10,7 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
   const onToggleNotify = vi.fn();
   const onToggleAlwaysOnTop = vi.fn();
   const onRefresh = vi.fn();
+  const onOpenSchedules = vi.fn();
   const result = render(
     <Header
       count={2}
@@ -20,10 +21,18 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
       onToggleNotify={onToggleNotify}
       onToggleAlwaysOnTop={onToggleAlwaysOnTop}
       onRefresh={onRefresh}
+      onOpenSchedules={onOpenSchedules}
       {...overrides}
     />,
   );
-  return { ...result, onToggleNotify, onToggleAlwaysOnTop, onRefresh, user: userEvent.setup() };
+  return {
+    ...result,
+    onToggleNotify,
+    onToggleAlwaysOnTop,
+    onRefresh,
+    onOpenSchedules,
+    user: userEvent.setup(),
+  };
 };
 
 describe('Header', () => {
@@ -99,5 +108,11 @@ describe('Header', () => {
   it('取得中でなければインジケータは消灯する', () => {
     const { container } = setup({ isFetching: false });
     expect(container.querySelector('.spinner--active')).toBeNull();
+  });
+
+  it('予約ボタンで予約画面を開く', async () => {
+    const { user, onOpenSchedules } = setup();
+    await user.click(screen.getByRole('button', { name: '予約' }));
+    expect(onOpenSchedules).toHaveBeenCalledTimes(1);
   });
 });

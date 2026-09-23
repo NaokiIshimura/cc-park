@@ -1,12 +1,16 @@
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, clipboard, ipcMain, Notification } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, Notification, powerMonitor } from 'electron';
 import { fetchAgents } from '../core/fetchAgents.js';
 import { killAgent } from '../core/killAgent.js';
+import { launchAgent } from '../core/launchAgent.js';
+import { loadSchedules, saveSchedules } from '../core/scheduleStore.js';
+import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
 import { resolveShellPath } from '../core/shellPath.js';
 import { stopAgent } from '../core/stopAgent.js';
 import type { NotificationPayload } from '../shared/notification.js';
+import type { Schedule } from '../shared/schedule.js';
 import type { Agent } from '../types/agent.js';
 import { DEFAULT_ALWAYS_ON_TOP, parseGuiOptions, type GuiConfig } from './config.js';
 import { IPC_CHANNELS, type FetchAgentsRequest } from './ipc.js';
@@ -90,6 +94,50 @@ const createWindow = async (): Promise<void> => {
   await window.loadFile(join(HERE, 'renderer', 'index.html'));
 };
 
+/** OS 通知を出す。renderer からの依頼と、予約の発火の双方から使う。 */
+const showNotification = (payload: NotificationPayload): void => {
+  if (!Notification.isSupported()) {
+    return;
+  }
+  new Notification({ title: payload.title, body: payload.message }).show();
+};
+
+/** 開いているすべてのウィンドウへ送る。 */
+const broadcast = (channel: string, payload: unknown): void => {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send(channel, payload);
+  }
+};
+
+/**
+ * 予約の発火ループ。
+ *
+ * 一覧の保持も含めてすべて `createScheduler` に任せ、ここは取り次ぎだけにする
+ * （main はテスト対象外なので、判断を伴う処理を置かない）。
+ */
+const scheduler = createScheduler({
+  load: () => loadSchedules({ home: config.home }),
+  save: (schedules) => saveSchedules(schedules, { home: config.home }),
+  launch: (schedule) => launchAgent(schedule),
+  // 予約の通知は起動時の設定に従う（--no-notify ですべて黙らせられるようにする）
+  notify: config.notify ? showNotification : undefined,
+  onFired: (event: ScheduleFiredEvent) => {
+    broadcast(IPC_CHANNELS.scheduleFired, event);
+  },
+});
+
+ipcMain.handle(IPC_CHANNELS.listSchedules, () => scheduler.list());
+
+ipcMain.handle(IPC_CHANNELS.saveSchedule, (_event, schedule: Schedule) =>
+  scheduler.save(schedule),
+);
+
+ipcMain.handle(IPC_CHANNELS.deleteSchedule, (_event, id: string) => scheduler.remove(id));
+
+ipcMain.handle(IPC_CHANNELS.setScheduleEnabled, (_event, id: string, enabled: boolean) =>
+  scheduler.setEnabled(id, enabled),
+);
+
 ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
   // 最前面固定は OS 側の都合で適用されないことがあるため、実際の状態を返す
   const window = BrowserWindow.fromWebContents(event.sender);
@@ -127,10 +175,7 @@ ipcMain.handle(IPC_CHANNELS.setAlwaysOnTop, (event, value: boolean) => {
 });
 
 ipcMain.on(IPC_CHANNELS.notify, (_event, payload: NotificationPayload) => {
-  if (!Notification.isSupported()) {
-    return;
-  }
-  new Notification({ title: payload.title, body: payload.message }).show();
+  showNotification(payload);
 });
 
 ipcMain.on(IPC_CHANNELS.quit, () => {
@@ -146,6 +191,21 @@ const preparePath = async (): Promise<void> => {
   process.env['PATH'] = await resolveShellPath({ home: config.home });
 };
 
+/**
+ * 予約の監視を始める。
+ *
+ * `preparePath` の後でなければならない。PATH が整う前に発火すると
+ * `claude` が見つからず、予約がすべて失敗してしまう。
+ */
+const startScheduler = async (): Promise<void> => {
+  await scheduler.start();
+
+  // スリープ中はタイマーが進まないため、復帰したその場で判定し直す
+  powerMonitor.on('resume', () => {
+    void scheduler.tick();
+  });
+};
+
 /*
  * ここで top-level await を使うとモジュール評価が終わらず、Electron の ready
  * イベントが発火しないまま停止する（ESM エントリ固有の制約）。必ず then で受ける。
@@ -155,6 +215,7 @@ app
   .then(applyDevDockIcon)
   .then(preparePath)
   .then(createWindow)
+  .then(startScheduler)
   .catch((error: unknown) => {
     console.error('ウィンドウの起動に失敗しました:', error);
     app.quit();
@@ -169,5 +230,6 @@ app.on('activate', () => {
 
 // 常駐させる用途ではないため、ウィンドウを閉じたら macOS でもプロセスを終了する
 app.on('window-all-closed', () => {
+  scheduler.stop();
   app.quit();
 });

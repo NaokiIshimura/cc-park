@@ -57,6 +57,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
   const onToggleNotify = vi.fn(() => true);
   const onExit = vi.fn();
   const onToggleAlwaysOnTop = vi.fn(() => true);
+  const onToggleSchedules = vi.fn();
   const copy = vi.fn(async () => true);
   const stop = vi.fn(async () => stopped);
   const kill = vi.fn(async () => killed);
@@ -67,13 +68,24 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
       onToggleNotify={onToggleNotify}
       onExit={onExit}
       onToggleAlwaysOnTop={onToggleAlwaysOnTop}
+      onToggleSchedules={onToggleSchedules}
       copy={copy}
       stop={stop}
       kill={kill}
       {...overrides}
     />,
   );
-  return { ...result, onRefresh, onToggleNotify, onExit, onToggleAlwaysOnTop, copy, stop, kill };
+  return {
+    ...result,
+    onRefresh,
+    onToggleNotify,
+    onExit,
+    onToggleAlwaysOnTop,
+    onToggleSchedules,
+    copy,
+    stop,
+    kill,
+  };
 };
 
 afterEach(cleanup);
@@ -301,6 +313,24 @@ describe('useGuiSelection', () => {
     press('y');
     await act(async () => undefined);
     expect(snapshot.message).toBe('stop に失敗しました: だめ');
+  });
+});
+
+describe('予約画面の開閉', () => {
+  it('a キーで開閉を伝える', () => {
+    const { onToggleSchedules } = setup();
+    press('a');
+    expect(onToggleSchedules).toHaveBeenCalledTimes(1);
+  });
+
+  it('確認待ち中の a は取消として消費する', () => {
+    const { onToggleSchedules } = setup({ agents: [background('a')] });
+    press('s');
+    expect(snapshot.pendingAction).not.toBeNull();
+
+    press('a');
+    expect(onToggleSchedules).not.toHaveBeenCalled();
+    expect(snapshot.pendingAction).toBeNull();
   });
 });
 

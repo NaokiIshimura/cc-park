@@ -21,6 +21,7 @@ describe('toGuiSelectionCommand', () => {
     ['s', 'requestStop'],
     ['x', 'requestKill'],
     ['t', 'toggleAlwaysOnTop'],
+    ['a', 'toggleSchedules'],
     ['q', 'quit'],
     ['y', 'confirm'],
     ['Escape', 'cancel'],

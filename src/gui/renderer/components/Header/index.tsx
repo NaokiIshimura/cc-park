@@ -9,6 +9,7 @@ interface HeaderProps {
   readonly onToggleNotify: () => void;
   readonly onToggleAlwaysOnTop: () => void;
   readonly onRefresh: () => void;
+  readonly onOpenSchedules: () => void;
 }
 
 /** タイトル・件数・最終更新時刻・各トグルを表示し、更新と切り替えの操作を提供する。 */
@@ -21,6 +22,7 @@ export const Header = ({
   onToggleNotify,
   onToggleAlwaysOnTop,
   onRefresh,
+  onOpenSchedules,
 }: HeaderProps) => (
   <header className="header">
     <div className="header__title-area">
@@ -45,6 +47,14 @@ export const Header = ({
         onClick={onToggleNotify}
       >
         {notifyEnabled ? 'notify:ON' : 'notify:off'}
+      </button>
+      <button
+        type="button"
+        className="button"
+        title="指定した時刻にセッションを起動する予約"
+        onClick={onOpenSchedules}
+      >
+        予約
       </button>
       <button type="button" className="button" onClick={onRefresh}>
         更新

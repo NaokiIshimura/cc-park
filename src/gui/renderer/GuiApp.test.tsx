@@ -3,6 +3,8 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FetchAgentsResult } from '../../core/fetchAgents.js';
+import type { ScheduleFiredEvent } from '../../core/scheduler.js';
+import type { Schedule } from '../../shared/schedule.js';
 import type { Agent } from '../../types/agent.js';
 import { DEFAULT_ALWAYS_ON_TOP, type GuiConfig } from '../config.js';
 import type { CcParkBridge } from '../ipc.js';
@@ -40,6 +42,16 @@ const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
   ...overrides,
 });
 
+const schedule = (overrides: Partial<Schedule> = {}): Schedule => ({
+  id: 's1',
+  time: '09:00',
+  cwd: `${HOME}/GitHub/app`,
+  prompt: '今日の TODO を整理して',
+  enabled: true,
+  lastFiredAt: null,
+  ...overrides,
+});
+
 const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   getConfig: vi.fn(async () => config),
   fetchAgents: vi.fn(async (): Promise<FetchAgentsResult> => ({ ok: true, agents: [] })),
@@ -47,6 +59,11 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   killAgent: vi.fn(async () => ({ ok: true as const })),
   writeClipboard: vi.fn(async () => true),
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
+  listSchedules: vi.fn(async () => []),
+  saveSchedule: vi.fn(async () => []),
+  deleteSchedule: vi.fn(async () => []),
+  setScheduleEnabled: vi.fn(async () => []),
+  onScheduleFired: vi.fn(() => () => undefined),
   notify: vi.fn(),
   quit: vi.fn(),
   ...overrides,
@@ -333,5 +350,102 @@ describe('GuiApp', () => {
       expect(notify).toHaveBeenCalledTimes(1);
     });
     expect(notify.mock.calls[0]?.[0]).toMatchObject({ message: 'a が入力待ちになりました' });
+  });
+
+  it('a キーで予約画面を開き、Escape で閉じる', async () => {
+    await setup({ listSchedules: vi.fn(async () => [schedule()]) });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '予約' })).toBeDefined();
+    });
+    expect(screen.getByText('今日の TODO を整理して')).toBeDefined();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+    expect(screen.queryByRole('dialog', { name: '予約' })).toBeNull();
+  });
+
+  it('予約ボタンからも開く', async () => {
+    const { user } = await setup();
+    await user.click(screen.getByRole('button', { name: '予約' }));
+    expect(screen.getByRole('dialog', { name: '予約' })).toBeDefined();
+  });
+
+  it('予約画面を開いている間は一覧のキー操作を止める', async () => {
+    const quit = vi.fn();
+    await setup({ quit });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }));
+    });
+    expect(quit).not.toHaveBeenCalled();
+  });
+
+  it('予約を削除すると main へ伝える', async () => {
+    const deleteSchedule = vi.fn(async () => []);
+    const { user } = await setup({
+      listSchedules: vi.fn(async () => [schedule()]),
+      deleteSchedule,
+    });
+
+    await user.click(screen.getByRole('button', { name: '予約' }));
+    await user.click(screen.getByRole('button', { name: '削除' }));
+    await user.click(screen.getByRole('button', { name: '削除 する' }));
+    expect(deleteSchedule).toHaveBeenCalledWith('s1');
+  });
+
+  it('予約の有効・無効を切り替えると main へ伝える', async () => {
+    const setScheduleEnabled = vi.fn(async () => []);
+    const { user } = await setup({
+      listSchedules: vi.fn(async () => [schedule()]),
+      setScheduleEnabled,
+    });
+
+    await user.click(screen.getByRole('button', { name: '予約' }));
+    await user.click(screen.getByRole('button', { name: 'on' }));
+    expect(setScheduleEnabled).toHaveBeenCalledWith('s1', false);
+  });
+
+  it('予約を追加すると main へ伝える', async () => {
+    const saveSchedule = vi.fn(async (_schedule: Schedule) => []);
+    const { user } = await setup({ saveSchedule });
+
+    await user.click(screen.getByRole('button', { name: '予約' }));
+    await user.click(screen.getByRole('button', { name: '追加' }));
+    await user.type(screen.getByLabelText('プロンプト'), 'おはよう');
+    await user.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(saveSchedule).toHaveBeenCalledTimes(1);
+    expect(saveSchedule.mock.calls[0]?.[0]).toMatchObject({ prompt: 'おはよう' });
+  });
+
+  it('予約の発火をフッタに出す', async () => {
+    let fire: ((event: ScheduleFiredEvent) => void) | null = null;
+    await setup({
+      onScheduleFired: vi.fn((listener: (event: ScheduleFiredEvent) => void) => {
+        fire = listener;
+        return () => undefined;
+      }),
+    });
+
+    act(() => {
+      fire?.({
+        scheduleId: 's1',
+        firedAt: 0,
+        ok: true,
+        message: '09:00 の予約を /Users/naoki で起動しました',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('09:00 の予約を /Users/naoki で起動しました')).toBeDefined();
+    });
   });
 });
