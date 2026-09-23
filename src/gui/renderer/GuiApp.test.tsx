@@ -133,7 +133,7 @@ describe('GuiApp', () => {
       fetchAgents: vi.fn(async () => ({ ok: true as const, agents: [agent('a'), agent('b')] })),
     });
     await user.dblClick(screen.getAllByRole('option')[1] as HTMLElement);
-    expect(writeClipboard).toHaveBeenCalledWith('claude --resume b');
+    expect(writeClipboard).toHaveBeenCalledWith('cd /Users/naoki/GitHub/app && claude --resume b');
   });
 
   it('更新ボタンで再取得する', async () => {

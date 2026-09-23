@@ -30,7 +30,8 @@ const Harness = (props: UseSelectionOptions) => {
 };
 
 const parse = (frame: string | undefined) =>
-  JSON.parse(frame ?? '{}') as {
+  // 端末幅で折り返された改行を取り除いてから読む
+  JSON.parse((frame ?? '{}').replaceAll('\n', '')) as {
     selectedIndex: number;
     selectedSessionId: string | null;
     message: string | null;
@@ -116,8 +117,8 @@ describe('useSelection', () => {
     const { stdin, lastFrame, copy, unmount } = setup();
     stdin.write('c');
     await wait();
-    expect(copy).toHaveBeenCalledWith('claude --resume a');
-    expect(parse(lastFrame()).message).toContain('claude --resume a');
+    expect(copy).toHaveBeenCalledWith('cd /tmp && claude --resume a');
+    expect(parse(lastFrame()).message).toContain('cd /tmp && claude --resume a');
     unmount();
   });
 
