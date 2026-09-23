@@ -432,6 +432,8 @@ body {
   justify-content: center;
   padding: 16px;
   background: rgb(0 0 0 / 45%);
+  /* sticky なディレクトリ見出し（z-index: 1）より必ず手前に出す */
+  z-index: 10;
 }
 
 .dialog {
