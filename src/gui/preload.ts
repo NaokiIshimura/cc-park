@@ -17,6 +17,8 @@ const bridge: CcParkBridge = {
   killAgent: (agent: Agent) => ipcRenderer.invoke(IPC_CHANNELS.killAgent, agent),
   writeClipboard: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.writeClipboard, text),
   setAlwaysOnTop: (value: boolean) => ipcRenderer.invoke(IPC_CHANNELS.setAlwaysOnTop, value),
+  pickDirectory: (defaultPath: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.pickDirectory, defaultPath),
   listSchedules: () => ipcRenderer.invoke(IPC_CHANNELS.listSchedules),
   saveSchedule: (schedule: Schedule) => ipcRenderer.invoke(IPC_CHANNELS.saveSchedule, schedule),
   deleteSchedule: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.deleteSchedule, id),

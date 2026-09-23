@@ -1,7 +1,16 @@
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, clipboard, ipcMain, Notification, powerMonitor } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  Notification,
+  powerMonitor,
+  type OpenDialogOptions,
+} from 'electron';
 import { fetchAgents } from '../core/fetchAgents.js';
 import { killAgent } from '../core/killAgent.js';
 import { launchAgent } from '../core/launchAgent.js';
@@ -175,6 +184,27 @@ ipcMain.handle(IPC_CHANNELS.setAlwaysOnTop, (event, value: boolean) => {
   window.setAlwaysOnTop(value);
   // 適用できたかは OS 側の都合もあるため、実際の状態を返す
   return window.isAlwaysOnTop();
+});
+
+/**
+ * ディレクトリ選択ダイアログ。
+ *
+ * 親ウィンドウを渡してシートにする。渡さないと最前面固定（alwaysOnTop）の本体が
+ * 手前に残り、選択ダイアログが背面に隠れて操作できなくなる。
+ */
+ipcMain.handle(IPC_CHANNELS.pickDirectory, async (event, defaultPath: string) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  const options: OpenDialogOptions = {
+    properties: ['openDirectory', 'createDirectory'],
+    ...(defaultPath === '' ? {} : { defaultPath }),
+  };
+
+  const result =
+    window === null
+      ? await dialog.showOpenDialog(options)
+      : await dialog.showOpenDialog(window, options);
+
+  return result.canceled ? null : (result.filePaths[0] ?? null);
 });
 
 ipcMain.on(IPC_CHANNELS.notify, (_event, payload: NotificationPayload) => {

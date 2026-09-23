@@ -8,6 +8,8 @@ interface SchedulePanelProps {
   readonly schedules: readonly Schedule[];
   readonly now: number;
   readonly home: string;
+  /** 予約ダイアログへ渡すディレクトリ選択。パネル自身は使わない */
+  readonly onPickDirectory: (defaultPath: string) => Promise<string | null>;
   readonly onSave: (schedule: Schedule) => void;
   readonly onDelete: (id: string) => void;
   readonly onToggle: (schedule: Schedule) => void;
@@ -24,6 +26,7 @@ export const SchedulePanel = ({
   schedules,
   now,
   home,
+  onPickDirectory,
   onSave,
   onDelete,
   onToggle,
@@ -91,6 +94,7 @@ export const SchedulePanel = ({
         <ScheduleDialog
           schedule={editing.schedule}
           home={home}
+          onPickDirectory={onPickDirectory}
           onSubmit={(schedule) => {
             onSave(schedule);
             setEditing(null);

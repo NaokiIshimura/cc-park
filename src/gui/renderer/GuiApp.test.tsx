@@ -59,6 +59,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   killAgent: vi.fn(async () => ({ ok: true as const })),
   writeClipboard: vi.fn(async () => true),
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
+  pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
   deleteSchedule: vi.fn(async () => []),
@@ -399,6 +400,23 @@ describe('GuiApp', () => {
     await user.click(screen.getByRole('button', { name: '削除' }));
     await user.click(screen.getByRole('button', { name: '削除 する' }));
     expect(deleteSchedule).toHaveBeenCalledWith('s1');
+  });
+
+  it('予約のディレクトリ選択を main へ取り次ぐ', async () => {
+    const pickDirectory = vi.fn(async () => `${HOME}/GitHub/picked`);
+    const saveSchedule = vi.fn(async () => []);
+    const { user } = await setup({ pickDirectory, saveSchedule });
+
+    await user.click(screen.getByRole('button', { name: '予約' }));
+    await user.click(screen.getByRole('button', { name: '追加' }));
+    await user.click(screen.getByRole('button', { name: '選択…' }));
+    expect(pickDirectory).toHaveBeenCalledWith(HOME);
+
+    await user.type(screen.getByLabelText('プロンプト'), 'おはよう');
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    expect(saveSchedule).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: `${HOME}/GitHub/picked` }),
+    );
   });
 
   it('予約の有効・無効を切り替えると main へ伝える', async () => {
