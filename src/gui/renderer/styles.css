@@ -76,7 +76,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /*
+   * 幅を詰めるとタイトル側の文字がボタンへ重なるため、入りきらなければ段を分ける。
+   * 1 行に収まるのは幅 480px 前後から（操作側が 309px 固定で、タイトル側は
+   * セッション数の桁数ぶん伸びる）。既定幅ではタイトルと操作が上下に分かれる。
+   */
+  flex-wrap: wrap;
   gap: 8px;
+  row-gap: 6px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
@@ -87,6 +94,8 @@ body {
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+  /* 段を分けてもなお入りきらないとき、文字が箱からあふれて重なるのを防ぐ */
+  overflow: hidden;
 }
 
 .header__title {
@@ -103,10 +112,17 @@ body {
   white-space: nowrap;
 }
 
+.header__count {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .header__actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  /* 縮むと日本語ラベルが 2 行に折れてヘッダの高さが変わるため、固定して段を分けさせる */
+  flex-shrink: 0;
 }
 
 .button,
