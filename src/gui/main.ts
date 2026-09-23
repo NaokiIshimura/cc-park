@@ -48,11 +48,14 @@ const applyDevDockIcon = (): void => {
   app.dock.setIcon(join(HERE, '..', '..', 'assets', 'icon.png'));
 };
 
-/** ウィンドウの既定サイズ。縦長の一覧なのでスマートフォン寄りの比率にする。 */
-const WINDOW_WIDTH = 480;
-const WINDOW_HEIGHT = 640;
+/**
+ * ウィンドウのサイズ。縦長の一覧なのでスマートフォン寄りの比率にする。
+ * 既定幅は最小幅に合わせ、置き場所を取らない一番狭い状態で開く。
+ */
 const MIN_WINDOW_WIDTH = 360;
 const MIN_WINDOW_HEIGHT = 400;
+const WINDOW_WIDTH = MIN_WINDOW_WIDTH;
+const WINDOW_HEIGHT = 640;
 
 const config: GuiConfig = {
   ...parseGuiOptions(process.argv),
