@@ -111,6 +111,10 @@ AA を変えてテストが落ちたら、テストではなく AA の方を直�
 | `src/components/` | TUI（Ink）の描画 |
 | `src/gui/` | Electron の main / preload / renderer |
 
+予約（指定時刻の定期起動）は `src/shared/schedule.ts`（判断）、`src/core/scheduleStore.ts`（永続化）、
+`src/core/launchAgent.ts`（`claude --bg` の実行）、`src/core/scheduler.ts`（発火ループ）に分かれている。
+一覧の保持も `scheduler` が持ち、main プロセスは取り次ぐだけにする。
+
 CLI と GUI は「取得・正規化・差分検出・並べ替え・選択状態の遷移」を共有する。
 新しいロジックを足すときは、まず `src/shared/` か `src/hooks/` に置けないか検討する。
 

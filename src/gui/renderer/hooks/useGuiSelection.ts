@@ -11,9 +11,10 @@ import type { Agent } from '../../../types/agent.js';
 
 /**
  * GUI で扱う操作。共有の状態機械が知る操作に、GUI 固有のものを足したもの。
- * `toggleAlwaysOnTop` はウィンドウを持つ GUI にしかない概念なので core には置かない。
+ * `toggleAlwaysOnTop`（ウィンドウ）と `toggleSchedules`（予約画面）は
+ * GUI にしかない概念なので core には置かない。
  */
-export type GuiCommand = SelectionCommand | 'toggleAlwaysOnTop';
+export type GuiCommand = SelectionCommand | 'toggleAlwaysOnTop' | 'toggleSchedules';
 
 /** キー入力のうち判定に使う部分だけを取り出した型。 */
 export interface KeyInput {
@@ -52,6 +53,8 @@ export const toGuiSelectionCommand = (event: KeyInput): GuiCommand | null => {
       return 'requestKill';
     case 't':
       return 'toggleAlwaysOnTop';
+    case 'a':
+      return 'toggleSchedules';
     case 'q':
       return 'quit';
     case 'y':
@@ -79,6 +82,8 @@ export interface UseGuiSelectionOptions {
   readonly onExit: () => void;
   /** 最前面固定を切り替え、切り替え後に固定されているかを返す */
   readonly onToggleAlwaysOnTop: () => boolean | Promise<boolean>;
+  /** 予約画面の開閉 */
+  readonly onToggleSchedules: () => void;
   readonly copy: CopyText;
   readonly stop: (agent: Agent) => Promise<StopAgentResult>;
   readonly kill: (agent: Agent) => Promise<KillAgentResult>;
@@ -102,6 +107,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     onToggleNotify,
     onExit,
     onToggleAlwaysOnTop,
+    onToggleSchedules,
     copy,
     stop,
     kill,
@@ -143,10 +149,14 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
         return;
       }
 
-      if (command === 'toggleAlwaysOnTop') {
+      if (command === 'toggleAlwaysOnTop' || command === 'toggleSchedules') {
         // 確認待ち中は他キーと同様に取消として消費し、誤操作を防ぐ
         if (pendingAction !== null) {
           run('cancel');
+          return;
+        }
+        if (command === 'toggleSchedules') {
+          onToggleSchedules();
           return;
         }
         toggleAlwaysOnTop();
@@ -160,7 +170,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [run, enabled, pendingAction, toggleAlwaysOnTop]);
+  }, [run, enabled, pendingAction, toggleAlwaysOnTop, onToggleSchedules]);
 
   return { ...core, toggleAlwaysOnTop };
 };

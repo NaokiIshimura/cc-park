@@ -67,6 +67,16 @@ describe('execFileRunner', () => {
     ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
+  it('cwd を指定するとそのディレクトリで実行する', async () => {
+    const stdout = await execFileRunner('pwd', [], {
+      timeoutMs: 5000,
+      signal: undefined,
+      cwd: '/tmp',
+    });
+    // macOS の /tmp は /private/tmp への symlink なので末尾で判定する
+    expect(stdout.trim().endsWith('/tmp')).toBe(true);
+  });
+
   it('signal で中断できる', async () => {
     const controller = new AbortController();
     const promise = execFileRunner('sleep', ['5'], {

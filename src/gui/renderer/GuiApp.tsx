@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAgents } from '../../hooks/useAgents.js';
 import { useAnimationTick } from '../../hooks/useAnimationTick.js';
 import { useNotifications } from '../../hooks/useNotifications.js';
@@ -12,7 +12,9 @@ import { ErrorView } from './components/ErrorView/index.js';
 import { Footer } from './components/Footer/index.js';
 import { Header } from './components/Header/index.js';
 import { ConfirmDialog } from './components/ConfirmDialog/index.js';
+import { SchedulePanel } from './components/SchedulePanel/index.js';
 import { useGuiSelection } from './hooks/useGuiSelection.js';
+import { useSchedules } from './hooks/useSchedules.js';
 
 /** アニメーションのフレーム更新間隔。ポーリング間隔とは独立させる。 */
 const ANIMATION_INTERVAL_MS = 200;
@@ -26,6 +28,7 @@ export interface GuiAppProps {
 export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   const [notifyEnabled, setNotifyEnabled] = useState(config.notify);
   const [alwaysOnTop, setAlwaysOnTop] = useState(config.alwaysOnTop);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const frame = useAnimationTick(ANIMATION_INTERVAL_MS);
   // フレーム更新に合わせて経過時間の基準時刻も進める
@@ -65,6 +68,12 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     return applied;
   }, [alwaysOnTop, bridge]);
 
+  const schedules = useSchedules(bridge);
+
+  const toggleSchedules = useCallback(() => {
+    setScheduleOpen((open) => !open);
+  }, []);
+
   const {
     selectedIndex,
     message,
@@ -72,6 +81,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     run,
     select,
     copyAt,
+    setMessage,
     toggleAlwaysOnTop,
   } = useGuiSelection({
     agents: sorted,
@@ -79,10 +89,21 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     onToggleNotify: toggleNotify,
     onExit: bridge.quit,
     onToggleAlwaysOnTop: applyAlwaysOnTop,
+    onToggleSchedules: toggleSchedules,
     copy: bridge.writeClipboard,
     stop: bridge.stopAgent,
     kill: bridge.killAgent,
+    // 予約画面を開いている間は、一覧のキー操作を止める
+    enabled: !scheduleOpen,
   });
+
+  // 予約の発火はフッタにも出す。通知を切っていても画面で気づけるようにする
+  const { firedEvent } = schedules;
+  useEffect(() => {
+    if (firedEvent !== null) {
+      setMessage(firedEvent.message);
+    }
+  }, [firedEvent, setMessage]);
 
   // ダブルクリックは「選択してコピー」。選択の反映を待たずに済むよう位置を直接渡す
   const handleCopy = useCallback(
@@ -110,6 +131,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
         onRefresh={() => {
           run('refresh');
         }}
+        onOpenSchedules={toggleSchedules}
       />
 
       <main className="app__body">
@@ -133,6 +155,24 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
       </main>
 
       <Footer message={message} />
+
+      {!scheduleOpen ? null : (
+        <SchedulePanel
+          schedules={schedules.schedules}
+          now={now}
+          home={config.home}
+          onSave={(schedule) => {
+            void schedules.save(schedule);
+          }}
+          onDelete={(id) => {
+            void schedules.remove(id);
+          }}
+          onToggle={(schedule) => {
+            void schedules.setEnabled(schedule.id, !schedule.enabled);
+          }}
+          onClose={toggleSchedules}
+        />
+      )}
 
       {pendingAction === null || pendingAgent === undefined ? null : (
         <ConfirmDialog
