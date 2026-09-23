@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import {
   createSchedule,
   createScheduleId,
@@ -13,6 +13,11 @@ interface ScheduleDialogProps {
   readonly schedule: Schedule | null;
   /** `~` の展開に使うホームディレクトリ */
   readonly home: string;
+  /**
+   * ディレクトリ選択ダイアログを開く。選ばれた絶対パスを返し、取り消したら null。
+   * 実際の表示は main プロセスが行うため、呼び出しだけを受け取る。
+   */
+  readonly onPickDirectory: (defaultPath: string) => Promise<string | null>;
   readonly onSubmit: (schedule: Schedule) => void;
   readonly onCancel: () => void;
 }
@@ -22,11 +27,19 @@ interface ScheduleDialogProps {
  *
  * 入力の正しさは `shared/schedule.ts` の検証に任せ、ここは表示と受け渡しだけを行う。
  */
-export const ScheduleDialog = ({ schedule, home, onSubmit, onCancel }: ScheduleDialogProps) => {
+export const ScheduleDialog = ({
+  schedule,
+  home,
+  onPickDirectory,
+  onSubmit,
+  onCancel,
+}: ScheduleDialogProps) => {
   const [time, setTime] = useState(schedule?.time ?? '09:00');
   const [cwd, setCwd] = useState(schedule?.cwd ?? home);
   const [prompt, setPrompt] = useState(schedule?.prompt ?? '');
   const [errors, setErrors] = useState<ScheduleFieldErrors>({});
+  const [isPicking, setIsPicking] = useState(false);
+  const cwdId = useId();
 
   // Escape で閉じる。一覧のキー操作は開いている間 GuiApp 側で止めてある
   useEffect(() => {
@@ -41,6 +54,21 @@ export const ScheduleDialog = ({ schedule, home, onSubmit, onCancel }: ScheduleD
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [onCancel]);
+
+  /** ディレクトリ選択ダイアログの結果を入力欄へ反映する。 */
+  const pickDirectory = async () => {
+    setIsPicking(true);
+    try {
+      const picked = await onPickDirectory(normalizeCwd(cwd, home));
+      if (picked !== null) {
+        setCwd(picked);
+      }
+    } catch {
+      // 開けなかったときは手入力に任せる。入力済みの値は消さない
+    } finally {
+      setIsPicking(false);
+    }
+  };
 
   const submit = () => {
     const input = { time, cwd: normalizeCwd(cwd, home), prompt };
@@ -82,18 +110,35 @@ export const ScheduleDialog = ({ schedule, home, onSubmit, onCancel }: ScheduleD
         </label>
         {errors.time === undefined ? null : <p className="field__error">{errors.time}</p>}
 
-        <label className="field">
-          <span className="field__label">ディレクトリ</span>
-          <input
-            className="field__input"
-            type="text"
-            value={cwd}
-            placeholder="~/GitHub/cc-park"
-            onChange={(event) => {
-              setCwd(event.target.value);
-            }}
-          />
-        </label>
+        {/* 選択ボタンを横に置くため、label で囲まず htmlFor で結び付ける */}
+        <div className="field">
+          <label className="field__label" htmlFor={cwdId}>
+            ディレクトリ
+          </label>
+          <div className="field__row">
+            <input
+              id={cwdId}
+              className="field__input"
+              type="text"
+              value={cwd}
+              placeholder="~/GitHub/cc-park"
+              onChange={(event) => {
+                setCwd(event.target.value);
+              }}
+            />
+            <button
+              type="button"
+              className="button"
+              // 開いている間は押せなくして、選択ダイアログが重ならないようにする
+              disabled={isPicking}
+              onClick={() => {
+                void pickDirectory();
+              }}
+            >
+              選択…
+            </button>
+          </div>
+        </div>
         {errors.cwd === undefined ? null : <p className="field__error">{errors.cwd}</p>}
 
         <label className="field">

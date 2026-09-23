@@ -24,6 +24,8 @@ export const IPC_CHANNELS = {
   writeClipboard: 'clipboard:write',
   /** ウィンドウの最前面固定の切り替え */
   setAlwaysOnTop: 'window:alwaysOnTop',
+  /** ディレクトリ選択ダイアログの表示 */
+  pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
   listSchedules: 'schedule:list',
   /** 予約の追加・更新 */
@@ -55,6 +57,11 @@ export interface CcParkBridge {
   readonly writeClipboard: (text: string) => Promise<boolean>;
   /** ウィンドウを最前面に固定する / 解除する。適用後の状態を返す */
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;
+  /**
+   * ディレクトリ選択ダイアログを開く。選ばれた絶対パスを返し、取り消したら null。
+   * `defaultPath` は最初に開く場所（空文字なら OS に任せる）。
+   */
+  readonly pickDirectory: (defaultPath: string) => Promise<string | null>;
   readonly listSchedules: () => Promise<Schedule[]>;
   /** 予約を追加・更新し、更新後の一覧を返す */
   readonly saveSchedule: (schedule: Schedule) => Promise<Schedule[]>;

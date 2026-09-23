@@ -617,6 +617,23 @@ body {
   resize: vertical;
 }
 
+.field__row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.field__row .field__input {
+  flex: 1;
+  /* flex の既定 min-width:auto だと長いパスで入力欄がはみ出す */
+  min-width: 0;
+}
+
+.field__row .button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .field__error {
   margin: 3px 0 0;
   color: var(--ink-red);

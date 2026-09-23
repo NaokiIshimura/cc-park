@@ -24,18 +24,28 @@ const setup = (schedules: readonly Schedule[] = [schedule()]) => {
   const onDelete = vi.fn();
   const onToggle = vi.fn();
   const onClose = vi.fn();
+  const onPickDirectory = vi.fn(async () => '/Users/naoki/GitHub/other');
   const result = render(
     <SchedulePanel
       schedules={schedules}
       now={NOW}
       home={HOME}
+      onPickDirectory={onPickDirectory}
       onSave={onSave}
       onDelete={onDelete}
       onToggle={onToggle}
       onClose={onClose}
     />,
   );
-  return { ...result, onSave, onDelete, onToggle, onClose, user: userEvent.setup() };
+  return {
+    ...result,
+    onSave,
+    onDelete,
+    onToggle,
+    onClose,
+    onPickDirectory,
+    user: userEvent.setup(),
+  };
 };
 
 const pressEscape = () => {
@@ -95,6 +105,17 @@ describe('SchedulePanel', () => {
     const { user } = setup();
     await user.click(screen.getByRole('button', { name: '編集' }));
     expect(screen.getByText('予約を編集')).toBeDefined();
+  });
+
+  it('ダイアログのディレクトリ選択を取り次ぐ', async () => {
+    const { user, onPickDirectory, onSave } = setup([]);
+    await user.click(screen.getByRole('button', { name: '追加' }));
+    await user.click(screen.getByRole('button', { name: '選択…' }));
+    expect(onPickDirectory).toHaveBeenCalledTimes(1);
+
+    await user.type(screen.getByLabelText('プロンプト'), 'おはよう');
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    expect(onSave.mock.calls[0]?.[0]).toMatchObject({ cwd: '/Users/naoki/GitHub/other' });
   });
 
   it('削除は確認してから伝える', async () => {

@@ -161,6 +161,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
           schedules={schedules.schedules}
           now={now}
           home={config.home}
+          onPickDirectory={(defaultPath) => bridge.pickDirectory(defaultPath)}
           onSave={(schedule) => {
             void schedules.save(schedule);
           }}
