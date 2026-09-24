@@ -51,8 +51,9 @@ export interface TokenUsage {
 /**
  * 実行中のサブエージェント。
  *
- * `claude agents --json` はサブエージェントを出力しないため、transcript の
- * `tool_use` と `tool_result` の対応から導出する。
+ * `claude agents --json` はサブエージェントを出力しないため、transcript から導出する。
+ * 現行のサブエージェントは非同期に走り、`tool_result` は起動を受理しただけの通知なので、
+ * 完了は `<task-notification>` の到着で判断する。
  */
 export interface Subagent {
   /** 起動した `tool_use` の ID。完了判定のキーになる */
@@ -61,6 +62,13 @@ export interface Subagent {
   readonly type: string;
   /** 呼び出し時の短い説明。取れなければ空文字 */
   readonly description: string;
+  /**
+   * 起動時刻（epoch ms）。transcript の `timestamp` から取る。
+   *
+   * 取れなければ undefined。`NaN` を入れると経過時間の比較がすべて false になり、
+   * かえって一切表示されなくなるため、欠落は undefined で表す。
+   */
+  readonly startedAt: number | undefined;
 }
 
 /**

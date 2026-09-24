@@ -213,6 +213,7 @@ describe('AgentRow のミニキャラクター', () => {
     toolUseId,
     type: 'general-purpose',
     description: '調査',
+    startedAt: undefined,
   });
 
   /** 実行中のサブエージェントを持つセッションを作る。 */
@@ -269,8 +270,13 @@ describe('AgentRow のミニキャラクター', () => {
     expect(renderRow(withSubagents(0))).not.toContain(getMiniFrame(0));
   });
 
-  it('working 以外では出さない', () => {
-    expect(renderRow(withSubagents(2, 'waiting'))).not.toContain(miniLines(2)[0]);
+  it('待機中のセッションでも出す', () => {
+    // 非同期サブエージェントは親がユーザーへ応答を返したあとも走り続ける
+    expect(renderRow(withSubagents(2, 'waiting'))).toContain(miniLines(2)[0]);
+  });
+
+  it('終了済みのセッションでは出さない', () => {
+    expect(renderRow(withSubagents(2, 'done'))).not.toContain(miniLines(2)[0]);
   });
 
   it('showSubagents が false なら出さない', () => {
