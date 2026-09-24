@@ -82,7 +82,7 @@ const AgentRowComponent = ({
   const lastPrompt = showPrompt ? agent.meta?.lastPrompt : undefined;
   // バーは文字ではなく div で描く。`▰` / `▱` は SF Mono に無く桁が崩れるため
   const filled = tokens === undefined ? 0 : toFilledSegments(tokens.ratio);
-  const subagents = showSubagents ? visibleSubagents(agent) : [];
+  const subagents = showSubagents ? visibleSubagents(agent, now) : [];
 
   return (
     <li

@@ -186,6 +186,7 @@ describe('AgentRow のミニキャラクター', () => {
     toolUseId,
     type: 'general-purpose',
     description,
+    startedAt: undefined,
   });
 
   const withSubagents = (subagents: readonly Subagent[], state: Agent['state'] = 'working') =>
@@ -223,8 +224,14 @@ describe('AgentRow のミニキャラクター', () => {
     expect(minis(container)).toEqual([]);
   });
 
-  it('working 以外では出さない', () => {
+  it('待機中のセッションでも出す', () => {
+    // 非同期サブエージェントは親がユーザーへ応答を返したあとも走り続ける
     const { container } = setup({ agent: withSubagents(many(2), 'waiting') });
+    expect(minis(container)).toHaveLength(2);
+  });
+
+  it('終了済みのセッションでは出さない', () => {
+    const { container } = setup({ agent: withSubagents(many(2), 'done') });
     expect(minis(container)).toEqual([]);
   });
 

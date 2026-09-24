@@ -136,7 +136,7 @@ export const App = ({
   const perRow = miniPerRow(CHARACTER_WIDTH + 1 + infoWidth);
   const miniRows = subagents
     ? sorted.reduce(
-        (total, agent) => total + countMiniHeight(visibleSubagentCount(agent), perRow),
+        (total, agent) => total + countMiniHeight(visibleSubagentCount(agent, now), perRow),
         0,
       )
     : 0;

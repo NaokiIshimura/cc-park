@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,12 +7,13 @@ import {
   clearSessionMetaCache,
   fsTranscriptSource,
   HEAD_BYTES,
+  INITIAL_TAIL_BYTES,
   readSessionMeta,
-  TAIL_BYTES,
   type TranscriptSource,
 } from './readSessionMeta.js';
 
 const HOME = '/Users/naoki';
+const PATH = '/Users/naoki/.claude/projects/-Users-naoki-GitHub-app/session-1.jsonl';
 
 const agent = (overrides: Partial<Agent> = {}): Agent => ({
   sessionId: 'session-1',
@@ -31,55 +32,61 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
 const TRANSCRIPT = [
   JSON.stringify({ type: 'last-prompt', lastPrompt: 'テストを書いて' }),
   JSON.stringify({ type: 'assistant', message: { usage: { input_tokens: 100_000 } } }),
+  '',
 ].join('\n');
 
-/** stat / readTail / readHead を数えられるモック。 */
-const source = (chunk = TRANSCRIPT, stats = { mtimeMs: 1, size: 10 }, head = '') => {
-  const readTail = vi.fn(async () => chunk);
-  const readHead = vi.fn(async () => head);
-  const stat = vi.fn(async () => stats);
-  return { stat, readTail, readHead } satisfies TranscriptSource;
+const MODEL_LINE = `${JSON.stringify({
+  type: 'attachment',
+  attachment: { type: 'model', identity: { modelId: 'claude-opus-5[1m]' } },
+})}\n`;
+
+/**
+ * ファイル全体を持つ読み取り実装。
+ *
+ * 増分読みは「同じファイルの続きを読む」前提なので、末尾だけを返すモックでは
+ * 位置の扱いを検証できない。全体を持たせて `readRange` で切り出す。
+ */
+const source = (content = TRANSCRIPT, head = '') => {
+  const body = Buffer.from(content, 'utf8');
+  const full = head === '' ? body : Buffer.concat([Buffer.from(head, 'utf8'), body]);
+  const stat = vi.fn(async () => ({ mtimeMs: 1, size: full.length }));
+  const readRange = vi.fn(async (_path: string, start: number, bytes: number) =>
+    full.subarray(start, start + Math.max(bytes, 0)),
+  );
+  return { stat, readRange } satisfies TranscriptSource;
 };
 
 beforeEach(clearSessionMetaCache);
 
 describe('readSessionMeta', () => {
-  it('transcript の末尾から付加情報を読む', async () => {
+  it('transcript から付加情報を読む', async () => {
     const meta = await readSessionMeta(agent(), { home: HOME, source: source() });
     expect(meta?.lastPrompt).toBe('テストを書いて');
     expect(meta?.tokens?.used).toBe(100_000);
   });
 
-  it('末尾だけを読む', async () => {
+  it('初回は末尾から読む', async () => {
     const fake = source();
     await readSessionMeta(agent(), { home: HOME, source: fake });
-    expect(fake.readTail).toHaveBeenCalledWith(
-      '/Users/naoki/.claude/projects/-Users-naoki-GitHub-app/session-1.jsonl',
-      TAIL_BYTES,
-    );
+    expect(fake.readRange).toHaveBeenCalledWith(PATH, 0, Buffer.byteLength(TRANSCRIPT));
   });
 
-  it('末尾読みに収まるサイズなら先頭は読まない', async () => {
+  it('初回読みに収まるサイズなら先頭は読まない', async () => {
     const fake = source();
     await readSessionMeta(agent(), { home: HOME, source: fake });
-    expect(fake.readHead).not.toHaveBeenCalled();
+    expect(fake.readRange).toHaveBeenCalledTimes(1);
   });
 
-  it('末尾読みに収まらないサイズなら先頭も読む', async () => {
-    const fake = source(TRANSCRIPT, { mtimeMs: 1, size: TAIL_BYTES + 1 });
+  it('初回読みに収まらないサイズなら先頭も読む', async () => {
+    const padding = `${'{}'.padEnd(INITIAL_TAIL_BYTES, ' ')}\n`;
+    const fake = source(padding + TRANSCRIPT, MODEL_LINE);
     await readSessionMeta(agent(), { home: HOME, source: fake });
-    expect(fake.readHead).toHaveBeenCalledWith(
-      '/Users/naoki/.claude/projects/-Users-naoki-GitHub-app/session-1.jsonl',
-      HEAD_BYTES,
-    );
+    expect(fake.readRange).toHaveBeenCalledWith(PATH, 0, HEAD_BYTES);
   });
 
   it('先頭にあるモデル ID からコンテキスト上限を決める', async () => {
-    const head = JSON.stringify({
-      type: 'attachment',
-      attachment: { type: 'model', identity: { modelId: 'claude-opus-5[1m]' } },
-    });
-    const fake = source(TRANSCRIPT, { mtimeMs: 1, size: TAIL_BYTES + 1 }, head);
+    const padding = `${'{}'.padEnd(INITIAL_TAIL_BYTES, ' ')}\n`;
+    const fake = source(padding + TRANSCRIPT, MODEL_LINE);
     const meta = await readSessionMeta(agent(), { home: HOME, source: fake });
     expect(meta?.tokens?.limit).toBe(1_000_000);
     expect(meta?.tokens?.ratio).toBeCloseTo(0.1);
@@ -96,8 +103,7 @@ describe('readSessionMeta', () => {
       stat: vi.fn(async () => {
         throw new Error('ENOENT');
       }),
-      readTail: vi.fn(async () => ''),
-      readHead: vi.fn(async () => ''),
+      readRange: vi.fn(async () => Buffer.alloc(0)),
     };
     expect(await readSessionMeta(agent(), { home: HOME, source: fake })).toBeUndefined();
   });
@@ -105,10 +111,9 @@ describe('readSessionMeta', () => {
   it('読み取りに失敗しても undefined を返す', async () => {
     const fake: TranscriptSource = {
       stat: vi.fn(async () => ({ mtimeMs: 1, size: 10 })),
-      readTail: vi.fn(async () => {
+      readRange: vi.fn(async () => {
         throw new Error('EACCES');
       }),
-      readHead: vi.fn(async () => ''),
     };
     expect(await readSessionMeta(agent(), { home: HOME, source: fake })).toBeUndefined();
   });
@@ -123,28 +128,123 @@ describe('readSessionMeta', () => {
   });
 });
 
+/** 追記していけるモック。増分読みの検証に使う。 */
+const growingSource = (initial = '') => {
+  let full = Buffer.from(initial, 'utf8');
+  let mtimeMs = 1;
+  const stat = vi.fn(async () => ({ mtimeMs, size: full.length }));
+  const readRange = vi.fn(async (_path: string, start: number, bytes: number) =>
+    full.subarray(start, start + Math.max(bytes, 0)),
+  );
+  const append = (text: string | Buffer): void => {
+    full = Buffer.concat([full, typeof text === 'string' ? Buffer.from(text, 'utf8') : text]);
+    mtimeMs += 1;
+  };
+  const truncate = (text: string): void => {
+    full = Buffer.from(text, 'utf8');
+    mtimeMs += 1;
+  };
+  return { source: { stat, readRange } satisfies TranscriptSource, append, truncate, readRange };
+};
+
+describe('readSessionMeta の増分読み', () => {
+  const spawn = (id: string) =>
+    `${JSON.stringify({
+      type: 'assistant',
+      message: { content: [{ type: 'tool_use', id, name: 'Agent', input: {} }] },
+    })}\n`;
+
+  const notification = (id: string) =>
+    `${JSON.stringify({
+      type: 'queue-operation',
+      operation: 'enqueue',
+      content: `<task-notification>\n<tool-use-id>${id}</tool-use-id>\n`,
+    })}\n`;
+
+  it('2 回目以降は前回の続きだけを読む', async () => {
+    const fake = growingSource(TRANSCRIPT);
+    await readSessionMeta(agent(), { home: HOME, source: fake.source });
+    const consumed = Buffer.byteLength(TRANSCRIPT);
+
+    fake.append(spawn('toolu_1'));
+    await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    expect(fake.readRange).toHaveBeenLastCalledWith(PATH, consumed, spawn('toolu_1').length);
+  });
+
+  it('初回の窓から押し出されてもサブエージェントを保持し続ける', async () => {
+    const fake = growingSource(spawn('toolu_1'));
+    await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    // 起動行が末尾から遠ざかっても消えないことが、増分読みの要点
+    fake.append(`${'{}'.padEnd(INITIAL_TAIL_BYTES * 2, ' ')}\n`);
+    const meta = await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    expect(meta?.subagents.map((item) => item.toolUseId)).toEqual(['toolu_1']);
+  });
+
+  it('後から来た完了通知で実行中から外す', async () => {
+    const fake = growingSource(spawn('toolu_1'));
+    await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    fake.append(notification('toolu_1'));
+    const meta = await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    expect(meta?.subagents).toEqual([]);
+  });
+
+  it('行の途中で終わる増分は次回へ持ち越す', async () => {
+    const fake = growingSource(TRANSCRIPT);
+    await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    // 日本語を含む行を途中で割って追記する。文字位置で切ると後半が壊れる
+    const bytes = Buffer.from(
+      `${JSON.stringify({ type: 'last-prompt', lastPrompt: '増分の途中' })}\n`,
+      'utf8',
+    );
+    const half = Math.floor(bytes.length / 2);
+
+    // 行が完結するまでは前の値のまま
+    fake.append(bytes.subarray(0, half));
+    expect((await readSessionMeta(agent(), { home: HOME, source: fake.source }))?.lastPrompt).toBe(
+      'テストを書いて',
+    );
+
+    // 残りが届いて行が揃えば読める
+    fake.append(bytes.subarray(half));
+    expect((await readSessionMeta(agent(), { home: HOME, source: fake.source }))?.lastPrompt).toBe(
+      '増分の途中',
+    );
+  });
+
+  it('読んだ位置より縮んでいたら末尾から読み直す', async () => {
+    const fake = growingSource(TRANSCRIPT + spawn('toolu_1'));
+    await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    fake.truncate(`${JSON.stringify({ type: 'last-prompt', lastPrompt: '別物' })}\n`);
+    const meta = await readSessionMeta(agent(), { home: HOME, source: fake.source });
+
+    expect(meta?.subagents).toEqual([]);
+    expect(meta?.lastPrompt).toBe('別物');
+  });
+});
+
 describe('readSessionMeta のキャッシュ', () => {
   it('mtime と size が同じなら読み直さない', async () => {
     const fake = source();
     await readSessionMeta(agent(), { home: HOME, source: fake });
     await readSessionMeta(agent(), { home: HOME, source: fake });
-    expect(fake.readTail).toHaveBeenCalledTimes(1);
+    expect(fake.readRange).toHaveBeenCalledTimes(1);
   });
 
   it('更新されていれば読み直す', async () => {
-    const chunk = JSON.stringify({ type: 'last-prompt', lastPrompt: '古い' });
-    let stats = { mtimeMs: 1, size: 10 };
-    const fake: TranscriptSource = {
-      stat: vi.fn(async () => stats),
-      readTail: vi.fn(async () => chunk),
-      readHead: vi.fn(async () => ''),
-    };
+    const fake = growingSource(TRANSCRIPT);
+    await readSessionMeta(agent(), { home: HOME, source: fake.source });
+    fake.append(`${JSON.stringify({ type: 'last-prompt', lastPrompt: '新しい' })}\n`);
+    const meta = await readSessionMeta(agent(), { home: HOME, source: fake.source });
 
-    await readSessionMeta(agent(), { home: HOME, source: fake });
-    stats = { mtimeMs: 2, size: 20 };
-    await readSessionMeta(agent(), { home: HOME, source: fake });
-
-    expect(fake.readTail).toHaveBeenCalledTimes(2);
+    expect(fake.readRange).toHaveBeenCalledTimes(2);
+    expect(meta?.lastPrompt).toBe('新しい');
   });
 
   it('clearSessionMetaCache でキャッシュを捨てられる', async () => {
@@ -152,7 +252,7 @@ describe('readSessionMeta のキャッシュ', () => {
     await readSessionMeta(agent(), { home: HOME, source: fake });
     clearSessionMetaCache();
     await readSessionMeta(agent(), { home: HOME, source: fake });
-    expect(fake.readTail).toHaveBeenCalledTimes(2);
+    expect(fake.readRange).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -178,37 +278,37 @@ describe('fsTranscriptSource', () => {
     expect(stats.mtimeMs).toBeGreaterThan(0);
   });
 
-  it('ファイル全体より大きいバイト数を指定しても全文を読む', async () => {
-    const path = await writeTemp('hello');
-    expect(await fsTranscriptSource.readTail(path, TAIL_BYTES)).toBe('hello');
-  });
-
-  it('指定したバイト数ぶんだけ末尾を読む', async () => {
+  it('指定した位置から指定したバイト数を読む', async () => {
     const path = await writeTemp('0123456789');
-    expect(await fsTranscriptSource.readTail(path, 4)).toBe('6789');
+    expect((await fsTranscriptSource.readRange(path, 6, 4)).toString('utf8')).toBe('6789');
   });
 
-  it('指定したバイト数ぶんだけ先頭を読む', async () => {
-    const path = await writeTemp('0123456789');
-    expect(await fsTranscriptSource.readHead(path, 4)).toBe('0123');
-  });
-
-  it('ファイル全体より大きいバイト数でも先頭読みは全文を返す', async () => {
+  it('ファイル末尾を超える長さでも読める範囲だけ返す', async () => {
     const path = await writeTemp('hello');
-    expect(await fsTranscriptSource.readHead(path, HEAD_BYTES)).toBe('hello');
+    expect((await fsTranscriptSource.readRange(path, 0, HEAD_BYTES)).toString('utf8')).toBe('hello');
+  });
+
+  it('読む長さが 0 なら空を返す', async () => {
+    const path = await writeTemp('hello');
+    expect((await fsTranscriptSource.readRange(path, 5, 0)).length).toBe(0);
   });
 
   it('実ファイルから付加情報を読み取れる', async () => {
     const path = await writeTemp(TRANSCRIPT);
-    const meta = await readSessionMeta(agent(), {
-      home: HOME,
-      // 組み立てられるパスは実在しないので、実ファイルへ読み替えて実装を通す
-      source: {
-        stat: async () => fsTranscriptSource.stat(path),
-        readTail: async (_path, bytes) => fsTranscriptSource.readTail(path, bytes),
-        readHead: async (_path, bytes) => fsTranscriptSource.readHead(path, bytes),
-      },
-    });
-    expect(meta?.lastPrompt).toBe('テストを書いて');
+    // 組み立てられるパスは実在しないので、実ファイルへ読み替えて実装を通す
+    const redirect: TranscriptSource = {
+      stat: async () => fsTranscriptSource.stat(path),
+      readRange: async (_path, start, bytes) => fsTranscriptSource.readRange(path, start, bytes),
+    };
+
+    expect((await readSessionMeta(agent(), { home: HOME, source: redirect }))?.lastPrompt).toBe(
+      'テストを書いて',
+    );
+
+    // 追記したぶんだけを読み直せる
+    await appendFile(path, `${JSON.stringify({ type: 'last-prompt', lastPrompt: '追記' })}\n`);
+    expect((await readSessionMeta(agent(), { home: HOME, source: redirect }))?.lastPrompt).toBe(
+      '追記',
+    );
   });
 });

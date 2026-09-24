@@ -87,7 +87,7 @@ const AgentRowComponent = ({
 
   const tokens = showTokens ? agent.meta?.tokens : undefined;
   const lastPrompt = showPrompt ? agent.meta?.lastPrompt : undefined;
-  const subagents = showSubagents ? visibleSubagentCount(agent) : 0;
+  const subagents = showSubagents ? visibleSubagentCount(agent, now) : 0;
   const miniRows = buildMiniRows(subagents, frame, miniPerRow(miniWidth(infoWidth)));
 
   // 情報カラムは AA の 3 行に対して下揃えなので、カーソルも名前の行まで下げて揃える
