@@ -95,11 +95,38 @@ const SUBAGENT_TOOL_NAMES: ReadonlySet<string> = new Set(['Agent', 'Task']);
  */
 const ASYNC_LAUNCH_MARKER = 'Async agent launched successfully';
 
+/** 受理通知から、完了通知の照合に使う `agentId` を取り出す。 */
+const ASYNC_LAUNCH_AGENT_ID = /agentId: ([A-Za-z0-9]+)/;
+
 /** 完了通知の目印。正規表現をかける前に、この語を含む行だけに絞る。 */
 const TASK_NOTIFICATION_MARKER = '<task-notification>';
 
-/** 完了通知から起動側の `tool_use` ID を取り出す。 */
+/**
+ * 途中経過の通知を見分ける印。
+ *
+ * サブエージェントが自分のバックグラウンド処理を待ってターンを終えるたびに、
+ * `status=completed` の通知が届く。完了とみなすと、実際には走り続けているのに消える
+ * （実測では稼働 106 秒に対して 15 秒で消えていた）。`<status>` では区別できないので本文で見る。
+ */
+const INTERIM_NOTIFICATION_MARKER = 'has not reported yet';
+
+/** 完了通知から起動側の `tool_use` ID を取り出す。途中経過の 2 回目以降には付かない。 */
 const TASK_NOTIFICATION_TOOL_USE_ID = /<tool-use-id>([^<]+)<\/tool-use-id>/g;
+
+/** 完了通知から `agentId` を取り出す。どの通知にも付く。 */
+const TASK_NOTIFICATION_TASK_ID = /<task-id>([^<]+)<\/task-id>/g;
+
+/**
+ * 最終報告の目印。
+ *
+ * バックグラウンド処理を待っていたサブエージェントの最終報告は、`<task-notification>` ではなく
+ * `<agent-message from="<agentId>">` として届く。サブエージェントは途中で親へ
+ * メッセージを送ることもあるため、hand-back の枠を持つものだけを完了とみなす。
+ */
+const HANDBACK_MARKER = '[Subagent hand-back]';
+
+/** 最終報告から送り主の `agentId` を取り出す。 */
+const HANDBACK_AGENT_ID = /<agent-message from="([^"]+)">/g;
 
 /** 表示が崩れないよう、改行・タブを空白へ潰して 1 行にする。 */
 export const toSingleLine = (text: string): string => text.replace(/\s+/g, ' ').trim();
@@ -108,7 +135,7 @@ export const toSingleLine = (text: string): string => text.replace(/\s+/g, ' ').
  * 走査の累積結果。呼び出し側が保持して次の増分へ引き渡す。
  *
  * 単一の値は後から現れたもので上書きし、サブエージェントは完了を検出した時点で外す。
- * よって `started` に残るのは実行中のぶんだけで、走査を続けても際限なく増えることはない。
+ * よって `started` と `agentIds` に残るのは実行中のぶんだけで、走査を続けても際限なく増えることはない。
  */
 export interface TranscriptScan {
   readonly lastPrompt: string | undefined;
@@ -116,6 +143,8 @@ export interface TranscriptScan {
   readonly modelId: string | undefined;
   /** まだ完了していない起動。`tool_use` ID をキーに、起動した順で並ぶ */
   readonly started: ReadonlyMap<string, Subagent>;
+  /** 実行中のものの `agentId` から `tool_use` ID への対応。完了通知の照合に使う */
+  readonly agentIds: ReadonlyMap<string, string>;
 }
 
 /** 走査中の書き換え用。`TranscriptScan` と同じ項目を可変で持つ。 */
@@ -124,6 +153,7 @@ interface MutableScan {
   usage: RawUsage | undefined;
   modelId: string | undefined;
   readonly started: Map<string, Subagent>;
+  readonly agentIds: Map<string, string>;
 }
 
 /** 何も読んでいない状態の走査結果。 */
@@ -132,6 +162,7 @@ export const emptyScan = (): TranscriptScan => ({
   usage: undefined,
   modelId: undefined,
   started: new Map(),
+  agentIds: new Map(),
 });
 
 /** ISO 文字列を epoch ms へ変換する。解釈できなければ undefined。 */
@@ -143,35 +174,71 @@ const toEpochMs = (value: unknown): number | undefined => {
   return Number.isNaN(ms) ? undefined : ms;
 };
 
-/** `tool_result` が非同期サブエージェントの起動を受理しただけのものか。 */
-const isAsyncLaunchReceipt = (content: unknown): boolean => {
+/** `tool_result` の本文を 1 つの文字列にまとめる。本文が無ければ undefined。 */
+const toResultText = (content: unknown): string | undefined => {
   if (typeof content === 'string') {
-    return content.includes(ASYNC_LAUNCH_MARKER);
+    return content;
   }
   if (!Array.isArray(content)) {
-    return false;
+    return undefined;
   }
-  return content.some((part) => {
-    const text = (part as { readonly text?: unknown } | null)?.text;
-    return typeof text === 'string' && text.includes(ASYNC_LAUNCH_MARKER);
-  });
+  return content
+    .map((part) => (part as { readonly text?: unknown } | null)?.text)
+    .filter((text): text is string => typeof text === 'string')
+    .join('\n');
+};
+
+/** 実行中から外す。`agentId` の対応も一緒に消して、走査結果が増え続けないようにする。 */
+const finish = (toolUseId: string, scan: MutableScan): void => {
+  scan.started.delete(toolUseId);
+  for (const [agentId, mapped] of scan.agentIds) {
+    if (mapped === toolUseId) {
+      scan.agentIds.delete(agentId);
+    }
+  }
+};
+
+/** `agentId` で実行中から外す。起動を拾っていない ID は空振りするだけ。 */
+const finishByAgentId = (agentId: string, scan: MutableScan): void => {
+  const toolUseId = scan.agentIds.get(agentId);
+  if (toolUseId !== undefined) {
+    finish(toolUseId, scan);
+  }
 };
 
 /**
- * 完了通知から `tool_use` ID を拾い、実行中から外す。
+ * 完了通知・最終報告を拾い、実行中から外す。
  *
  * 通知はバックグラウンドの Bash でも出るが、起動を拾っていない ID は
  * 削除が空振りするだけなので、種別を見分ける必要はない。
  */
 const scanNotification = (content: unknown, scan: MutableScan): void => {
-  if (typeof content !== 'string' || !content.includes(TASK_NOTIFICATION_MARKER)) {
+  if (typeof content !== 'string') {
+    return;
+  }
+
+  if (content.includes(HANDBACK_MARKER)) {
+    for (const match of content.matchAll(HANDBACK_AGENT_ID)) {
+      if (match[1] !== undefined) {
+        finishByAgentId(match[1], scan);
+      }
+    }
+    return;
+  }
+
+  // 途中経過はまだ走っているので外さない
+  if (!content.includes(TASK_NOTIFICATION_MARKER) || content.includes(INTERIM_NOTIFICATION_MARKER)) {
     return;
   }
 
   for (const match of content.matchAll(TASK_NOTIFICATION_TOOL_USE_ID)) {
-    const toolUseId = match[1];
-    if (toolUseId !== undefined) {
-      scan.started.delete(toolUseId);
+    if (match[1] !== undefined) {
+      finish(match[1], scan);
+    }
+  }
+  for (const match of content.matchAll(TASK_NOTIFICATION_TASK_ID)) {
+    if (match[1] !== undefined) {
+      finishByAgentId(match[1], scan);
     }
   }
 };
@@ -188,9 +255,16 @@ const scanContent = (content: unknown, startedAt: number | undefined, scan: Muta
     }
 
     if (block.type === 'tool_result' && typeof block.tool_use_id === 'string') {
+      const text = toResultText(block.content);
       // 非同期起動の受理は完了ではない。同期実行だった旧版の結果だけを完了として扱う
-      if (!isAsyncLaunchReceipt(block.content)) {
-        scan.started.delete(block.tool_use_id);
+      if (text === undefined || !text.includes(ASYNC_LAUNCH_MARKER)) {
+        finish(block.tool_use_id, scan);
+        continue;
+      }
+      // 2 回目以降の通知と最終報告は agentId でしか照合できないので、対応を覚えておく
+      const agentId = ASYNC_LAUNCH_AGENT_ID.exec(text)?.[1];
+      if (agentId !== undefined && scan.started.has(block.tool_use_id)) {
+        scan.agentIds.set(agentId, block.tool_use_id);
       }
       continue;
     }
@@ -287,6 +361,7 @@ export const extendScan = (previous: TranscriptScan, chunk: string): TranscriptS
     usage: previous.usage,
     modelId: previous.modelId,
     started: new Map(previous.started),
+    agentIds: new Map(previous.agentIds),
   };
 
   for (const line of chunk.split('\n')) {
