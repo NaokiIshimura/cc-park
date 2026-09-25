@@ -29,6 +29,19 @@ node dist/cli.js --once --all   # TUI を 1 回だけ描画（実描画の確認
 既に公開済みならリリースは作らず、実行ログの artifact にだけ残す。
 **配布したいときは `package.json` の `version` を上げてからマージする。**
 
+### 重要: PR を作成するときは `version` を上げる
+
+`version` を上げ忘れると、マージしてもリリースが作られず、修正が配布物に届かない。
+PR を作成するときは、変更内容に合わせて `package.json` の `version` を上げ、同じ PR に含めること
+（`package-lock.json` の `version` も揃える。`npm version <patch|minor> --no-git-tag-version` を使う）。
+
+| 変更 | 上げる桁 |
+| --- | --- |
+| 不具合の修正・見た目の調整 | patch（`0.1.0` → `0.1.1`） |
+| 機能の追加・挙動の変更 | minor（`0.1.0` → `0.2.0`） |
+
+同じブランチで既に上げてあれば、重ねて上げない（`main` の `version` と比べて判断する）。
+
 ## キャラクター（AA）を変更するときの決まり
 
 AA の定義は `src/shared/characters.ts` の 1 箇所だけ。TUI と GUI が同じ定義を共有する。

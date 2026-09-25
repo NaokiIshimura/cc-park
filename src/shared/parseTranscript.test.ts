@@ -40,10 +40,46 @@ const toolResult = (toolUseId: string, content?: unknown) => ({
 });
 
 /** 非同期サブエージェントの起動を受理しただけの user 行。 */
-const asyncReceipt = (toolUseId: string) =>
+const asyncReceipt = (toolUseId: string, agentId = 'a11cf0b4aefc68100') =>
   toolResult(toolUseId, [
-    { type: 'text', text: 'Async agent launched successfully. (This tool result is internal…)' },
+    {
+      type: 'text',
+      text: `Async agent launched successfully. (This tool result is internal…)\nagentId: ${agentId} (internal ID - do not mention to user.)`,
+    },
   ]);
+
+/**
+ * サブエージェントがバックグラウンド処理を待ってターンを終えたときの途中経過の通知。
+ * 1 回目だけ `<tool-use-id>` が付き、2 回目以降は `<task-id>` だけになる。
+ */
+const interimNotification = (agentId: string, toolUseId?: string) => ({
+  type: 'queue-operation',
+  operation: 'enqueue',
+  content: [
+    '<task-notification>',
+    `<task-id>${agentId}</task-id>`,
+    ...(toolUseId === undefined ? [] : [`<tool-use-id>${toolUseId}</tool-use-id>`]),
+    '<status>completed</status>',
+    '<note>This agent stopped with background work of its own still running. … the result below may be interim.</note>',
+    '<result>This agent has not reported yet: it is waiting on its own background work and will deliver its report through SubagentHandback when that finishes.',
+    '</result>',
+    '</task-notification>',
+  ].join('\n'),
+});
+
+/** 途中経過の後の最終報告。`<task-notification>` ではなく `<agent-message>` で届く。 */
+const handback = (agentId: string) => ({
+  type: 'queue-operation',
+  operation: 'enqueue',
+  content: `<agent-message from="${agentId}">\n[Subagent hand-back] The text below is the final report of a subagent …\n  done\n</agent-message>`,
+});
+
+/** `task-id` だけで照合する、途中経過でない完了通知。 */
+const notificationByTaskId = (agentId: string) => ({
+  type: 'queue-operation',
+  operation: 'enqueue',
+  content: `<task-notification>\n<task-id>${agentId}</task-id>\n<status>completed</status>\n</task-notification>`,
+});
 
 /** 完了通知を載せた queue-operation 行。 */
 const notification = (toolUseId: string) => ({
@@ -303,6 +339,93 @@ describe('実行中サブエージェント', () => {
     expect(parse(chunk).subagents).toEqual([]);
   });
 
+  it('途中経過の通知では外さない', () => {
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(asyncReceipt('toolu_1', 'agent1')),
+      line(interimNotification('agent1', 'toolu_1')),
+      line(interimNotification('agent1')),
+    ].join('\n');
+    expect(parse(chunk).subagents).toHaveLength(1);
+  });
+
+  it('途中経過の後の最終報告で実行中から外す', () => {
+    // 実測した順序: 受理 → 途中経過（tool-use-id 付き）→ 途中経過（task-id のみ）→ 最終報告
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(asyncReceipt('toolu_1', 'agent1')),
+      line(interimNotification('agent1', 'toolu_1')),
+      line(interimNotification('agent1')),
+      line(handback('agent1')),
+    ].join('\n');
+    expect(parse(chunk).subagents).toEqual([]);
+  });
+
+  it('queued_command の最終報告でも実行中から外す', () => {
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(asyncReceipt('toolu_1', 'agent1')),
+      line({ type: 'attachment', attachment: { type: 'queued_command', prompt: handback('agent1').content } }),
+    ].join('\n');
+    expect(parse(chunk).subagents).toEqual([]);
+  });
+
+  it('hand-back の枠を持たない agent-message では外さない', () => {
+    // サブエージェントは途中で親へメッセージを送ることもある
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(asyncReceipt('toolu_1', 'agent1')),
+      line({
+        type: 'queue-operation',
+        operation: 'enqueue',
+        content: '<agent-message from="agent1">\n確認したいことがあります\n</agent-message>',
+      }),
+    ].join('\n');
+    expect(parse(chunk).subagents).toHaveLength(1);
+  });
+
+  it('別のサブエージェントの最終報告では外さない', () => {
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(asyncReceipt('toolu_1', 'agent1')),
+      line(handback('agent2')),
+    ].join('\n');
+    expect(parse(chunk).subagents).toHaveLength(1);
+  });
+
+  it('task-id だけの完了通知でも agentId で照合して外す', () => {
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(asyncReceipt('toolu_1', 'agent1')),
+      line(notificationByTaskId('agent1')),
+    ].join('\n');
+    expect(parse(chunk).subagents).toEqual([]);
+  });
+
+  it('起動を拾っていない受理通知の agentId は覚えない', () => {
+    const scan = extendScan(emptyScan(), line(asyncReceipt('toolu_1', 'agent1')));
+    expect(scan.agentIds.size).toBe(0);
+  });
+
+  it('agentId を含まない受理通知でも壊れない', () => {
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(toolResult('toolu_1', 'Async agent launched successfully.')),
+    ].join('\n');
+    const scan = extendScan(emptyScan(), chunk);
+    expect(toSessionMeta(scan).subagents).toHaveLength(1);
+    expect(scan.agentIds.size).toBe(0);
+  });
+
+  it('完了したら agentId の対応も消す', () => {
+    const chunk = [
+      line(spawn('toolu_1')),
+      line(asyncReceipt('toolu_1', 'agent1')),
+      line(notification('toolu_1')),
+    ].join('\n');
+    expect(extendScan(emptyScan(), chunk).agentIds.size).toBe(0);
+  });
+
   it('文字列として通知を含むだけの行は拾わない', () => {
     const echoed = line({ type: 'user', message: { content: line(notification('toolu_1')) } });
     const chunk = [line(spawn('toolu_1')), echoed].join('\n');
@@ -341,6 +464,18 @@ describe('extendScan の累積', () => {
     const second = extendScan(first, line(notification('toolu_1')));
 
     expect(toSessionMeta(second).subagents).toEqual([]);
+  });
+
+  it('前回の増分で覚えた agentId で最終報告を照合する', () => {
+    const first = extendScan(
+      emptyScan(),
+      [line(spawn('toolu_1')), line(asyncReceipt('toolu_1', 'agent1'))].join('\n'),
+    );
+    const second = extendScan(first, line(interimNotification('agent1', 'toolu_1')));
+    const third = extendScan(second, line(handback('agent1')));
+
+    expect(toSessionMeta(second).subagents).toHaveLength(1);
+    expect(toSessionMeta(third).subagents).toEqual([]);
   });
 
   it('元の走査結果は書き換えない', () => {

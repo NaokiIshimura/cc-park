@@ -53,7 +53,8 @@ export interface TokenUsage {
  *
  * `claude agents --json` はサブエージェントを出力しないため、transcript から導出する。
  * 現行のサブエージェントは非同期に走り、`tool_result` は起動を受理しただけの通知なので、
- * 完了は `<task-notification>` の到着で判断する。
+ * 完了は最終報告（途中経過でない `<task-notification>` か、`<agent-message>` の hand-back）の
+ * 到着で判断する。
  */
 export interface Subagent {
   /** 起動した `tool_use` の ID。完了判定のキーになる */
