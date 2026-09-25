@@ -1,6 +1,6 @@
 {
   "name": "cc-park",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "マシン上で稼働中の Claude Code セッションをキャラクターで一覧表示するターミナル TUI / デスクトップ GUI",
   "type": "module",
   "main": "dist/gui/main.js",
@@ -22,6 +22,7 @@
     "gui": "ELECTRON_RUN_AS_NODE= electron dist/gui/main.js",
     "gui:dev": "npm run build && npm run gui",
     "gui:package": "npm run build && electron-packager . --name=cc-park --icon=assets/icon.icns --app-bundle-id=io.github.naokiishimura.cc-park --out=release --overwrite --ignore=\"^/(?!dist($|/)|package\\.json$)\"",
+    "postgui:package": "for app in release/cc-park-darwin-*/cc-park.app; do codesign --force --deep --sign - \"$app\" && codesign --verify --deep --strict \"$app\" || exit 1; done",
     "icon:build": "node --experimental-strip-types scripts/generate-icon.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.gui.json"

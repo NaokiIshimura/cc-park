@@ -62,11 +62,8 @@ jobs:
         run: |
           mkdir -p artifacts
           for arch in arm64 x64; do
+            # ad-hoc での署名し直しと検証は postgui:package が行う
             npm run gui:package -- --arch="${arch}"
-            # packager が Info.plist と実行ファイル名を書き換えるため署名が外れる。
-            # 配布用の証明書は持っていないので ad-hoc で署名し直す
-            codesign --force --deep --sign - "release/cc-park-darwin-${arch}/cc-park.app"
-            codesign --verify --deep --strict "release/cc-park-darwin-${arch}/cc-park.app"
             # .app はディレクトリなので、シンボリックリンクと権限を保てる ditto で固める
             ditto -c -k --sequesterRsrc --keepParent \
               "release/cc-park-darwin-${arch}/cc-park.app" \

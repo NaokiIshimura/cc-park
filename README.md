@@ -361,6 +361,10 @@ GUI では加えて次の操作ができます。
 npm run gui:package   # → release/cc-park-<platform>-<arch>/cc-park.app
 ```
 
+packager が Info.plist と実行ファイル名を書き換えるため、そのままだと署名が壊れます。
+署名が壊れた `.app` は macOS の通知を出せない（エラーも出ずに捨てられる）ので、
+`postgui:package` で `.app` 全体を ad-hoc で署名し直し、`codesign --verify` で検証しています。
+
 macOS のメニューバーや Dock に出るアプリ名は、実行中の `.app` バンドルの `CFBundleName` で決まります。
 `npm run gui` は `node_modules` の `Electron.app` をそのまま起動するため、開発中は **`Electron`** と表示されます。
 `cc-park` と表示させたい場合はパッケージ化したものを起動してください（アイコンは開発中も揃えてあります）。
