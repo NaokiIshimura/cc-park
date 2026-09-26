@@ -13,6 +13,7 @@ const STATE_MAP: Readonly<Record<string, CharacterState>> = {
   idle: 'waiting',
   // background
   running: 'working',
+  working: 'working',
   queued: 'working',
   blocked: 'blocked',
   done: 'done',
@@ -44,8 +45,13 @@ export const normalizeAgent = (raw: RawAgent): Agent | null => {
   }
 
   // kind で分岐せず、存在する方のキーを採用する（仕様変更への耐性を持たせる）。
-  // background は status（waiting）と state（blocked）の両方を持つので、より詳しい state を優先する
-  const rawState = raw.state ?? raw.status ?? '';
+  // background は status（waiting）と state（blocked）の両方を持つので、より詳しい state を優先する。
+  // state が未知の値でも status が分かれば、そちらで表示する
+  const candidates = [raw.state, raw.status].filter(
+    (value): value is string => typeof value === 'string' && value !== '',
+  );
+  const rawState =
+    candidates.find((value) => toCharacterState(value) !== 'unknown') ?? candidates[0] ?? '';
 
   return {
     sessionId: raw.sessionId,

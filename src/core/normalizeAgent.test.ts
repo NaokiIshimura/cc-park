@@ -6,6 +6,7 @@ describe('toCharacterState', () => {
   it.each([
     ['busy', 'working'],
     ['running', 'working'],
+    ['working', 'working'],
     ['queued', 'working'],
     ['idle', 'waiting'],
     ['blocked', 'blocked'],
@@ -76,6 +77,24 @@ describe('normalizeAgent', () => {
     const agent = normalizeAgent({ ...background, status: 'waiting', state: 'blocked' });
     expect(agent?.state).toBe('blocked');
     expect(agent?.rawState).toBe('blocked');
+  });
+
+  it('background の作業中（status: busy / state: working）は working になる', () => {
+    const agent = normalizeAgent({ ...background, status: 'busy', state: 'working' });
+    expect(agent?.state).toBe('working');
+    expect(agent?.rawState).toBe('working');
+  });
+
+  it('state が未知の値なら status で判断する', () => {
+    const agent = normalizeAgent({ ...background, status: 'busy', state: 'hibernating' });
+    expect(agent?.state).toBe('working');
+    expect(agent?.rawState).toBe('busy');
+  });
+
+  it('status と state がどちらも未知なら state を rawState に残す', () => {
+    const agent = normalizeAgent({ ...background, status: 'napping', state: 'hibernating' });
+    expect(agent?.state).toBe('unknown');
+    expect(agent?.rawState).toBe('hibernating');
   });
 
   it('未知の状態でも rawState を保持する', () => {
