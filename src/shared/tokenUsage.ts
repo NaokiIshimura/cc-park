@@ -32,13 +32,24 @@ export const CONTEXT_LIMIT_TIERS: readonly number[] = [200_000, MAX_CONTEXT_LIMI
 const LONG_CONTEXT_SUFFIX = '[1m]';
 
 /**
+ * `[1m]` を付けなくても 1M コンテキストで動くモデル。
+ *
+ * これらは `identity.modelId` にも接尾辞が付かないため、ID そのもので判別する。
+ * 登録が漏れると 200k 扱いになり、Claude Code 側の表示（14%）と食い違う（72%）。
+ */
+const NATIVE_LONG_CONTEXT_MODEL_IDS: ReadonlySet<string> = new Set(['claude-opus-5-5']);
+
+/**
  * モデル ID からコンテキスト上限を引く。判断できなければ null。
  *
- * `[1m]` が付かないモデルを 200k と断定はしない。上限の異なるモデルが増えたときに
+ * 1M と分かるもの以外を 200k と断定はしない。上限の異なるモデルが増えたときに
  * 黙って誤った値を出すより、使用量からの推定へ委ねる方が安全なため。
  */
 export const contextLimitFromModelId = (modelId: string | undefined): number | null =>
-  modelId !== undefined && modelId.endsWith(LONG_CONTEXT_SUFFIX) ? MAX_CONTEXT_LIMIT : null;
+  modelId !== undefined &&
+  (modelId.endsWith(LONG_CONTEXT_SUFFIX) || NATIVE_LONG_CONTEXT_MODEL_IDS.has(modelId))
+    ? MAX_CONTEXT_LIMIT
+    : null;
 
 const toCount = (value: unknown): number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
