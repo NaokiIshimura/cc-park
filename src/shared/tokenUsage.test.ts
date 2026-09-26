@@ -75,6 +75,10 @@ describe('contextLimitFromModelId', () => {
     expect(contextLimitFromModelId('claude-opus-5[1m]')).toBe(1_000_000);
   });
 
+  it('接尾辞なしで 1M のモデルは 1M', () => {
+    expect(contextLimitFromModelId('claude-opus-5-5')).toBe(1_000_000);
+  });
+
   it('付いていなければ null', () => {
     expect(contextLimitFromModelId('claude-opus-5')).toBeNull();
   });
