@@ -1,6 +1,6 @@
 {
   "name": "cc-park",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "マシン上で稼働中の Claude Code セッションをキャラクターで一覧表示するターミナル TUI / デスクトップ GUI",
   "type": "module",
   "main": "dist/gui/main.js",

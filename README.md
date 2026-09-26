@@ -741,6 +741,7 @@ vite の dev サーバを使う場合は、`CC_PARK_DEV_SERVER` に URL を設�
 - `claude agents --json` の出力仕様は非公開のため、状態の正規化は `src/core/normalizeAgent.ts` 1 箇所に閉じ、
   未知の状態値は `unknown` にフォールバックして生の値をそのまま画面へ出します。
 - `interactive` は `status`、`background` は `state` とキー名が異なるため、`kind` で分岐せず両方を見ます。
+  `background` は `status`（`waiting` など）も持ちますが、`state`（`blocked` など）の方が詳しいので `state` を優先します。
 - アニメーション（200ms）とポーリング（既定 2000ms）は独立させ、外部コマンドの実行頻度を上げずに滑らかに動かします。
 - 前回の取得が終わるまで次の取得を開始しない多重実行ガードを入れています。
 - 「作業完了」は生データに無い状態のため、前回スナップショットとの差分から導出しています。

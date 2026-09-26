@@ -5,6 +5,7 @@ import type { Agent, AgentKind, CharacterState, RawAgent } from '../types/agent.
  *
  * `interactive` は `status`、`background` は `state` とキー名が異なるが、
  * 値自体は衝突しないため 1 つの表で両方を扱う。
+ * `background` の `status`（`waiting` など）は `state` より粗いので表に載せない。
  */
 const STATE_MAP: Readonly<Record<string, CharacterState>> = {
   // interactive
@@ -42,8 +43,9 @@ export const normalizeAgent = (raw: RawAgent): Agent | null => {
     return null;
   }
 
-  // kind で分岐せず、存在する方のキーを採用する（仕様変更への耐性を持たせる）
-  const rawState = raw.status ?? raw.state ?? '';
+  // kind で分岐せず、存在する方のキーを採用する（仕様変更への耐性を持たせる）。
+  // background は status（waiting）と state（blocked）の両方を持つので、より詳しい state を優先する
+  const rawState = raw.state ?? raw.status ?? '';
 
   return {
     sessionId: raw.sessionId,

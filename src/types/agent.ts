@@ -14,7 +14,10 @@ export interface RawAgent {
   readonly pid?: number;
   /** background セッションのみ（短縮ID） */
   readonly id?: string;
-  /** interactive セッションのみ: "busy" | "idle" */
+  /**
+   * interactive: "busy" | "idle"。
+   * background も "waiting" などを持つが、`state` より粗いため正規化では `state` を優先する
+   */
   readonly status?: string;
   /** background セッションのみ: "blocked" | "done" | "stopped" など */
   readonly state?: string;
