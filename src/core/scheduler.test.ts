@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Schedule } from '../shared/schedule.js';
+import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
 import type { LaunchAgentResult } from './launchAgent.js';
 import {
   createScheduler,
@@ -314,5 +315,102 @@ describe('list / save / remove / setEnabled', () => {
     const { scheduler, save } = harness([schedule()]);
     expect(await scheduler.setEnabled('none', false)).toEqual([schedule()]);
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe('予約から起動したセッションの記録', () => {
+  const launched: ScheduledLaunch = {
+    agentId: '2160cf1c',
+    scheduleId: 'a1',
+    time: '09:00',
+    firedAt: at(23, 9, 0),
+  };
+
+  /** 記録の読み書きを差し込んだスケジューラ。 */
+  const withLaunches = (initial: readonly ScheduledLaunch[] = []) => {
+    let clock = at(23, 8, 59);
+    const saveLaunches = vi.fn(async (_launches: readonly ScheduledLaunch[]) => true);
+    const launch = vi.fn(async (_schedule: Schedule): Promise<LaunchAgentResult> => succeeded);
+    const scheduler = createScheduler({
+      load: async () => [schedule()],
+      save: async () => true,
+      launch,
+      loadLaunches: async () => [...initial],
+      saveLaunches,
+      now: () => clock,
+    });
+    return {
+      scheduler,
+      launch,
+      saveLaunches,
+      setNow: (value: number) => {
+        clock = value;
+      },
+    };
+  };
+
+  it('読み込んだ記録を返す', async () => {
+    const { scheduler } = withLaunches([launched]);
+    expect(await scheduler.listLaunches()).toEqual([launched]);
+  });
+
+  it('起動に成功したら ID と予約の時刻を記録して保存する', async () => {
+    const { scheduler, saveLaunches, setNow } = withLaunches();
+    setNow(at(23, 9, 0));
+    await scheduler.tick();
+
+    expect(await scheduler.listLaunches()).toEqual([launched]);
+    expect(saveLaunches).toHaveBeenCalledWith([launched]);
+  });
+
+  it('画面へ知らせる前に記録を保存する', async () => {
+    const order: string[] = [];
+    let clock = at(23, 8, 59);
+    const scheduler = createScheduler({
+      load: async () => [schedule()],
+      save: async () => true,
+      launch: async () => succeeded,
+      saveLaunches: async () => {
+        order.push('saveLaunches');
+        return true;
+      },
+      onFired: () => {
+        order.push('onFired');
+      },
+      now: () => clock,
+    });
+    await scheduler.list();
+    clock = at(23, 9, 0);
+    await scheduler.tick();
+
+    expect(order).toEqual(['saveLaunches', 'onFired']);
+  });
+
+  it('起動に失敗したら記録しない', async () => {
+    const { scheduler, launch, saveLaunches, setNow } = withLaunches();
+    launch.mockResolvedValueOnce(failed);
+    setNow(at(23, 9, 0));
+    await scheduler.tick();
+
+    expect(await scheduler.listLaunches()).toEqual([]);
+    expect(saveLaunches).not.toHaveBeenCalled();
+  });
+
+  it('ID が読み取れなければ記録しない', async () => {
+    const { scheduler, launch, saveLaunches, setNow } = withLaunches();
+    launch.mockResolvedValueOnce({ ok: true, id: '' });
+    setNow(at(23, 9, 0));
+    await scheduler.tick();
+
+    expect(await scheduler.listLaunches()).toEqual([]);
+    expect(saveLaunches).not.toHaveBeenCalled();
+  });
+
+  it('読み書きが未指定でも記録はメモリ上に残る', async () => {
+    const { scheduler, setNow } = harness([schedule()]);
+    setNow(at(23, 9, 0));
+    await scheduler.tick();
+
+    expect(await scheduler.listLaunches()).toEqual([launched]);
   });
 });

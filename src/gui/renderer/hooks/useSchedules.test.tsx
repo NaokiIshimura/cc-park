@@ -3,6 +3,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ScheduleFiredEvent } from '../../../core/scheduler.js';
 import type { Schedule } from '../../../shared/schedule.js';
+import type { ScheduledLaunch } from '../../../shared/scheduledLaunch.js';
 import { useSchedules, type ScheduleBridge } from './useSchedules.js';
 
 const schedule = (overrides: Partial<Schedule> = {}): Schedule => ({
@@ -14,6 +15,13 @@ const schedule = (overrides: Partial<Schedule> = {}): Schedule => ({
   lastFiredAt: null,
   ...overrides,
 });
+
+const launch: ScheduledLaunch = {
+  agentId: 'bf96c05e',
+  scheduleId: 'a1',
+  time: '09:00',
+  firedAt: 1789881096899,
+};
 
 const fired: ScheduleFiredEvent = {
   scheduleId: 'a1',
@@ -31,6 +39,7 @@ const createBridge = (overrides: Partial<ScheduleBridge> = {}) => {
     saveSchedule: vi.fn(async () => [schedule()]),
     deleteSchedule: vi.fn(async () => []),
     setScheduleEnabled: vi.fn(async () => [schedule({ enabled: false })]),
+    listScheduledLaunches: vi.fn(async () => []),
     onScheduleFired: vi.fn((next: (event: ScheduleFiredEvent) => void) => {
       listener = next;
       return unsubscribe;
@@ -185,5 +194,49 @@ describe('useSchedules', () => {
       resolve([]);
     });
     expect(result.current.schedules).toHaveLength(1);
+  });
+
+  it('起動時に起動の記録を取得する', async () => {
+    const { bridge } = createBridge({ listScheduledLaunches: vi.fn(async () => [launch]) });
+    const { result } = renderHook(() => useSchedules(bridge));
+    await waitFor(() => {
+      expect(result.current.launches).toEqual([launch]);
+    });
+  });
+
+  it('発火を受け取ると起動の記録も取り直す', async () => {
+    const listScheduledLaunches = vi
+      .fn<() => Promise<ScheduledLaunch[]>>()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([launch]);
+    const { bridge, fire } = createBridge({ listScheduledLaunches });
+    const { result } = renderHook(() => useSchedules(bridge));
+    await waitFor(() => {
+      expect(listScheduledLaunches).toHaveBeenCalledTimes(1);
+    });
+
+    fire(fired);
+    await waitFor(() => {
+      expect(result.current.launches).toEqual([launch]);
+    });
+  });
+
+  it('後片付けの後に起動の記録が届いても更新しない', async () => {
+    let resolve: (launches: ScheduledLaunch[]) => void = () => undefined;
+    const { bridge } = createBridge({
+      listScheduledLaunches: vi.fn(
+        () =>
+          new Promise<ScheduledLaunch[]>((next) => {
+            resolve = next;
+          }),
+      ),
+    });
+
+    const { unmount, result } = renderHook(() => useSchedules(bridge));
+    unmount();
+    await act(async () => {
+      resolve([launch]);
+    });
+    expect(result.current.launches).toEqual([]);
   });
 });

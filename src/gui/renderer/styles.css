@@ -373,6 +373,10 @@ body {
   color: var(--ink-magenta);
 }
 
+.tag--sched {
+  color: var(--ink-cyan);
+}
+
 .tag--self {
   color: var(--ink-blue-bright);
 }

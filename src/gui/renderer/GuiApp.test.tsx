@@ -64,6 +64,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   saveSchedule: vi.fn(async () => []),
   deleteSchedule: vi.fn(async () => []),
   setScheduleEnabled: vi.fn(async () => []),
+  listScheduledLaunches: vi.fn(async () => []),
   onScheduleFired: vi.fn(() => () => undefined),
   notify: vi.fn(),
   quit: vi.fn(),
@@ -464,6 +465,24 @@ describe('GuiApp', () => {
 
     await waitFor(() => {
       expect(screen.getByText('09:00 の予約を /Users/naoki で起動しました')).toBeDefined();
+    });
+  });
+
+  it('予約から起動したセッションに [sched] を付ける', async () => {
+    await setup({
+      fetchAgents: vi.fn(
+        async (): Promise<FetchAgentsResult> => ({
+          ok: true,
+          agents: [agent('bf96c05e-48ae', { kind: 'background', id: 'bf96c05e' })],
+        }),
+      ),
+      listScheduledLaunches: vi.fn(async () => [
+        { agentId: 'bf96c05e', scheduleId: 's1', time: '09:00', firedAt: 0 },
+      ]),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('[sched]').getAttribute('title')).toBe('09:00 の予約で起動');
     });
   });
 });

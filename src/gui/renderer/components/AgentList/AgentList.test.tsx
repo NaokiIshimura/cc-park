@@ -37,6 +37,7 @@ const setup = (overrides: Partial<Parameters<typeof AgentList>[0]> = {}) => {
       selectedIndex={1}
       now={0}
       selfSessionId={null}
+      scheduledLaunches={[]}
       home={HOME}
       showSubagents
       showPrompt={false}
@@ -73,6 +74,17 @@ describe('AgentList', () => {
   it('自分自身のセッションに [self] を付ける', () => {
     setup({ selfSessionId: 'c' });
     expect(screen.getByText('[self]')).toBeDefined();
+  });
+
+  it('予約から起動したセッションの行にだけ [sched] を付ける', () => {
+    setup({
+      groups: oneGroup([
+        { ...agent('bf96c05e-48ae'), kind: 'background', id: 'bf96c05e' },
+        agent('b'),
+      ]),
+      scheduledLaunches: [{ agentId: 'bf96c05e', scheduleId: 's1', time: '09:00', firedAt: 0 }],
+    });
+    expect(screen.getAllByText('[sched]')).toHaveLength(1);
   });
 
   it('クリックした行の位置を通知する', async () => {

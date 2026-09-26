@@ -49,17 +49,18 @@ const TIMEOUT_MESSAGE = 'claude --bg がタイムアウトしました。';
 /** コマンド引数を組み立てる。プロンプトはシェルを経由しないのでそのまま渡す。 */
 export const buildLaunchArgs = (prompt: string): string[] => ['--bg', prompt];
 
+/** 短縮 ID（`claude agents --json` の `id`）の形。 */
+const LAUNCHED_ID_PATTERN = /\b[0-9a-f]{8,}\b/;
+
 /**
  * `claude --bg` の出力からセッション ID を取り出す。
+ *
+ * 出力は `backgrounded · <id>` に続けて操作のヒント（`claude stop <id>  stop this session` など）が
+ * 並ぶ複数行なので、行ではなく最初に現れる ID の形をしたトークンを採る。
  * 起動の成否は終了コードで判断済みなので、読み取れなければ空文字でよい。
  */
-export const parseLaunchedId = (stdout: string): string => {
-  const lines = stdout
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '');
-  return lines[lines.length - 1] ?? '';
-};
+export const parseLaunchedId = (stdout: string): string =>
+  LAUNCHED_ID_PATTERN.exec(stdout)?.[0] ?? '';
 
 /** 予約に書かれたディレクトリで `claude --bg <prompt>` を実行する。 */
 export const launchAgent = async (

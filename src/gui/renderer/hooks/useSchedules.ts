@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ScheduleFiredEvent } from '../../../core/scheduler.js';
 import { sortSchedules, type Schedule } from '../../../shared/schedule.js';
+import type { ScheduledLaunch } from '../../../shared/scheduledLaunch.js';
 import type { CcParkBridge } from '../../ipc.js';
 
 /**
@@ -13,7 +14,12 @@ import type { CcParkBridge } from '../../ipc.js';
 /** 予約まわりで使う口だけを取り出したもの。テストから最小限の偽物を渡せる。 */
 export type ScheduleBridge = Pick<
   CcParkBridge,
-  'listSchedules' | 'saveSchedule' | 'deleteSchedule' | 'setScheduleEnabled' | 'onScheduleFired'
+  | 'listSchedules'
+  | 'saveSchedule'
+  | 'deleteSchedule'
+  | 'setScheduleEnabled'
+  | 'listScheduledLaunches'
+  | 'onScheduleFired'
 >;
 
 export interface UseSchedulesResult {
@@ -21,12 +27,15 @@ export interface UseSchedulesResult {
   readonly save: (schedule: Schedule) => Promise<void>;
   readonly remove: (id: string) => Promise<void>;
   readonly setEnabled: (id: string, enabled: boolean) => Promise<void>;
+  /** 予約から起動したセッションの記録。一覧の行に印を付けるのに使う */
+  readonly launches: readonly ScheduledLaunch[];
   /** 直近の発火。フッタのメッセージに使う */
   readonly firedEvent: ScheduleFiredEvent | null;
 }
 
 export const useSchedules = (bridge: ScheduleBridge): UseSchedulesResult => {
   const [schedules, setSchedules] = useState<readonly Schedule[]>([]);
+  const [launches, setLaunches] = useState<readonly ScheduledLaunch[]>([]);
   const [firedEvent, setFiredEvent] = useState<ScheduleFiredEvent | null>(null);
 
   const apply = useCallback((next: readonly Schedule[]) => {
@@ -36,20 +45,25 @@ export const useSchedules = (bridge: ScheduleBridge): UseSchedulesResult => {
   useEffect(() => {
     let alive = true;
 
-    void bridge.listSchedules().then((loaded) => {
-      if (alive) {
-        apply(loaded);
-      }
-    });
-
-    // 発火は main のタイマーで起こる。次回発火の表示を更新するため一覧も取り直す
-    const unsubscribe = bridge.onScheduleFired((event) => {
-      setFiredEvent(event);
+    const reload = () => {
       void bridge.listSchedules().then((loaded) => {
         if (alive) {
           apply(loaded);
         }
       });
+      void bridge.listScheduledLaunches().then((loaded) => {
+        if (alive) {
+          setLaunches(loaded);
+        }
+      });
+    };
+
+    reload();
+
+    // 発火は main のタイマーで起こる。次回発火の表示と起動の記録を更新するため取り直す
+    const unsubscribe = bridge.onScheduleFired((event) => {
+      setFiredEvent(event);
+      reload();
     });
 
     return () => {
@@ -79,5 +93,5 @@ export const useSchedules = (bridge: ScheduleBridge): UseSchedulesResult => {
     [bridge, apply],
   );
 
-  return { schedules, save, remove, setEnabled, firedEvent };
+  return { schedules, save, remove, setEnabled, launches, firedEvent };
 };

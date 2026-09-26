@@ -1,6 +1,10 @@
 import type { Agent } from '../../../../types/agent.js';
 import { formatCwd } from '../../../../shared/formatCwd.js';
 import { UNKNOWN_CWD_LABEL, type AgentGroup } from '../../../../shared/groupAgents.js';
+import {
+  findScheduledLaunch,
+  type ScheduledLaunch,
+} from '../../../../shared/scheduledLaunch.js';
 import { AgentRow } from '../AgentRow/index.js';
 import { EmptyState } from '../EmptyState/index.js';
 
@@ -13,6 +17,8 @@ interface AgentListProps {
   readonly selectedIndex: number;
   readonly now: number;
   readonly selfSessionId: string | null;
+  /** 予約から起動したセッションの記録。該当する行に印を付ける */
+  readonly scheduledLaunches: readonly ScheduledLaunch[];
   readonly home: string;
   /** 最終プロンプトを表示するか */
   readonly showPrompt: boolean;
@@ -38,6 +44,7 @@ export const AgentList = ({
   selectedIndex,
   now,
   selfSessionId,
+  scheduledLaunches,
   home,
   showPrompt,
   showTokens,
@@ -70,6 +77,7 @@ export const AgentList = ({
                   selected={index === selectedIndex}
                   now={now}
                   isSelf={agent.sessionId === selfSessionId}
+                  scheduledLaunch={findScheduledLaunch(agent, scheduledLaunches)}
                   showPrompt={showPrompt}
                   showTokens={showTokens}
                   showSubagents={showSubagents}
