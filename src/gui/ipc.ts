@@ -4,6 +4,7 @@ import type { StopAgentResult } from '../core/stopAgent.js';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
+import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
 import type { Agent } from '../types/agent.js';
 import type { GuiConfig } from './config.js';
 
@@ -34,6 +35,8 @@ export const IPC_CHANNELS = {
   deleteSchedule: 'schedule:delete',
   /** 予約の有効 / 無効の切り替え */
   setScheduleEnabled: 'schedule:setEnabled',
+  /** 予約から起動したセッションの記録の取得 */
+  listScheduledLaunches: 'schedule:listLaunches',
   /** 予約が発火したことの通達（main → renderer） */
   scheduleFired: 'schedule:fired',
   /** OS 通知の表示 */
@@ -67,6 +70,8 @@ export interface CcParkBridge {
   readonly saveSchedule: (schedule: Schedule) => Promise<Schedule[]>;
   readonly deleteSchedule: (id: string) => Promise<Schedule[]>;
   readonly setScheduleEnabled: (id: string, enabled: boolean) => Promise<Schedule[]>;
+  /** 予約から起動したセッションの記録。一覧で見分けるために使う */
+  readonly listScheduledLaunches: () => Promise<ScheduledLaunch[]>;
   /**
    * 予約の発火を購読する。購読を解除する関数を返す。
    * 発火は main 側のタイマーで起こるため、renderer からは待ち受けるしかない。

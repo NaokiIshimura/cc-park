@@ -14,7 +14,12 @@ import {
 import { fetchAgents } from '../core/fetchAgents.js';
 import { killAgent } from '../core/killAgent.js';
 import { launchAgent } from '../core/launchAgent.js';
-import { loadSchedules, saveSchedules } from '../core/scheduleStore.js';
+import {
+  loadScheduledLaunches,
+  loadSchedules,
+  saveScheduledLaunches,
+  saveSchedules,
+} from '../core/scheduleStore.js';
 import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
 import { resolveShellPath } from '../core/shellPath.js';
 import { stopAgent } from '../core/stopAgent.js';
@@ -131,6 +136,8 @@ const scheduler = createScheduler({
   load: () => loadSchedules({ home: config.home }),
   save: (schedules) => saveSchedules(schedules, { home: config.home }),
   launch: (schedule) => launchAgent(schedule),
+  loadLaunches: () => loadScheduledLaunches({ home: config.home }),
+  saveLaunches: (launches) => saveScheduledLaunches(launches, { home: config.home }),
   // 予約の通知は起動時の設定に従う（--no-notify ですべて黙らせられるようにする）
   notify: config.notify ? showNotification : undefined,
   onFired: (event: ScheduleFiredEvent) => {
@@ -149,6 +156,8 @@ ipcMain.handle(IPC_CHANNELS.deleteSchedule, (_event, id: string) => scheduler.re
 ipcMain.handle(IPC_CHANNELS.setScheduleEnabled, (_event, id: string, enabled: boolean) =>
   scheduler.setEnabled(id, enabled),
 );
+
+ipcMain.handle(IPC_CHANNELS.listScheduledLaunches, () => scheduler.listLaunches());
 
 ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
   // 最前面固定は OS 側の都合で適用されないことがあるため、実際の状態を返す

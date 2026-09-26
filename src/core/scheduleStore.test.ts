@@ -3,11 +3,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Schedule } from '../shared/schedule.js';
+import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
 import {
+  buildLaunchesPath,
   buildStorePath,
+  loadScheduledLaunches,
   loadSchedules,
+  parseScheduledLaunches,
   parseSchedules,
+  saveScheduledLaunches,
   saveSchedules,
+  serializeScheduledLaunches,
   serializeSchedules,
   type ScheduleFileSystem,
 } from './scheduleStore.js';
@@ -19,6 +25,14 @@ const schedule = (overrides: Partial<Schedule> = {}): Schedule => ({
   prompt: 'おはよう',
   enabled: true,
   lastFiredAt: null,
+  ...overrides,
+});
+
+const launch = (overrides: Partial<ScheduledLaunch> = {}): ScheduledLaunch => ({
+  agentId: 'bf96c05e',
+  scheduleId: 'a1',
+  time: '09:00',
+  firedAt: 1_000,
   ...overrides,
 });
 
@@ -241,5 +255,87 @@ describe('実際のファイルへの読み書き', () => {
       },
     });
     expect(written[0]).toContain('/.cc-park/schedules.json.tmp');
+  });
+});
+
+describe('buildLaunchesPath', () => {
+  it('予約と同じ .cc-park に別のファイルとして置く', () => {
+    expect(buildLaunchesPath('/home')).toBe('/home/.cc-park/launches.json');
+  });
+});
+
+describe('parseScheduledLaunches', () => {
+  it('保存した形を読み戻せる', () => {
+    expect(parseScheduledLaunches(serializeScheduledLaunches([launch()]))).toEqual([launch()]);
+  });
+
+  it('JSON として壊れていれば空配列', () => {
+    expect(parseScheduledLaunches('{')).toEqual([]);
+  });
+
+  it('launches が配列でなければ空配列', () => {
+    expect(parseScheduledLaunches('{"launches":{}}')).toEqual([]);
+  });
+
+  it('要素がオブジェクトでなければ捨てる', () => {
+    expect(parseScheduledLaunches('{"launches":[1,null]}')).toEqual([]);
+  });
+
+  it('必須項目が欠けている記録は捨て、読めた記録は残す', () => {
+    const text = JSON.stringify({
+      launches: [
+        { ...launch(), agentId: '' },
+        { ...launch(), scheduleId: 1 },
+        { ...launch(), time: undefined },
+        { ...launch(), firedAt: 'x' },
+        { ...launch(), firedAt: Number.POSITIVE_INFINITY },
+        launch({ agentId: 'c0ffee01' }),
+      ],
+    });
+    expect(parseScheduledLaunches(text)).toEqual([launch({ agentId: 'c0ffee01' })]);
+  });
+});
+
+describe('loadScheduledLaunches / saveScheduledLaunches', () => {
+  it('保存したものを読み戻せる', async () => {
+    const { fs, files } = memoryFs();
+    expect(await saveScheduledLaunches([launch()], { home: '/home', fs })).toBe(true);
+    expect(files.has('/home/.cc-park/launches.json')).toBe(true);
+    expect(await loadScheduledLaunches({ home: '/home', fs })).toEqual([launch()]);
+  });
+
+  it('ファイルが無ければ空配列', async () => {
+    const { fs } = memoryFs();
+    expect(await loadScheduledLaunches({ home: '/home', fs })).toEqual([]);
+  });
+
+  it('書き込みに失敗したら false を返す', async () => {
+    const { fs } = memoryFs();
+    const failing: ScheduleFileSystem = {
+      ...fs,
+      rename: async () => {
+        throw new Error('EACCES');
+      },
+    };
+    expect(await saveScheduledLaunches([launch()], { home: '/home', fs: failing })).toBe(false);
+  });
+
+  it('起点を省略するとホーム配下を見る', async () => {
+    await expect(loadScheduledLaunches()).resolves.toBeInstanceOf(Array);
+  });
+
+  it('起点を省略した保存もホーム配下を指す', async () => {
+    const written: string[] = [];
+    const { fs } = memoryFs();
+    await saveScheduledLaunches([launch()], {
+      fs: {
+        ...fs,
+        writeFile: async (path, data) => {
+          written.push(path);
+          await fs.writeFile(path, data);
+        },
+      },
+    });
+    expect(written[0]).toMatch(/\/\.cc-park\/launches\.json\.tmp$/);
   });
 });

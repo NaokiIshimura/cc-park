@@ -35,6 +35,7 @@ const setup = (overrides: Partial<Parameters<typeof AgentRow>[0]> = {}) => {
       selected={false}
       now={NOW}
       isSelf={false}
+      scheduledLaunch={undefined}
       showPrompt
       showTokens
       showSubagents
@@ -81,6 +82,19 @@ describe('AgentRow', () => {
   it('interactive セッションには [bg] を付けない', () => {
     setup();
     expect(screen.queryByText('[bg]')).toBeNull();
+  });
+
+  it('予約から起動したセッションには [sched] を付け、予約の時刻をツールチップに出す', () => {
+    setup({
+      agent: agent({ kind: 'background' }),
+      scheduledLaunch: { agentId: 'bf96c05e', scheduleId: 's1', time: '09:00', firedAt: 0 },
+    });
+    expect(screen.getByText('[sched]').getAttribute('title')).toBe('09:00 の予約で起動');
+  });
+
+  it('予約から起動していなければ [sched] を付けない', () => {
+    setup({ agent: agent({ kind: 'background' }) });
+    expect(screen.queryByText('[sched]')).toBeNull();
   });
 
   it('自分自身のセッションには [self] を付ける', () => {

@@ -2,6 +2,10 @@ import { memo } from 'react';
 import type { Agent, Subagent } from '../../../../types/agent.js';
 import { CHARACTERS, getAppearance, getMiniFrame } from '../../../../shared/characters.js';
 import {
+  describeScheduledLaunch,
+  type ScheduledLaunch,
+} from '../../../../shared/scheduledLaunch.js';
+import {
   formatTokenCounts,
   formatTokenPercent,
   toFilledSegments,
@@ -42,6 +46,8 @@ interface AgentRowProps {
   readonly now: number;
   /** 自分自身のセッションかどうか */
   readonly isSelf: boolean;
+  /** 予約から起動したセッションなら、その記録 */
+  readonly scheduledLaunch: ScheduledLaunch | undefined;
   /** 最終プロンプトを表示するか */
   readonly showPrompt: boolean;
   /** コンテキスト利用率を表示するか */
@@ -65,6 +71,7 @@ const AgentRowComponent = ({
   selected,
   now,
   isSelf,
+  scheduledLaunch,
   showPrompt,
   showTokens,
   showSubagents,
@@ -104,6 +111,11 @@ const AgentRowComponent = ({
           <div className="agent-row__line">
             <span className="agent-row__name">{agent.name}</span>
             {agent.kind === 'background' ? <span className="tag tag--bg">[bg]</span> : null}
+            {scheduledLaunch === undefined ? null : (
+              <span className="tag tag--sched" title={describeScheduledLaunch(scheduledLaunch)}>
+                [sched]
+              </span>
+            )}
             {isSelf ? <span className="tag tag--self">[self]</span> : null}
 
             {tokens === undefined ? null : (

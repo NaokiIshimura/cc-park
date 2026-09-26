@@ -27,8 +27,24 @@ describe('buildLaunchArgs', () => {
 });
 
 describe('parseLaunchedId', () => {
-  it('末尾の行を ID として取り出す', () => {
-    expect(parseLaunchedId('Starting...\n2160cf1c\n')).toBe('2160cf1c');
+  it('ID だけの出力から取り出す', () => {
+    expect(parseLaunchedId('2160cf1c\n')).toBe('2160cf1c');
+  });
+
+  it('操作のヒントが続く実際の出力から ID を取り出す', () => {
+    const stdout = [
+      'backgrounded · bf96c05e',
+      '  claude agents             list sessions',
+      '  claude attach bf96c05e    open in this terminal',
+      '  claude logs bf96c05e      show recent output',
+      '  claude stop bf96c05e      stop this session',
+      '',
+    ].join('\n');
+    expect(parseLaunchedId(stdout)).toBe('bf96c05e');
+  });
+
+  it('ID の形をしたトークンが無ければ空文字を返す', () => {
+    expect(parseLaunchedId('backgrounded\n')).toBe('');
   });
 
   it('空の出力では空文字を返す', () => {

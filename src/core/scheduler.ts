@@ -5,6 +5,10 @@ import {
   upsertSchedule,
   type Schedule,
 } from '../shared/schedule.js';
+import {
+  appendScheduledLaunch,
+  type ScheduledLaunch,
+} from '../shared/scheduledLaunch.js';
 import type { LaunchAgentResult } from './launchAgent.js';
 
 /**
@@ -16,6 +20,7 @@ import type { LaunchAgentResult } from './launchAgent.js';
  *
  * 予約の一覧そのものもここが持つ。発火による `lastFiredAt` の更新と
  * 画面からの追加・削除が同じ配列を通るので、書き込みが競合しない。
+ * 予約から起動したセッションの記録（一覧で見分けるためのもの）も同じ理由でここが持つ。
  */
 
 /** ティックの間隔。分単位の予約に対して十分細かく、負荷も無視できる範囲にする。 */
@@ -34,6 +39,10 @@ export interface SchedulerDeps {
   readonly load: () => Promise<Schedule[]>;
   readonly save: (schedules: readonly Schedule[]) => Promise<boolean>;
   readonly launch: (schedule: Schedule) => Promise<LaunchAgentResult>;
+  /** 起動の記録の読み込み。未指定なら記録は空から始める */
+  readonly loadLaunches?: (() => Promise<ScheduledLaunch[]>) | undefined;
+  /** 起動の記録の保存。未指定なら保存しない */
+  readonly saveLaunches?: ((launches: readonly ScheduledLaunch[]) => Promise<boolean>) | undefined;
   /** OS 通知。未指定なら通知しない */
   readonly notify?: ((payload: NotificationPayload) => void) | undefined;
   /** 発火を画面へ知らせる。未指定なら何もしない */
@@ -53,6 +62,8 @@ export interface Scheduler {
   readonly save: (schedule: Schedule) => Promise<Schedule[]>;
   readonly remove: (id: string) => Promise<Schedule[]>;
   readonly setEnabled: (id: string, enabled: boolean) => Promise<Schedule[]>;
+  /** 予約から起動したセッションの記録 */
+  readonly listLaunches: () => Promise<ScheduledLaunch[]>;
 }
 
 /** 発火結果を人が読む文言にする。 */
@@ -75,6 +86,7 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
   const tickMs = deps.tickMs ?? DEFAULT_TICK_MS;
 
   let schedules: Schedule[] = [];
+  let launches: ScheduledLaunch[] = [];
   let loading: Promise<void> | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
   let running = false;
@@ -88,9 +100,12 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
   let since = now();
 
   const ensureLoaded = (): Promise<void> => {
-    loading ??= deps.load().then((loaded) => {
-      schedules = loaded;
-    });
+    loading ??= Promise.all([deps.load(), deps.loadLaunches?.() ?? []]).then(
+      ([loadedSchedules, loadedLaunches]) => {
+        schedules = loadedSchedules;
+        launches = loadedLaunches;
+      },
+    );
     return loading;
   };
 
@@ -101,6 +116,19 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
 
   const fire = async (schedule: Schedule, at: number): Promise<void> => {
     const result = await deps.launch(schedule);
+
+    // ID が読み取れなかったときは突き合わせようがないので記録しない
+    if (result.ok && result.id !== '') {
+      launches = appendScheduledLaunch(launches, {
+        agentId: result.id,
+        scheduleId: schedule.id,
+        time: schedule.time,
+        firedAt: at,
+      });
+      // 画面へ知らせる前に保存し、通知を受けて取り直したときに記録が揃っているようにする
+      await deps.saveLaunches?.(launches);
+    }
+
     const { ok, message } = describeLaunch(schedule, result);
     const event: ScheduleFiredEvent = { scheduleId: schedule.id, firedAt: at, ok, message };
 
@@ -195,5 +223,10 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
     return persist();
   };
 
-  return { start, stop, tick, list, save, remove, setEnabled };
+  const listLaunches = async (): Promise<ScheduledLaunch[]> => {
+    await ensureLoaded();
+    return launches;
+  };
+
+  return { start, stop, tick, list, save, remove, setEnabled, listLaunches };
 };

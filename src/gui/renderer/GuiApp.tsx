@@ -142,6 +142,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
             selectedIndex={selectedIndex}
             now={now}
             selfSessionId={config.selfSessionId}
+            scheduledLaunches={schedules.launches}
             home={config.home}
             showPrompt={config.prompt}
             showTokens={config.tokens}
