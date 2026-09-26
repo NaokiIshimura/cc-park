@@ -72,6 +72,12 @@ describe('normalizeAgent', () => {
     });
   });
 
+  it('status と state の両方がある場合は state を優先する', () => {
+    const agent = normalizeAgent({ ...background, status: 'waiting', state: 'blocked' });
+    expect(agent?.state).toBe('blocked');
+    expect(agent?.rawState).toBe('blocked');
+  });
+
   it('未知の状態でも rawState を保持する', () => {
     const agent = normalizeAgent({ ...interactive, status: 'hibernating' });
     expect(agent?.state).toBe('unknown');
