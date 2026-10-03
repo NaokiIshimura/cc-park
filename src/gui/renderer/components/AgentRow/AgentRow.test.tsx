@@ -20,6 +20,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   pid: 1,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
   ...overrides,
 });
 
@@ -105,6 +106,18 @@ describe('AgentRow', () => {
   it('自分以外には [self] を付けない', () => {
     setup();
     expect(screen.queryByText('[self]')).toBeNull();
+  });
+
+  it('起動元アプリが分かればセッション名の左にタグで示す', () => {
+    setup({ agent: agent({ launchApp: 'VS Code' }) });
+    const tag = screen.getByText('[VS Code]');
+    expect(tag.getAttribute('title')).toBe('VS Code から起動');
+    expect(tag.nextElementSibling?.className).toBe('agent-row__name');
+  });
+
+  it('起動元アプリが分からなければタグを付けない', () => {
+    setup();
+    expect(screen.queryByText(/^\[VS Code\]$/)).toBeNull();
   });
 
   it('選択中は選択済みとして扱われる', () => {

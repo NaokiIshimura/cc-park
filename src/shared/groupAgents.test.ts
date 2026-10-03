@@ -18,6 +18,7 @@ const agent = (
   pid: undefined,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
 });
 
 const keys = (agents: readonly Agent[]) => agents.map((item) => item.sessionId);

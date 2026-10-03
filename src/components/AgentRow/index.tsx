@@ -121,6 +121,9 @@ const AgentRowComponent = ({
             */}
             <Box width={nameWidth}>
               <Text wrap="truncate-end">
+                {agent.launchApp === undefined ? null : (
+                  <Text dimColor>{`[${agent.launchApp}] `}</Text>
+                )}
                 <Text bold={selected} color={selected ? 'white' : 'gray'}>
                   {agent.name}
                 </Text>

@@ -210,3 +210,68 @@ describe('transcript 由来の付加情報', () => {
     expect(result.ok && result.agents[0]?.meta).toBeUndefined();
   });
 });
+
+describe('起動元アプリ', () => {
+  const raw = [
+    { kind: 'interactive', sessionId: 'a', name: 'alpha', pid: 300, status: 'busy' },
+    { kind: 'background', sessionId: 'b', name: 'beta', id: 'b', state: 'blocked' },
+  ];
+  const psOutput = [
+    '300 200 claude',
+    '200 100 /bin/zsh',
+    '100 1 /Applications/iTerm.app/Contents/MacOS/iTerm2',
+  ].join('\n');
+
+  /** `claude` には一覧、`ps` にはプロセス表を返す。 */
+  const runnerWith = (ps: () => Promise<string>): CommandRunner =>
+    vi.fn(async (command: string) => (command === 'ps' ? ps() : JSON.stringify(raw)));
+
+  it('既定では ps を実行しない', async () => {
+    const runner = runnerWith(async () => psOutput);
+    const result = await fetchAgents({ runner });
+
+    expect(runner).toHaveBeenCalledTimes(1);
+    expect(result.ok && result.agents[0]?.launchApp).toBeUndefined();
+  });
+
+  it('有効にすると ps を 1 回だけ実行し、pid を持つセッションに合成する', async () => {
+    const runner = runnerWith(async () => psOutput);
+    const result = await fetchAgents({ runner, launchApp: true });
+
+    expect(runner).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(runner).mock.calls[1]?.slice(0, 2)).toEqual([
+      'ps',
+      ['-axo', 'pid=,ppid=,comm='],
+    ]);
+    expect(result.ok && result.agents.map((agent) => agent.launchApp)).toEqual([
+      'iTerm2',
+      undefined,
+    ]);
+  });
+
+  it('pid を持つセッションが無ければ ps を実行しない', async () => {
+    const runner: CommandRunner = vi.fn(async () => JSON.stringify([raw[1]]));
+    await fetchAgents({ runner, launchApp: true });
+
+    expect(runner).toHaveBeenCalledTimes(1);
+  });
+
+  it('ps が失敗しても一覧は返る', async () => {
+    const runner = runnerWith(async () => {
+      throw new Error('ps failed');
+    });
+    const result = await fetchAgents({ runner, launchApp: true });
+
+    expect(result.ok && result.agents).toHaveLength(2);
+    expect(result.ok && result.agents[0]?.launchApp).toBeUndefined();
+  });
+
+  it('meta と同時に有効にできる', async () => {
+    const runner = runnerWith(async () => psOutput);
+    const metaReader = vi.fn(async () => undefined);
+    const result = await fetchAgents({ runner, launchApp: true, meta: true, metaReader });
+
+    expect(metaReader).toHaveBeenCalledTimes(2);
+    expect(result.ok && result.agents[0]?.launchApp).toBe('iTerm2');
+  });
+});

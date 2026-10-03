@@ -116,6 +116,7 @@ export const App = ({
     poll: interactive,
     fetcher,
     meta: prompt || tokens || subagents,
+    launchApp: true,
     contextLimit: contextLimit === 0 ? undefined : contextLimit,
   });
 

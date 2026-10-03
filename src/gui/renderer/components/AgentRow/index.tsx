@@ -109,6 +109,11 @@ const AgentRowComponent = ({
         */}
         <div className="agent-row__info">
           <div className="agent-row__line">
+            {agent.launchApp === undefined ? null : (
+              <span className="tag tag--app" title={`${agent.launchApp} から起動`}>
+                [{agent.launchApp}]
+              </span>
+            )}
             <span className="agent-row__name">{agent.name}</span>
             {agent.kind === 'background' ? <span className="tag tag--bg">[bg]</span> : null}
             {scheduledLaunch === undefined ? null : (

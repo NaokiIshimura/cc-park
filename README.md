@@ -23,13 +23,13 @@ GUI モードでは、指定した時刻にセッションを起動する[定期
  ~/GitHub/cc-park
 
     ▐▛███▛█
-   ▝▜██████▀ cc-park-bd [self]
+   ▝▜██████▀ [iTerm2] cc-park-bd [self]
      ▝ ▘▝▝   BUSY                                              working... 21m
 
  ~/GitHub/vscode-ai-coding-sidebar
 
     ▐▛███▛█
-   ▝▜██████▀ vscode-ai-coding-sidebar-3e
+   ▝▜██████▀ [VS Code] vscode-ai-coding-sidebar-3e
      ▝▝ ▝▝   IDLE                                       waiting for input 37m
 ```
 
@@ -196,6 +196,22 @@ interactive セッションを止める手段として `x` を用意していま
 - プロセスが既に終了していた場合や権限が無い場合は、理由を添えて失敗を表示する
 - `[self]` が付いたセッション（cc-park を起動した自分自身のセッション）も対象になるため、
   確認ダイアログの名前をよく確かめてから実行すること
+
+## 起動元アプリ
+
+セッションを起動したアプリを、名前の左に `[VS Code]` / `[iTerm2]` のように示します。CLI モード・GUI モードの両方で表示します。
+
+`claude agents --json` には起動元が載らないため、セッションの PID から親プロセスを辿って判定します。
+`ps -axo pid=,ppid=,comm=` を取得のたびに 1 回だけ実行し、祖先のうち最初に見つかったものを採用します。
+
+| 祖先のプロセス | 表示 |
+| --- | --- |
+| `<名前>.app` 配下の実行ファイル | `.app` の名前（最も外側）。`Visual Studio Code` は `VS Code`、`iTerm` は `iTerm2` と表示 |
+| iTerm2 の `iTermServer-*` | `iTerm2`（iTerm2 を再起動した後も端末はこのサーバの下に残るため） |
+| `tmux` | `tmux`。tmux サーバの先にあるターミナルアプリまでは辿れません |
+
+background セッション（PID が無い）や、祖先に該当するものが無いセッションには何も付けません。
+`ps` が失敗しても一覧はそのまま表示します。
 
 ## 最終プロンプトとコンテキスト利用率
 

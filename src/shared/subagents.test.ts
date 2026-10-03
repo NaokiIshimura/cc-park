@@ -22,6 +22,7 @@ const agent = (state: CharacterState, subagents: readonly Subagent[] | null): Ag
   pid: undefined,
   id: undefined,
   meta: subagents === null ? undefined : { lastPrompt: undefined, tokens: undefined, subagents },
+  launchApp: undefined,
 });
 
 describe('visibleSubagents', () => {

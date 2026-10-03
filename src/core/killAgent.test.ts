@@ -19,6 +19,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   pid: 71547,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
   ...overrides,
 });
 

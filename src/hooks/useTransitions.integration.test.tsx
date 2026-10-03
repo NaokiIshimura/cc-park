@@ -17,6 +17,7 @@ const agent = (sessionId: string, state: CharacterState): Agent => ({
   pid: undefined,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
 });
 
 interface HarnessProps {

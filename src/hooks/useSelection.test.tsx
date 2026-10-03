@@ -22,6 +22,7 @@ const agent = (sessionId: string): Agent => ({
   pid: undefined,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
 });
 
 const Harness = (props: UseSelectionOptions) => {

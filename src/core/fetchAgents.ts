@@ -1,4 +1,5 @@
 import type { Agent, RawAgent } from '../types/agent.js';
+import { parseProcessTable, PROCESS_TABLE_ARGS, resolveLaunchApp } from '../shared/launchApp.js';
 import { normalizeAgents } from './normalizeAgent.js';
 import { readSessionMeta, type ReadSessionMetaOptions } from './readSessionMeta.js';
 import {
@@ -38,6 +39,11 @@ export interface FetchAgentsOptions {
    * 既定は false。表示しないときにファイル読み取りを起こさないためのオプトイン。
    */
   readonly meta?: boolean;
+  /**
+   * 親プロセスを辿って起動元アプリを補完する。
+   * 既定は false。`ps` の実行を表示する側だけに限るためのオプトイン。
+   */
+  readonly launchApp?: boolean;
   /** `~/.claude/projects` を探す起点 */
   readonly home?: string;
   /** コンテキスト上限の明示指定 */
@@ -52,6 +58,8 @@ export interface FetchAgentsOptions {
 const DEFAULT_TIMEOUT_MS = 5000;
 
 const TIMEOUT_MESSAGE = 'claude agents --json がタイムアウトしました。';
+
+const PS_COMMAND = 'ps';
 
 /** コマンド引数を組み立てる。 */
 export const buildArgs = (options: Pick<FetchAgentsOptions, 'all' | 'cwd'>): string[] => {
@@ -107,12 +115,46 @@ export const fetchAgents = async (
     };
   }
 
-  const agents = normalizeAgents(parsed as RawAgent[]);
+  const normalized = normalizeAgents(parsed as RawAgent[]);
+  const agents =
+    options.launchApp === true ? await attachLaunchApp(normalized, options) : normalized;
   if (options.meta !== true) {
     return { ok: true, agents };
   }
 
   return { ok: true, agents: await attachMeta(agents, options) };
+};
+
+/**
+ * 起動元アプリを合成する。
+ *
+ * `ps` はセッション数によらず 1 回だけ実行する。
+ * 失敗しても一覧は出したいので、起動元を出さないだけにとどめる。
+ */
+const attachLaunchApp = async (
+  agents: Agent[],
+  options: FetchAgentsOptions,
+): Promise<Agent[]> => {
+  if (agents.every((agent) => agent.pid === undefined)) {
+    return agents;
+  }
+
+  const runner = options.runner ?? execFileRunner;
+  let stdout: string;
+  try {
+    stdout = await runner(PS_COMMAND, PROCESS_TABLE_ARGS, {
+      timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      signal: options.signal,
+    });
+  } catch {
+    return agents;
+  }
+
+  const table = parseProcessTable(stdout);
+  return agents.map((agent) => ({
+    ...agent,
+    launchApp: agent.pid === undefined ? undefined : resolveLaunchApp(agent.pid, table),
+  }));
 };
 
 /**

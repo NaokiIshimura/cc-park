@@ -19,6 +19,7 @@ const agent = (
   pid: undefined,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
 });
 
 describe('sortAgents', () => {

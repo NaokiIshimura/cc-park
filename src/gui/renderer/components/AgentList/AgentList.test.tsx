@@ -19,6 +19,7 @@ const agent = (sessionId: string, cwd = '/tmp'): Agent => ({
   pid: undefined,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
 });
 
 /** 1 グループに全員が入る、既定のグループ構成。 */

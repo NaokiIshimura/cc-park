@@ -39,6 +39,7 @@ const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
   pid: undefined,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
   ...overrides,
 });
 
