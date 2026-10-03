@@ -752,6 +752,43 @@ npx vitest run --coverage
 vite の dev サーバを使う場合は、`CC_PARK_DEV_SERVER` に URL を設定して `npm run gui` を実行すると、
 ビルド済み HTML の代わりにその URL を読み込みます。
 
+### 変更を反映しながら確認する
+
+一度起動したまま、コードの変更を反映させて確認する手順です。
+
+#### GUI
+
+```bash
+# 1. 初回だけビルドする（Electron の main / preload は dist/ から読むため）
+npm run build
+
+# 2. ターミナル A: vite の dev サーバを起動する
+npx vite --port 5173
+
+# 3. ターミナル B: dev サーバを読み込んで GUI を起動する
+CC_PARK_DEV_SERVER=http://localhost:5173/ npm run gui
+```
+
+| 変更した場所 | 反映のされ方 |
+| --- | --- |
+| `src/gui/renderer/` / `src/shared/` / `src/hooks/`（renderer から読むもの） | HMR で即時に反映。再起動は不要 |
+| `src/gui/main.ts` / `src/gui/preload.ts` / `src/core/`（main プロセス側） | 自動では反映されない。`npm run build` してターミナル B を再起動する |
+
+main プロセス側のコンパイルを自動にしたいときは、別のターミナルで `npm run dev`（`tsc --watch`）を動かしておきます。
+その場合も Electron の再起動は手動です。
+
+#### TUI（`--cli`）
+
+```bash
+# ターミナル A: 変更のたびに dist/ へコンパイルする
+npm run dev
+
+# ターミナル B: dist/ が変わるたびに自動で再起動する（Node 標準の --watch）
+node --watch dist/cli.js --cli
+```
+
+`dist/cli.js` は既定で GUI を起動するので、TUI を確認するときは `--cli` を付けます。
+
 ### 設計メモ
 
 - `claude agents --json` の出力仕様は非公開のため、状態の正規化は `src/core/normalizeAgent.ts` 1 箇所に閉じ、
