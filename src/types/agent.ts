@@ -103,6 +103,11 @@ export interface Agent {
   readonly id: string | undefined;
   /** transcript 由来の付加情報。読み取らない / 読めない場合は undefined */
   readonly meta: SessionMeta | undefined;
+  /**
+   * 起動元のアプリ名（`VS Code` / `iTerm2` / `tmux` など）。
+   * 親プロセスから判定するため、pid を持たない・判定できない場合は undefined
+   */
+  readonly launchApp: string | undefined;
 }
 
 /** 状態遷移イベント。新規出現時は `from` が null になる。 */

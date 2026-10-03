@@ -26,6 +26,7 @@ const agent: Agent = {
   pid: undefined,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
 };
 
 const Harness = () => {

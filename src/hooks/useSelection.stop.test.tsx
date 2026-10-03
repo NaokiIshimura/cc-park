@@ -18,6 +18,7 @@ const backgroundAgent: Agent = {
   pid: undefined,
   id: '2160cf1c',
   meta: undefined,
+  launchApp: undefined,
 };
 
 const interactiveAgent: Agent = {
@@ -31,6 +32,7 @@ const interactiveAgent: Agent = {
   pid: 71547,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
 };
 
 // メッセージが長く端末幅で折り返されるため、描画結果ではなく戻り値を直接見る

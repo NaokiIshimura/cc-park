@@ -17,6 +17,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   pid: 100,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
   ...overrides,
 });
 
@@ -71,6 +72,14 @@ describe('AgentRow', () => {
 
   it('自分自身のセッションには [self] バッジを付ける', () => {
     expect(renderRow({}, { isSelf: true })).toContain('[self]');
+  });
+
+  it('起動元アプリが分かればセッション名の左にバッジで示す', () => {
+    expect(renderRow({ launchApp: 'iTerm2' })).toContain('[iTerm2] cc-park');
+  });
+
+  it('起動元アプリが分からなければバッジを付けない', () => {
+    expect(renderRow()).not.toContain('[iTerm2]');
   });
 
   // プロンプト行にも `>` を使うため、カーソルは行頭の桁にあるかで見分ける

@@ -24,6 +24,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   pid: 1,
   id: undefined,
   meta: undefined,
+  launchApp: undefined,
   ...overrides,
 });
 
@@ -201,6 +202,12 @@ describe('App', () => {
     // ミニキャラクターの判定も transcript 由来のため
     const { unmount } = await renderApp({ subagents: true });
     expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ meta: true });
+    unmount();
+  });
+
+  it('起動元アプリを補完させる', async () => {
+    const { unmount } = await renderApp();
+    expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ launchApp: true });
     unmount();
   });
 

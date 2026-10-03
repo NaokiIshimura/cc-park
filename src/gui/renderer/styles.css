@@ -381,6 +381,13 @@ body {
   color: var(--ink-blue-bright);
 }
 
+.tag--app {
+  color: var(--ink-gray);
+  /* 名前より前に置くので、長い名前に押されて潰れないようにする */
+  flex-shrink: 0;
+  white-space: pre;
+}
+
 .status-badge {
   font-weight: 700;
   /* 説明文が短いときも詰まって見えないようラベル幅を固定する */

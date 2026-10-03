@@ -17,6 +17,8 @@ export interface UseAgentsOptions {
   readonly poll?: boolean;
   /** transcript から最終プロンプト / トークン使用量を補完する */
   readonly meta?: boolean;
+  /** 親プロセスを辿って起動元アプリを補完する */
+  readonly launchApp?: boolean;
   /** コンテキスト上限の明示指定 */
   readonly contextLimit?: number | undefined;
   /**
@@ -52,6 +54,7 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
     poll = true,
     fetcher,
     meta = false,
+    launchApp = false,
     contextLimit,
   } = options;
 
@@ -81,7 +84,14 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
     // 以降のポーリングがすべてスキップされる。必ず finally で解除する
     let result: FetchAgentsResult;
     try {
-      result = await fetcher({ all, cwd, signal: controller.signal, meta, contextLimit });
+      result = await fetcher({
+        all,
+        cwd,
+        signal: controller.signal,
+        meta,
+        launchApp,
+        contextLimit,
+      });
     } catch (thrown) {
       // 取得実装そのものが投げた場合（GUI の IPC 失敗など）。
       // 握らないと未処理の rejection になり、原因も画面に出ない
@@ -114,7 +124,7 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
     if (result.error.kind !== 'aborted') {
       setError(result.error);
     }
-  }, [fetcher, all, cwd, meta, contextLimit]);
+  }, [fetcher, all, cwd, meta, launchApp, contextLimit]);
 
   useEffect(() => {
     mountedRef.current = true;

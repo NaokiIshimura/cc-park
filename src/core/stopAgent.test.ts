@@ -14,6 +14,7 @@ const background = (overrides: Partial<Agent> = {}): Agent => ({
   pid: undefined,
   id: '2160cf1c',
   meta: undefined,
+  launchApp: undefined,
   ...overrides,
 });
 

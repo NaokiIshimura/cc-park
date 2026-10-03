@@ -65,6 +65,8 @@ export const normalizeAgent = (raw: RawAgent): Agent | null => {
     id: raw.id,
     // transcript 由来の付加情報は fetchAgents が後から合成する
     meta: undefined,
+    // 起動元アプリも fetchAgents が親プロセスを辿って後から合成する
+    launchApp: undefined,
   };
 };
 
