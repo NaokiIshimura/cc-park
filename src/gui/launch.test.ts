@@ -200,31 +200,39 @@ describe('案内メッセージ', () => {
 });
 
 describe('resolveAppearanceFlags', () => {
-  it('指定が無ければどちらも null（保存済みの設定に従う）', () => {
-    expect(resolveAppearanceFlags({ theme: undefined, accent: undefined })).toEqual({
-      ok: true,
-      theme: null,
-      accent: null,
-    });
+  it('指定が無ければすべて null（保存済みの設定に従う）', () => {
+    expect(
+      resolveAppearanceFlags({ theme: undefined, accent: undefined, frame: undefined }),
+    ).toEqual({ ok: true, theme: null, accent: null, frame: null });
+  });
+
+  it('枠線の明示はオン・オフともにそのまま通す', () => {
+    expect(
+      resolveAppearanceFlags({ theme: undefined, accent: undefined, frame: false }),
+    ).toMatchObject({ ok: true, frame: false });
+    expect(
+      resolveAppearanceFlags({ theme: undefined, accent: undefined, frame: true }),
+    ).toMatchObject({ ok: true, frame: true });
   });
 
   it('正しい指定はそのまま通す', () => {
-    expect(resolveAppearanceFlags({ theme: 'navy', accent: '#f59e0b' })).toEqual({
+    expect(resolveAppearanceFlags({ theme: 'navy', accent: '#f59e0b', frame: undefined })).toEqual({
       ok: true,
       theme: 'navy',
       accent: '#f59e0b',
+      frame: null,
     });
   });
 
   it('3 桁の強調色も受け付ける', () => {
-    expect(resolveAppearanceFlags({ theme: undefined, accent: '#fa0' })).toMatchObject({
+    expect(resolveAppearanceFlags({ theme: undefined, accent: '#fa0', frame: undefined })).toMatchObject({
       ok: true,
       accent: '#fa0',
     });
   });
 
   it('知らないテーマ名は拒否し、選べる名前を案内する', () => {
-    expect(resolveAppearanceFlags({ theme: 'rainbow', accent: undefined })).toEqual({
+    expect(resolveAppearanceFlags({ theme: 'rainbow', accent: undefined, frame: undefined })).toEqual({
       ok: false,
       message: INVALID_THEME_MESSAGE,
     });
@@ -232,7 +240,7 @@ describe('resolveAppearanceFlags', () => {
   });
 
   it('形式の違う強調色は拒否する', () => {
-    expect(resolveAppearanceFlags({ theme: undefined, accent: 'orange' })).toEqual({
+    expect(resolveAppearanceFlags({ theme: undefined, accent: 'orange', frame: undefined })).toEqual({
       ok: false,
       message: INVALID_ACCENT_MESSAGE,
     });

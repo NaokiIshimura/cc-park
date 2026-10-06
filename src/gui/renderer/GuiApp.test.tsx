@@ -29,6 +29,7 @@ const config: GuiConfig = {
   contextLimit: 0,
   theme: null,
   accent: null,
+  frame: null,
   appearance: DEFAULT_APPEARANCE,
 };
 
@@ -92,6 +93,7 @@ afterEach(() => {
   cleanup();
   // 見た目は <html> 要素に書き込まれるため、テストごとに消しておく
   document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-frame');
   document.documentElement.removeAttribute('style');
 });
 
@@ -506,7 +508,7 @@ describe('GuiApp', () => {
   });
 
   it('起動時の見た目を <html> 要素へ反映する', async () => {
-    await setup({}, { appearance: { theme: 'navy', accent: '#f59e0b' } });
+    await setup({}, { appearance: { theme: 'navy', accent: '#f59e0b', frame: true } });
     const root = document.documentElement;
     expect(root.dataset['theme']).toBe('navy');
     expect(root.style.getPropertyValue('--bg')).toBe(PALETTES.navy.variables['--bg']);
@@ -520,13 +522,13 @@ describe('GuiApp', () => {
     await user.click(screen.getByRole('button', { name: '設定' }));
     await user.click(screen.getByRole('radio', { name: 'フォレスト' }));
 
-    expect(setAppearance).toHaveBeenCalledWith({ theme: 'forest', accent: null });
+    expect(setAppearance).toHaveBeenCalledWith({ theme: 'forest', accent: null, frame: true });
     expect(document.documentElement.dataset['theme']).toBe('forest');
   });
 
   it('main が適用した見た目を正として持ち直す', async () => {
     // 保存できなかった等で main が別の値を返した場合も、画面は main の値に揃える
-    const setAppearance = vi.fn(async () => ({ theme: 'dark' as const, accent: null }));
+    const setAppearance = vi.fn(async () => ({ theme: 'dark' as const, accent: null, frame: true }));
     const { user } = await setup({ setAppearance });
 
     await user.click(screen.getByRole('button', { name: '設定' }));
@@ -551,5 +553,17 @@ describe('GuiApp', () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     });
     expect(screen.queryByRole('dialog', { name: '設定' })).toBeNull();
+  });
+
+  it('設定で枠線を消すと main へ伝え、<html> 要素へ反映する', async () => {
+    const setAppearance = vi.fn(async (value: Appearance) => value);
+    const { user } = await setup({ setAppearance });
+    expect(document.documentElement.dataset['frame']).toBe('on');
+
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    await user.click(screen.getByRole('checkbox', { name: 'ウィンドウの外周に枠線を描く' }));
+
+    expect(setAppearance).toHaveBeenCalledWith({ theme: 'system', accent: null, frame: false });
+    expect(document.documentElement.dataset['frame']).toBe('off');
   });
 });

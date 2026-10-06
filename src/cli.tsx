@@ -8,6 +8,7 @@ import {
   buildGuiArgs,
   buildGuiEnv,
   ELECTRON_MISSING_MESSAGE,
+  isFlagGiven,
   resolveAppearanceFlags,
   resolveElectronPath,
   resolveGuiFlags,
@@ -38,6 +39,7 @@ const cli = meow(
     --finished-highlight <sec>   作業完了ハイライトの保持秒数 (既定: ${DEFAULT_HIGHLIGHT_MS / 1000})
     --theme <name>               GUI の配色テーマ (${THEME_IDS.join(' / ')})
     --accent <#rrggbb>           GUI の強調色 (枠線・選択行など)
+    --no-frame                   GUI のウィンドウ外周の枠線を描かない
     --once                       1 回だけ取得して描画し終了する (CLI モード)
 
   例
@@ -63,6 +65,7 @@ const cli = meow(
       finishedHighlight: { type: 'number', default: DEFAULT_HIGHLIGHT_MS / 1000 },
       theme: { type: 'string' },
       accent: { type: 'string' },
+      frame: { type: 'boolean', default: true },
       once: { type: 'boolean', default: false },
       cli: { type: 'boolean', default: false },
       gui: { type: 'boolean', default: false },
@@ -92,6 +95,8 @@ const startGui = async (): Promise<void> => {
   const appearance = resolveAppearanceFlags({
     theme: cli.flags.theme,
     accent: cli.flags.accent,
+    // 指定しなかった場合は保存済みの設定に従わせるため、明示したときだけ渡す
+    frame: isFlagGiven(process.argv.slice(2), 'frame') ? cli.flags.frame : undefined,
   });
   if (!appearance.ok) {
     console.error(appearance.message);
@@ -116,6 +121,7 @@ const startGui = async (): Promise<void> => {
       contextLimit,
       theme: appearance.theme,
       accent: appearance.accent,
+      frame: appearance.frame,
       ...display,
     }),
     { stdio: 'inherit', env: buildGuiEnv(process.env) },

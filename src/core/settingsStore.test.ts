@@ -12,7 +12,7 @@ import {
   serializeAppearance,
 } from './settingsStore.js';
 
-const appearance: Appearance = { theme: 'navy', accent: '#f59e0b' };
+const appearance: Appearance = { theme: 'navy', accent: '#f59e0b', frame: false };
 
 /** 書き込みが必ず失敗するファイルシステム。 */
 const failingFs: ScheduleFileSystem = {
@@ -52,7 +52,7 @@ describe('parseAppearance', () => {
 
   it('解釈できない項目だけ既定値で埋める', () => {
     const text = JSON.stringify({ appearance: { theme: 'rainbow', accent: '#123456' } });
-    expect(parseAppearance(text)).toEqual({ theme: 'system', accent: '#123456' });
+    expect(parseAppearance(text)).toEqual({ theme: 'system', accent: '#123456', frame: true });
   });
 });
 

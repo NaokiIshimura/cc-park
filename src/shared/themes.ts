@@ -256,13 +256,15 @@ export const isAccentColor = (value: unknown): value is string =>
  * 見た目の設定。
  *
  * `accent` は枠線・選択行・ON のトグルに使う色。null なら配色ごとの既定（`--ink-cyan`）。
+ * `frame` はウィンドウ外周の枠線（最前面固定中の太枠を含む）を描くか。
  */
 export interface Appearance {
   readonly theme: ThemeId;
   readonly accent: string | null;
+  readonly frame: boolean;
 }
 
-export const DEFAULT_APPEARANCE: Appearance = { theme: DEFAULT_THEME, accent: null };
+export const DEFAULT_APPEARANCE: Appearance = { theme: DEFAULT_THEME, accent: null, frame: true };
 
 /**
  * 外から来た値（保存ファイル・IPC）を見た目の設定として解釈する。
@@ -272,10 +274,12 @@ export const toAppearance = (value: unknown): Appearance => {
   if (typeof value !== 'object' || value === null) {
     return DEFAULT_APPEARANCE;
   }
-  const { theme, accent } = value as Partial<Record<keyof Appearance, unknown>>;
+  const { theme, accent, frame } = value as Partial<Record<keyof Appearance, unknown>>;
   return {
     theme: isThemeId(theme) ? theme : DEFAULT_APPEARANCE.theme,
     accent: isAccentColor(accent) ? accent : DEFAULT_APPEARANCE.accent,
+    // 枠線の設定を持たない古い保存ファイルは、これまでどおり枠線ありとして読む
+    frame: typeof frame === 'boolean' ? frame : DEFAULT_APPEARANCE.frame,
   };
 };
 
@@ -298,11 +302,16 @@ export const themeSourceOf = (theme: ThemeId): 'system' | ThemeBase =>
  * CLI 側の null は「指定しなかった」を表す。
  */
 export const resolveAppearance = (
-  flags: { readonly theme: ThemeId | null; readonly accent: string | null },
+  flags: {
+    readonly theme: ThemeId | null;
+    readonly accent: string | null;
+    readonly frame: boolean | null;
+  },
   saved: Appearance,
 ): Appearance => ({
   theme: flags.theme ?? saved.theme,
   accent: flags.accent ?? saved.accent,
+  frame: flags.frame ?? saved.frame,
 });
 
 /** `#rrggbb` を相対輝度（WCAG 2.x）へ変換する。 */
