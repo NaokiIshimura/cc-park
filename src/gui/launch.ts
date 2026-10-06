@@ -1,3 +1,4 @@
+import { isAccentColor, isThemeId, THEME_IDS, type ThemeId } from '../shared/themes.js';
 import { encodeGuiOptions, GUI_DEFAULT_FLAGS, type GuiOptions } from './config.js';
 
 /** electron を解決できなかったときの案内。勝手に CLI へ倒さず、ここで終了させる。 */
@@ -86,6 +87,35 @@ export const resolveGuiFlags = (
     ? flags.subagents
     : GUI_DEFAULT_FLAGS.subagents,
 });
+
+/** `--theme` に知らない名前を指定されたときの案内。 */
+export const INVALID_THEME_MESSAGE = `--theme には次のいずれかを指定してください: ${THEME_IDS.join(', ')}`;
+
+/** `--accent` の形式が違うときの案内。 */
+export const INVALID_ACCENT_MESSAGE = '--accent には #rgb または #rrggbb 形式の色を指定してください。';
+
+export type AppearanceFlagsDecision =
+  | { readonly ok: true; readonly theme: ThemeId | null; readonly accent: string | null }
+  | { readonly ok: false; readonly message: string };
+
+/**
+ * `--theme` / `--accent` を検査する。指定しなかったものは null（保存済みの設定に従う）。
+ *
+ * GUI 側でも不正値は既定へ倒すが、明示した指定が黙って無視されると気づけないため、
+ * 起動前にここで止める。
+ */
+export const resolveAppearanceFlags = (flags: {
+  readonly theme: string | undefined;
+  readonly accent: string | undefined;
+}): AppearanceFlagsDecision => {
+  if (flags.theme !== undefined && !isThemeId(flags.theme)) {
+    return { ok: false, message: INVALID_THEME_MESSAGE };
+  }
+  if (flags.accent !== undefined && !isAccentColor(flags.accent)) {
+    return { ok: false, message: INVALID_ACCENT_MESSAGE };
+  }
+  return { ok: true, theme: flags.theme ?? null, accent: flags.accent ?? null };
+};
 
 /** Electron へ渡す引数を組み立てる。 */
 export const buildGuiArgs = (mainPath: string, options: GuiOptions): string[] => [

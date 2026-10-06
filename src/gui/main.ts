@@ -7,6 +7,7 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  nativeTheme,
   Notification,
   powerMonitor,
   type OpenDialogOptions,
@@ -21,10 +22,19 @@ import {
   saveSchedules,
 } from '../core/scheduleStore.js';
 import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
+import { loadAppearance, saveAppearance } from '../core/settingsStore.js';
 import { resolveShellPath } from '../core/shellPath.js';
 import { stopAgent } from '../core/stopAgent.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
+import {
+  DEFAULT_APPEARANCE,
+  resolveAppearance,
+  resolvePalette,
+  themeSourceOf,
+  toAppearance,
+  type Appearance,
+} from '../shared/themes.js';
 import type { Agent } from '../types/agent.js';
 import { DEFAULT_ALWAYS_ON_TOP, parseGuiOptions, type GuiConfig } from './config.js';
 import { IPC_CHANNELS, type FetchAgentsRequest } from './ipc.js';
@@ -76,6 +86,31 @@ const config: GuiConfig = {
   home: homedir(),
   platform: process.platform,
   alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,
+  appearance: DEFAULT_APPEARANCE,
+};
+
+/** 現在の見た目。起動時に保存済みの設定から解決し、renderer からの変更で差し替える。 */
+let appearance: Appearance = DEFAULT_APPEARANCE;
+
+/**
+ * 見た目を main 側に反映する。
+ *
+ * `nativeTheme.themeSource` を変えると renderer の `prefers-color-scheme` も追従するため、
+ * light / dark の切り替えは CSS 側の既定値だけで済む。
+ */
+const applyAppearance = (next: Appearance): void => {
+  appearance = next;
+  nativeTheme.themeSource = themeSourceOf(next.theme);
+};
+
+/** ウィンドウの背景色。描画前のちらつきを防ぐため、配色の背景と揃える。 */
+const windowBackgroundColor = (): string =>
+  resolvePalette(appearance.theme, nativeTheme.shouldUseDarkColors).variables['--bg'];
+
+/** 保存済みの見た目を読み込み、CLI の指定を優先して起動時の見た目を決める。 */
+const prepareAppearance = async (): Promise<void> => {
+  const saved = await loadAppearance({ home: config.home });
+  applyAppearance(resolveAppearance({ theme: config.theme, accent: config.accent }, saved));
 };
 
 /** vite の dev サーバ経由で起動する場合の URL。未設定ならビルド済み HTML を読む。 */
@@ -88,7 +123,7 @@ const createWindow = async (): Promise<void> => {
     minWidth: MIN_WINDOW_WIDTH,
     minHeight: MIN_WINDOW_HEIGHT,
     title: 'CC Park',
-    backgroundColor: '#11131a',
+    backgroundColor: windowBackgroundColor(),
     alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,
     // 描画が整うまで待ってから見せ、白い画面のちらつきを防ぐ
     show: false,
@@ -162,7 +197,11 @@ ipcMain.handle(IPC_CHANNELS.listScheduledLaunches, () => scheduler.listLaunches(
 ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
   // 最前面固定は OS 側の都合で適用されないことがあるため、実際の状態を返す
   const window = BrowserWindow.fromWebContents(event.sender);
-  return { ...config, alwaysOnTop: window?.isAlwaysOnTop() ?? DEFAULT_ALWAYS_ON_TOP };
+  return {
+    ...config,
+    alwaysOnTop: window?.isAlwaysOnTop() ?? DEFAULT_ALWAYS_ON_TOP,
+    appearance,
+  };
 });
 
 ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequest) =>
@@ -194,6 +233,14 @@ ipcMain.handle(IPC_CHANNELS.setAlwaysOnTop, (event, value: boolean) => {
   window.setAlwaysOnTop(value);
   // 適用できたかは OS 側の都合もあるため、実際の状態を返す
   return window.isAlwaysOnTop();
+});
+
+ipcMain.handle(IPC_CHANNELS.setAppearance, async (event, value: unknown) => {
+  // renderer から来た値なので、解釈できない項目は既定値へ倒してから使う
+  applyAppearance(toAppearance(value));
+  BrowserWindow.fromWebContents(event.sender)?.setBackgroundColor(windowBackgroundColor());
+  await saveAppearance(appearance, { home: config.home });
+  return appearance;
 });
 
 /**
@@ -257,6 +304,7 @@ app
   .whenReady()
   .then(applyDevDockIcon)
   .then(preparePath)
+  .then(prepareAppearance)
   .then(createWindow)
   .then(startScheduler)
   .catch((error: unknown) => {

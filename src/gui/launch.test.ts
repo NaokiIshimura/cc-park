@@ -7,7 +7,10 @@ import {
   buildGuiEnv,
   ELECTRON_MISSING_MESSAGE,
   GUI_ONCE_CONFLICT_MESSAGE,
+  INVALID_ACCENT_MESSAGE,
+  INVALID_THEME_MESSAGE,
   MODE_CONFLICT_MESSAGE,
+  resolveAppearanceFlags,
   resolveElectronPath,
   resolveStartupMode,
   type StartupFlags,
@@ -193,5 +196,45 @@ describe('案内メッセージ', () => {
 
   it('--once との併用不可を伝える', () => {
     expect(GUI_ONCE_CONFLICT_MESSAGE).toContain('--once');
+  });
+});
+
+describe('resolveAppearanceFlags', () => {
+  it('指定が無ければどちらも null（保存済みの設定に従う）', () => {
+    expect(resolveAppearanceFlags({ theme: undefined, accent: undefined })).toEqual({
+      ok: true,
+      theme: null,
+      accent: null,
+    });
+  });
+
+  it('正しい指定はそのまま通す', () => {
+    expect(resolveAppearanceFlags({ theme: 'navy', accent: '#f59e0b' })).toEqual({
+      ok: true,
+      theme: 'navy',
+      accent: '#f59e0b',
+    });
+  });
+
+  it('3 桁の強調色も受け付ける', () => {
+    expect(resolveAppearanceFlags({ theme: undefined, accent: '#fa0' })).toMatchObject({
+      ok: true,
+      accent: '#fa0',
+    });
+  });
+
+  it('知らないテーマ名は拒否し、選べる名前を案内する', () => {
+    expect(resolveAppearanceFlags({ theme: 'rainbow', accent: undefined })).toEqual({
+      ok: false,
+      message: INVALID_THEME_MESSAGE,
+    });
+    expect(INVALID_THEME_MESSAGE).toContain('navy');
+  });
+
+  it('形式の違う強調色は拒否する', () => {
+    expect(resolveAppearanceFlags({ theme: undefined, accent: 'orange' })).toEqual({
+      ok: false,
+      message: INVALID_ACCENT_MESSAGE,
+    });
   });
 });

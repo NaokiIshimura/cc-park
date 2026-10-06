@@ -10,6 +10,8 @@
   --surface: #ffffff;
   --surface-selected: #e8f1ff;
   --border: #e2e5eb;
+  /* ウィンドウ外周の枠線。同じ色のターミナルに重ねても境界が分かるようにする */
+  --frame: #c4c9d4;
   --fg: #1b1f24;
   --fg-muted: #6b7280;
 
@@ -18,22 +20,30 @@
   --ink-cyan: #0e7490;
   --ink-yellow: #a16207;
   --ink-green: #15803d;
-  --ink-green-bright: #16a34a;
+  --ink-green-bright: #15983f;
   --ink-gray: #6b7280;
   --ink-red: #b91c1c;
   --ink-magenta: #a21caf;
   --ink-blue-bright: #1d4ed8;
   --ink-white: #111827;
 
+  /*
+   * 枠線（最前面固定中）・選択行・タイトルなどの強調色。
+   * 設定で色を選ぶと renderer がインラインで上書きする（gui/renderer/appearance.ts）。
+   */
+  --accent: var(--ink-cyan);
+
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11131a;
-    --surface: #171a22;
-    --surface-selected: #1f2937;
-    --border: #262b36;
+    /* 黒いターミナルと同化しないよう、黒より一段明るくする */
+    --bg: #181b23;
+    --surface: #1e222c;
+    --surface-selected: #283244;
+    --border: #323846;
+    --frame: #6b7385;
     --fg: #e5e7eb;
     --fg-muted: #9aa3b2;
 
@@ -70,6 +80,24 @@ body {
   height: 100vh;
 }
 
+/*
+ * ウィンドウ外周の枠線。子要素の背景に隠れないよう、最前面に重ねた疑似要素に描く。
+ * border ではなく inset の box-shadow にして、レイアウトの寸法を変えない。
+ */
+.app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  box-shadow: inset 0 0 0 1px var(--frame);
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* 最前面固定中は他のウィンドウに重なっているので、強調色で太く縁取る */
+.app--pinned::after {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 /* ヘッダ */
 
 .header {
@@ -102,7 +130,7 @@ body {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  color: var(--ink-cyan);
+  color: var(--accent);
   white-space: nowrap;
 }
 
@@ -139,7 +167,7 @@ body {
 
 .button:hover,
 .toggle:hover {
-  border-color: var(--ink-cyan);
+  border-color: var(--accent);
   color: var(--fg);
 }
 
@@ -162,7 +190,7 @@ body {
 }
 
 .spinner--active {
-  background: var(--ink-cyan);
+  background: var(--accent);
 }
 
 /* 一覧 */
@@ -234,7 +262,7 @@ body {
 
 .agent-row--selected {
   background: var(--surface-selected);
-  border-color: var(--ink-cyan);
+  border-color: var(--accent);
 }
 
 .character {
@@ -649,4 +677,58 @@ body {
   margin: 3px 0 0;
   color: var(--ink-red);
   font-size: 11px;
+}
+
+/* 設定（配色テーマ・強調色） */
+
+.settings__group {
+  margin: 0 0 12px;
+  padding: 0;
+  border: none;
+}
+
+.settings__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.swatch-pair {
+  display: inline-flex;
+  gap: 2px;
+}
+
+/* 配色の見本。背景色の上に、キャラクターに使う色の点を並べる */
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border: 1px solid;
+  border-radius: 3px;
+}
+
+.swatch__ink {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+}
+
+.settings__color {
+  width: 48px;
+  height: 26px;
+  padding: 0 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.button:disabled {
+  border-color: var(--border);
+  color: var(--fg-muted);
+  opacity: 0.5;
+  cursor: default;
 }

@@ -11,6 +11,7 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
   const onToggleAlwaysOnTop = vi.fn();
   const onRefresh = vi.fn();
   const onOpenSchedules = vi.fn();
+  const onOpenSettings = vi.fn();
   const result = render(
     <Header
       count={2}
@@ -22,6 +23,7 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
       onToggleAlwaysOnTop={onToggleAlwaysOnTop}
       onRefresh={onRefresh}
       onOpenSchedules={onOpenSchedules}
+      onOpenSettings={onOpenSettings}
       {...overrides}
     />,
   );
@@ -31,6 +33,7 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
     onToggleAlwaysOnTop,
     onRefresh,
     onOpenSchedules,
+    onOpenSettings,
     user: userEvent.setup(),
   };
 };
@@ -114,5 +117,11 @@ describe('Header', () => {
     const { user, onOpenSchedules } = setup();
     await user.click(screen.getByRole('button', { name: '予約' }));
     expect(onOpenSchedules).toHaveBeenCalledTimes(1);
+  });
+
+  it('設定ボタンで設定画面を開く', async () => {
+    const { user, onOpenSettings } = setup();
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
   });
 });

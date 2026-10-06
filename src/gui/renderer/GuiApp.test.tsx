@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FetchAgentsResult } from '../../core/fetchAgents.js';
 import type { ScheduleFiredEvent } from '../../core/scheduler.js';
 import type { Schedule } from '../../shared/schedule.js';
+import { DEFAULT_APPEARANCE, PALETTES, type Appearance } from '../../shared/themes.js';
 import type { Agent } from '../../types/agent.js';
 import { DEFAULT_ALWAYS_ON_TOP, type GuiConfig } from '../config.js';
 import type { CcParkBridge } from '../ipc.js';
@@ -26,6 +27,9 @@ const config: GuiConfig = {
   prompt: false,
   tokens: false,
   contextLimit: 0,
+  theme: null,
+  accent: null,
+  appearance: DEFAULT_APPEARANCE,
 };
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
@@ -60,6 +64,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   killAgent: vi.fn(async () => ({ ok: true as const })),
   writeClipboard: vi.fn(async () => true),
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
+  setAppearance: vi.fn(async (value: Appearance) => value),
   pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
@@ -83,7 +88,12 @@ const setup = async (
   return { ...result, bridge, user: userEvent.setup() };
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // 見た目は <html> 要素に書き込まれるため、テストごとに消しておく
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('style');
+});
 
 describe('GuiApp', () => {
   it('取得したセッションを一覧表示する', async () => {
@@ -485,5 +495,61 @@ describe('GuiApp', () => {
     await waitFor(() => {
       expect(screen.getByText('[sched]').getAttribute('title')).toBe('09:00 の予約で起動');
     });
+  });
+
+  it('最前面固定中だけ外周の枠を強調する', async () => {
+    const { container, user } = await setup();
+    expect(container.querySelector('.app')?.classList.contains('app--pinned')).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: 'top:ON' }));
+    expect(container.querySelector('.app')?.classList.contains('app--pinned')).toBe(false);
+  });
+
+  it('起動時の見た目を <html> 要素へ反映する', async () => {
+    await setup({}, { appearance: { theme: 'navy', accent: '#f59e0b' } });
+    const root = document.documentElement;
+    expect(root.dataset['theme']).toBe('navy');
+    expect(root.style.getPropertyValue('--bg')).toBe(PALETTES.navy.variables['--bg']);
+    expect(root.style.getPropertyValue('--accent')).toBe('#f59e0b');
+  });
+
+  it('設定ボタンで設定画面を開き、選んだテーマを main へ伝えて反映する', async () => {
+    const setAppearance = vi.fn(async (value: Appearance) => value);
+    const { user } = await setup({ setAppearance });
+
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    await user.click(screen.getByRole('radio', { name: 'フォレスト' }));
+
+    expect(setAppearance).toHaveBeenCalledWith({ theme: 'forest', accent: null });
+    expect(document.documentElement.dataset['theme']).toBe('forest');
+  });
+
+  it('main が適用した見た目を正として持ち直す', async () => {
+    // 保存できなかった等で main が別の値を返した場合も、画面は main の値に揃える
+    const setAppearance = vi.fn(async () => ({ theme: 'dark' as const, accent: null }));
+    const { user } = await setup({ setAppearance });
+
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    await user.click(screen.getByRole('radio', { name: 'セピア' }));
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset['theme']).toBe('dark');
+    });
+  });
+
+  it('設定画面を開いている間は一覧のキー操作を止め、Escape で閉じる', async () => {
+    const quit = vi.fn();
+    const { user } = await setup({ quit });
+
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }));
+    });
+    expect(quit).not.toHaveBeenCalled();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+    expect(screen.queryByRole('dialog', { name: '設定' })).toBeNull();
   });
 });

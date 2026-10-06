@@ -1,3 +1,5 @@
+import { isAccentColor, isThemeId, type Appearance, type ThemeId } from '../shared/themes.js';
+
 /** CLI から GUI へ設定を引き渡すフラグ名。 */
 export const CONFIG_FLAG = '--cc-park-config';
 
@@ -17,6 +19,10 @@ export interface GuiOptions {
   readonly subagents: boolean;
   /** コンテキスト上限の明示指定。0 なら使用量から推定する */
   readonly contextLimit: number;
+  /** 配色テーマの明示指定。null なら保存済みの設定（無ければ既定）に従う */
+  readonly theme: ThemeId | null;
+  /** 強調色の明示指定（`#rrggbb`）。null なら保存済みの設定（無ければ既定）に従う */
+  readonly accent: string | null;
 }
 
 /**
@@ -35,6 +41,8 @@ export interface GuiConfig extends GuiOptions {
   readonly platform: string;
   /** ウィンドウが最前面に固定されているか（main が実際に適用できた値） */
   readonly alwaysOnTop: boolean;
+  /** 起動時の見た目。CLI の指定と保存済みの設定から main が解決した値 */
+  readonly appearance: Appearance;
 }
 
 /**
@@ -64,6 +72,8 @@ export const DEFAULT_GUI_OPTIONS: GuiOptions = {
   highlightMs: 10_000,
   selfSessionId: null,
   contextLimit: 0,
+  theme: null,
+  accent: null,
   ...GUI_DEFAULT_FLAGS,
 };
 
@@ -118,5 +128,7 @@ export const parseGuiOptions = (argv: readonly string[]): GuiOptions => {
     tokens: pick(source.tokens, isBoolean, DEFAULT_GUI_OPTIONS.tokens),
     subagents: pick(source.subagents, isBoolean, DEFAULT_GUI_OPTIONS.subagents),
     contextLimit: pick(source.contextLimit, isNumber, DEFAULT_GUI_OPTIONS.contextLimit),
+    theme: pick<ThemeId | null>(source.theme, isThemeId, DEFAULT_GUI_OPTIONS.theme),
+    accent: pick<string | null>(source.accent, isAccentColor, DEFAULT_GUI_OPTIONS.accent),
   };
 };

@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
+import type { Appearance } from '../shared/themes.js';
 import type { Agent } from '../types/agent.js';
 import { IPC_CHANNELS, type CcParkBridge, type FetchAgentsRequest } from './ipc.js';
 
@@ -17,6 +18,8 @@ const bridge: CcParkBridge = {
   killAgent: (agent: Agent) => ipcRenderer.invoke(IPC_CHANNELS.killAgent, agent),
   writeClipboard: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.writeClipboard, text),
   setAlwaysOnTop: (value: boolean) => ipcRenderer.invoke(IPC_CHANNELS.setAlwaysOnTop, value),
+  setAppearance: (appearance: Appearance) =>
+    ipcRenderer.invoke(IPC_CHANNELS.setAppearance, appearance),
   pickDirectory: (defaultPath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.pickDirectory, defaultPath),
   listSchedules: () => ipcRenderer.invoke(IPC_CHANNELS.listSchedules),
