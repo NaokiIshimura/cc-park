@@ -8,12 +8,14 @@ import {
   buildGuiArgs,
   buildGuiEnv,
   ELECTRON_MISSING_MESSAGE,
+  resolveAppearanceFlags,
   resolveElectronPath,
   resolveGuiFlags,
   resolveStartupMode,
 } from './gui/launch.js';
 import { MIN_INTERVAL_MS } from './hooks/useAgents.js';
 import { DEFAULT_HIGHLIGHT_MS } from './hooks/useTransitions.js';
+import { THEME_IDS } from './shared/themes.js';
 
 const cli = meow(
   `
@@ -34,6 +36,8 @@ const cli = meow(
     --subagents                  実行中のサブエージェントをミニキャラクターで表示する (GUI は既定で ON)
     --context-limit <tokens>     コンテキスト上限を明示指定する (既定: 使用量から推定)
     --finished-highlight <sec>   作業完了ハイライトの保持秒数 (既定: ${DEFAULT_HIGHLIGHT_MS / 1000})
+    --theme <name>               GUI の配色テーマ (${THEME_IDS.join(' / ')})
+    --accent <#rrggbb>           GUI の強調色 (枠線・選択行など)
     --once                       1 回だけ取得して描画し終了する (CLI モード)
 
   例
@@ -43,6 +47,7 @@ const cli = meow(
     $ cc-park --all --cwd ~/GitHub
     $ cc-park --cli --prompt --tokens --subagents
     $ cc-park --no-prompt --no-tokens --no-subagents
+    $ cc-park --theme navy --accent '#f59e0b'
 `,
   {
     importMeta: import.meta,
@@ -56,6 +61,8 @@ const cli = meow(
       subagents: { type: 'boolean', default: false },
       contextLimit: { type: 'number', default: 0 },
       finishedHighlight: { type: 'number', default: DEFAULT_HIGHLIGHT_MS / 1000 },
+      theme: { type: 'string' },
+      accent: { type: 'string' },
       once: { type: 'boolean', default: false },
       cli: { type: 'boolean', default: false },
       gui: { type: 'boolean', default: false },
@@ -82,6 +89,15 @@ const startGui = async (): Promise<void> => {
     process.argv.slice(2),
   );
 
+  const appearance = resolveAppearanceFlags({
+    theme: cli.flags.theme,
+    accent: cli.flags.accent,
+  });
+  if (!appearance.ok) {
+    console.error(appearance.message);
+    process.exit(1);
+  }
+
   const electronPath = await resolveElectronPath(() => import('electron'));
   if (electronPath === null) {
     console.error(ELECTRON_MISSING_MESSAGE);
@@ -98,6 +114,8 @@ const startGui = async (): Promise<void> => {
       highlightMs,
       selfSessionId,
       contextLimit,
+      theme: appearance.theme,
+      accent: appearance.accent,
       ...display,
     }),
     { stdio: 'inherit', env: buildGuiEnv(process.env) },

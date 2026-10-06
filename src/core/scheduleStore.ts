@@ -171,7 +171,7 @@ const loadList = async <T>(
  *
  * 発火直後に落ちても、中途半端な JSON が残って次回の起動時に中身を失うことがないようにする。
  */
-const writeAtomically = async (
+export const writeAtomically = async (
   path: string,
   data: string,
   fs: ScheduleFileSystem,

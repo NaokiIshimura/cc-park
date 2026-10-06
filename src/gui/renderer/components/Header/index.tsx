@@ -10,6 +10,7 @@ interface HeaderProps {
   readonly onToggleAlwaysOnTop: () => void;
   readonly onRefresh: () => void;
   readonly onOpenSchedules: () => void;
+  readonly onOpenSettings: () => void;
 }
 
 /** タイトル・件数・最終更新時刻・各トグルを表示し、更新と切り替えの操作を提供する。 */
@@ -23,11 +24,21 @@ export const Header = ({
   onToggleAlwaysOnTop,
   onRefresh,
   onOpenSchedules,
+  onOpenSettings,
 }: HeaderProps) => (
   <header className="header">
     <div className="header__title-area">
       <h1 className="header__title">CC Park</h1>
       <span className="header__count">{`${count} sessions`}</span>
+      {/* 操作側は既定幅で余白が無いため、段を分けて空いているタイトル側に置く */}
+      <button
+        type="button"
+        className="button"
+        title="配色テーマと強調色を選ぶ"
+        onClick={onOpenSettings}
+      >
+        設定
+      </button>
     </div>
 
     <div className="header__actions">

@@ -4,6 +4,7 @@ import type { StopAgentResult } from '../core/stopAgent.js';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
+import type { Appearance } from '../shared/themes.js';
 import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
 import type { Agent } from '../types/agent.js';
 import type { GuiConfig } from './config.js';
@@ -25,6 +26,8 @@ export const IPC_CHANNELS = {
   writeClipboard: 'clipboard:write',
   /** ウィンドウの最前面固定の切り替え */
   setAlwaysOnTop: 'window:alwaysOnTop',
+  /** 見た目（配色テーマ・強調色）の変更と保存 */
+  setAppearance: 'appearance:set',
   /** ディレクトリ選択ダイアログの表示 */
   pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
@@ -60,6 +63,11 @@ export interface CcParkBridge {
   readonly writeClipboard: (text: string) => Promise<boolean>;
   /** ウィンドウを最前面に固定する / 解除する。適用後の状態を返す */
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;
+  /**
+   * 見た目を変更して保存する。適用後の値を返す。
+   * OS 部品の明暗（`nativeTheme`）は main でしか変えられないため、変更のたびに呼ぶ。
+   */
+  readonly setAppearance: (appearance: Appearance) => Promise<Appearance>;
   /**
    * ディレクトリ選択ダイアログを開く。選ばれた絶対パスを返し、取り消したら null。
    * `defaultPath` は最初に開く場所（空文字なら OS に任せる）。

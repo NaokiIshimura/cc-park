@@ -13,6 +13,9 @@ import { Footer } from './components/Footer/index.js';
 import { Header } from './components/Header/index.js';
 import { ConfirmDialog } from './components/ConfirmDialog/index.js';
 import { SchedulePanel } from './components/SchedulePanel/index.js';
+import { SettingsPanel } from './components/SettingsPanel/index.js';
+import { systemPrefersDark } from './appearance.js';
+import { useAppearance } from './hooks/useAppearance.js';
 import { useGuiSelection } from './hooks/useGuiSelection.js';
 import { useSchedules } from './hooks/useSchedules.js';
 
@@ -29,6 +32,9 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   const [notifyEnabled, setNotifyEnabled] = useState(config.notify);
   const [alwaysOnTop, setAlwaysOnTop] = useState(config.alwaysOnTop);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const { appearance, change: changeAppearance } = useAppearance(bridge, config.appearance);
 
   const frame = useAnimationTick(ANIMATION_INTERVAL_MS);
   // フレーム更新に合わせて経過時間の基準時刻も進める
@@ -74,6 +80,10 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     setScheduleOpen((open) => !open);
   }, []);
 
+  const toggleSettings = useCallback(() => {
+    setSettingsOpen((open) => !open);
+  }, []);
+
   const {
     selectedIndex,
     message,
@@ -93,8 +103,8 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     copy: bridge.writeClipboard,
     stop: bridge.stopAgent,
     kill: bridge.killAgent,
-    // 予約画面を開いている間は、一覧のキー操作を止める
-    enabled: !scheduleOpen,
+    // 予約・設定の画面を開いている間は、一覧のキー操作を止める
+    enabled: !scheduleOpen && !settingsOpen,
   });
 
   // 予約の発火はフッタにも出す。通知を切っていても画面で気づけるようにする
@@ -117,7 +127,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   const pendingAgent = sorted.find((agent) => agent.sessionId === pendingAction?.sessionId);
 
   return (
-    <div className="app">
+    <div className={alwaysOnTop ? 'app app--pinned' : 'app'}>
       <Header
         count={sorted.length}
         lastUpdatedAt={lastUpdatedAt}
@@ -132,6 +142,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
           run('refresh');
         }}
         onOpenSchedules={toggleSchedules}
+        onOpenSettings={toggleSettings}
       />
 
       <main className="app__body">
@@ -173,6 +184,17 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
             void schedules.setEnabled(schedule.id, !schedule.enabled);
           }}
           onClose={toggleSchedules}
+        />
+      )}
+
+      {!settingsOpen ? null : (
+        <SettingsPanel
+          appearance={appearance}
+          prefersDark={systemPrefersDark()}
+          onChange={(next) => {
+            void changeAppearance(next);
+          }}
+          onClose={toggleSettings}
         />
       )}
 
