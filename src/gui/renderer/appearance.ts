@@ -7,10 +7,12 @@ import { PALETTES, THEME_VARIABLES, type Appearance } from '../../shared/themes.
  *   `nativeTheme.themeSource` で切り替え、`prefers-color-scheme` が追従する
  * - それ以外のプリセット: CSS 変数をインラインで上書きする（styles.css より優先される）
  * - 強調色: 指定があれば `--accent` を上書きし、無ければ配色ごとの既定（`--ink-cyan`）に戻す
+ * - 枠線: `data-frame="off"` で外周の枠線を消す（styles.css の `.app::after`）
  */
 export const applyAppearance = (root: HTMLElement, appearance: Appearance): void => {
-  const { theme, accent } = appearance;
+  const { theme, accent, frame } = appearance;
   root.dataset['theme'] = theme;
+  root.dataset['frame'] = frame ? 'on' : 'off';
 
   const overrides =
     theme === 'system' || theme === 'light' || theme === 'dark'

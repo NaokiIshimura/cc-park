@@ -120,6 +120,20 @@ export const SettingsPanel = ({ appearance, prefersDark, onChange, onClose }: Se
               </button>
             </div>
           </fieldset>
+
+          <fieldset className="settings__group">
+            <legend className="field__label">枠線</legend>
+            <label className="settings__option">
+              <input
+                type="checkbox"
+                checked={appearance.frame}
+                onChange={(event) => {
+                  onChange({ ...appearance, frame: event.target.checked });
+                }}
+              />
+              <span>ウィンドウの外周に枠線を描く</span>
+            </label>
+          </fieldset>
         </div>
 
         <p className="panel__hint">選んだ設定は次回の起動時にも引き継がれます</p>

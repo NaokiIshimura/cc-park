@@ -23,6 +23,8 @@ export interface GuiOptions {
   readonly theme: ThemeId | null;
   /** 強調色の明示指定（`#rrggbb`）。null なら保存済みの設定（無ければ既定）に従う */
   readonly accent: string | null;
+  /** 外周の枠線の明示指定。null なら保存済みの設定（無ければ既定）に従う */
+  readonly frame: boolean | null;
 }
 
 /**
@@ -74,6 +76,7 @@ export const DEFAULT_GUI_OPTIONS: GuiOptions = {
   contextLimit: 0,
   theme: null,
   accent: null,
+  frame: null,
   ...GUI_DEFAULT_FLAGS,
 };
 
@@ -130,5 +133,6 @@ export const parseGuiOptions = (argv: readonly string[]): GuiOptions => {
     contextLimit: pick(source.contextLimit, isNumber, DEFAULT_GUI_OPTIONS.contextLimit),
     theme: pick<ThemeId | null>(source.theme, isThemeId, DEFAULT_GUI_OPTIONS.theme),
     accent: pick<string | null>(source.accent, isAccentColor, DEFAULT_GUI_OPTIONS.accent),
+    frame: pick<boolean | null>(source.frame, isBoolean, DEFAULT_GUI_OPTIONS.frame),
   };
 };

@@ -95,11 +95,16 @@ export const INVALID_THEME_MESSAGE = `--theme には次のいずれかを指定�
 export const INVALID_ACCENT_MESSAGE = '--accent には #rgb または #rrggbb 形式の色を指定してください。';
 
 export type AppearanceFlagsDecision =
-  | { readonly ok: true; readonly theme: ThemeId | null; readonly accent: string | null }
+  | {
+      readonly ok: true;
+      readonly theme: ThemeId | null;
+      readonly accent: string | null;
+      readonly frame: boolean | null;
+    }
   | { readonly ok: false; readonly message: string };
 
 /**
- * `--theme` / `--accent` を検査する。指定しなかったものは null（保存済みの設定に従う）。
+ * `--theme` / `--accent` / `--frame` を検査する。指定しなかったものは null（保存済みの設定に従う）。
  *
  * GUI 側でも不正値は既定へ倒すが、明示した指定が黙って無視されると気づけないため、
  * 起動前にここで止める。
@@ -107,6 +112,8 @@ export type AppearanceFlagsDecision =
 export const resolveAppearanceFlags = (flags: {
   readonly theme: string | undefined;
   readonly accent: string | undefined;
+  /** 明示されなかった場合は undefined（meow の既定値と区別するため、呼び出し側で argv を見て渡す） */
+  readonly frame: boolean | undefined;
 }): AppearanceFlagsDecision => {
   if (flags.theme !== undefined && !isThemeId(flags.theme)) {
     return { ok: false, message: INVALID_THEME_MESSAGE };
@@ -114,7 +121,12 @@ export const resolveAppearanceFlags = (flags: {
   if (flags.accent !== undefined && !isAccentColor(flags.accent)) {
     return { ok: false, message: INVALID_ACCENT_MESSAGE };
   }
-  return { ok: true, theme: flags.theme ?? null, accent: flags.accent ?? null };
+  return {
+    ok: true,
+    theme: flags.theme ?? null,
+    accent: flags.accent ?? null,
+    frame: flags.frame ?? null,
+  };
 };
 
 /** Electron へ渡す引数を組み立てる。 */

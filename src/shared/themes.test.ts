@@ -122,14 +122,21 @@ describe('isAccentColor', () => {
 
 describe('toAppearance', () => {
   it('正しい値はそのまま使う', () => {
-    expect(toAppearance({ theme: 'sepia', accent: '#123456' })).toEqual({
+    expect(toAppearance({ theme: 'sepia', accent: '#123456', frame: false })).toEqual({
       theme: 'sepia',
       accent: '#123456',
+      frame: false,
     });
   });
 
   it('解釈できない項目は既定値で埋める', () => {
-    expect(toAppearance({ theme: 'rainbow', accent: 'red' })).toEqual(DEFAULT_APPEARANCE);
+    expect(toAppearance({ theme: 'rainbow', accent: 'red', frame: 'no' })).toEqual(
+      DEFAULT_APPEARANCE,
+    );
+  });
+
+  it('枠線の設定を持たない古い値は枠線ありとして読む', () => {
+    expect(toAppearance({ theme: 'navy', accent: null }).frame).toBe(true);
   });
 
   it('オブジェクト以外は既定値にする', () => {
@@ -162,23 +169,23 @@ describe('themeSourceOf', () => {
 });
 
 describe('resolveAppearance', () => {
-  const saved = { theme: 'forest', accent: '#123456' } as const;
+  const saved = { theme: 'forest', accent: '#123456', frame: true } as const;
 
   it('CLI の指定が無ければ保存済みの値を使う', () => {
-    expect(resolveAppearance({ theme: null, accent: null }, saved)).toEqual(saved);
+    expect(resolveAppearance({ theme: null, accent: null, frame: null }, saved)).toEqual(saved);
   });
 
   it('CLI で明示した値を優先する', () => {
-    expect(resolveAppearance({ theme: 'navy', accent: '#f59e0b' }, saved)).toEqual({
-      theme: 'navy',
-      accent: '#f59e0b',
-    });
+    expect(
+      resolveAppearance({ theme: 'navy', accent: '#f59e0b', frame: false }, saved),
+    ).toEqual({ theme: 'navy', accent: '#f59e0b', frame: false });
   });
 
   it('項目ごとに優先順位を判断する', () => {
-    expect(resolveAppearance({ theme: 'navy', accent: null }, saved)).toEqual({
+    expect(resolveAppearance({ theme: 'navy', accent: null, frame: null }, saved)).toEqual({
       theme: 'navy',
       accent: '#123456',
+      frame: true,
     });
   });
 });

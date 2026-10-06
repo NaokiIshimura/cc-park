@@ -21,6 +21,7 @@ const options: GuiOptions = {
   contextLimit: 200_000,
   theme: 'navy',
   accent: '#f59e0b',
+  frame: false,
 };
 
 describe('DEFAULT_GUI_OPTIONS', () => {
@@ -85,15 +86,15 @@ describe('parseGuiOptions', () => {
     expect(parsed.cwd).toBeUndefined();
   });
 
-  it('テーマ・強調色の指定が無ければ null（保存済みの設定に従う）', () => {
-    expect(DEFAULT_GUI_OPTIONS).toMatchObject({ theme: null, accent: null });
+  it('テーマ・強調色・枠線の指定が無ければ null（保存済みの設定に従う）', () => {
+    expect(DEFAULT_GUI_OPTIONS).toMatchObject({ theme: null, accent: null, frame: null });
   });
 
-  it('知らないテーマ名・形式の違う強調色は null で埋める', () => {
+  it('知らないテーマ名・形式の違う強調色・真偽値でない枠線は null で埋める', () => {
     const parsed = parseGuiOptions([
-      `${CONFIG_FLAG}=${JSON.stringify({ theme: 'rainbow', accent: 'orange' })}`,
+      `${CONFIG_FLAG}=${JSON.stringify({ theme: 'rainbow', accent: 'orange', frame: 'off' })}`,
     ]);
-    expect(parsed).toMatchObject({ theme: null, accent: null });
+    expect(parsed).toMatchObject({ theme: null, accent: null, frame: null });
   });
 });
 

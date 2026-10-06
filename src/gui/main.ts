@@ -110,7 +110,9 @@ const windowBackgroundColor = (): string =>
 /** 保存済みの見た目を読み込み、CLI の指定を優先して起動時の見た目を決める。 */
 const prepareAppearance = async (): Promise<void> => {
   const saved = await loadAppearance({ home: config.home });
-  applyAppearance(resolveAppearance({ theme: config.theme, accent: config.accent }, saved));
+  applyAppearance(
+    resolveAppearance({ theme: config.theme, accent: config.accent, frame: config.frame }, saved),
+  );
 };
 
 /** vite の dev サーバ経由で起動する場合の URL。未設定ならビルド済み HTML を読む。 */
