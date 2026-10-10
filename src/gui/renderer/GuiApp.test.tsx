@@ -7,7 +7,7 @@ import type { ScheduleFiredEvent } from '../../core/scheduler.js';
 import type { Schedule } from '../../shared/schedule.js';
 import { DEFAULT_APPEARANCE, PALETTES, type Appearance } from '../../shared/themes.js';
 import type { Agent } from '../../types/agent.js';
-import { DEFAULT_ALWAYS_ON_TOP, type GuiConfig } from '../config.js';
+import { DEFAULT_ALWAYS_ON_TOP, DEFAULT_OPACITY, type GuiConfig } from '../config.js';
 import type { CcParkBridge } from '../ipc.js';
 import { GuiApp } from './GuiApp.js';
 
@@ -24,6 +24,7 @@ const config: GuiConfig = {
   home: HOME,
   platform: 'darwin',
   alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,
+  opacity: DEFAULT_OPACITY,
   prompt: false,
   tokens: false,
   contextLimit: 0,
@@ -66,6 +67,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   writeClipboard: vi.fn(async () => true),
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
   setAppearance: vi.fn(async (value: Appearance) => value),
+  setOpacity: vi.fn(async (value: number) => value),
   pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
@@ -279,6 +281,49 @@ describe('GuiApp', () => {
 
     await waitFor(() => {
       expect(setAlwaysOnTop).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it('起動直後は main が適用した不透明度を表示する', async () => {
+    await setup({}, { opacity: 0.8 });
+    expect(screen.getByRole('button', { name: 'opacity:80%' })).toBeDefined();
+  });
+
+  it('不透明度トグルを押すたびに段階を進め、一巡すると不透明へ戻る', async () => {
+    const setOpacity = vi.fn(async (value: number) => value);
+    const { user } = await setup({ setOpacity });
+
+    await user.click(screen.getByRole('button', { name: 'opacity:100%' }));
+    expect(setOpacity).toHaveBeenLastCalledWith(0.8);
+    expect(screen.getByText('不透明度を 80% にしました')).toBeDefined();
+
+    await user.click(screen.getByRole('button', { name: 'opacity:80%' }));
+    expect(setOpacity).toHaveBeenLastCalledWith(0.6);
+
+    await user.click(screen.getByRole('button', { name: 'opacity:60%' }));
+    expect(setOpacity).toHaveBeenLastCalledWith(1);
+    expect(screen.getByRole('button', { name: 'opacity:100%' })).toBeDefined();
+  });
+
+  it('main が透過できなかった場合は適用後の値で表示する', async () => {
+    const { user } = await setup({ setOpacity: vi.fn(async () => 1) });
+
+    await user.click(screen.getByRole('button', { name: 'opacity:100%' }));
+
+    expect(screen.getByRole('button', { name: 'opacity:100%' })).toBeDefined();
+    expect(screen.getByText('不透明度を 100% にしました')).toBeDefined();
+  });
+
+  it('o キーでも不透明度を切り替えられる', async () => {
+    const setOpacity = vi.fn(async (value: number) => value);
+    await setup({ setOpacity });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o' }));
+    });
+
+    await waitFor(() => {
+      expect(setOpacity).toHaveBeenCalledWith(0.8);
     });
   });
 

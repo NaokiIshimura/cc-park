@@ -28,6 +28,8 @@ export const IPC_CHANNELS = {
   setAlwaysOnTop: 'window:alwaysOnTop',
   /** 見た目（配色テーマ・強調色）の変更と保存 */
   setAppearance: 'appearance:set',
+  /** ウィンドウの不透明度の変更 */
+  setOpacity: 'window:opacity',
   /** ディレクトリ選択ダイアログの表示 */
   pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
@@ -63,6 +65,8 @@ export interface CcParkBridge {
   readonly writeClipboard: (text: string) => Promise<boolean>;
   /** ウィンドウを最前面に固定する / 解除する。適用後の状態を返す */
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;
+  /** ウィンドウの不透明度（0〜1）を変える。適用後の値を返す */
+  readonly setOpacity: (value: number) => Promise<number>;
   /**
    * 見た目を変更して保存する。適用後の値を返す。
    * OS 部品の明暗（`nativeTheme`）は main でしか変えられないため、変更のたびに呼ぶ。

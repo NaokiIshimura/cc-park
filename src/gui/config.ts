@@ -36,6 +36,29 @@ export interface GuiOptions {
  */
 export const DEFAULT_ALWAYS_ON_TOP = true;
 
+/**
+ * ウィンドウの不透明度の段階（1 = 不透明）。切り替えるたびに順に巡回する。
+ *
+ * 背後のエディタを透かして見ながら置いておけるよう、薄くする方向へ進める。
+ * 薄くしすぎると AA の色で状態を見分けられなくなるため、下限は 60% にとどめる。
+ */
+export const OPACITY_LEVELS = [1, 0.8, 0.6] as const;
+
+/** 起動時の不透明度。main と renderer の初期表示が食い違わないよう双方がこれを起点にする。 */
+export const DEFAULT_OPACITY = 1;
+
+/**
+ * 次の段階の不透明度を返す。
+ *
+ * 現在値は main が実際に適用した値なので、段階に無い値（丸め誤差を含む）でも
+ * 進められるよう「現在値より小さい最初の段階」を選び、無ければ不透明へ戻す。
+ */
+export const nextOpacity = (current: number): number =>
+  OPACITY_LEVELS.find((level) => level < current - 0.01) ?? OPACITY_LEVELS[0];
+
+/** 不透明度を `80%` のような表示用の文字列にする。 */
+export const formatOpacity = (opacity: number): string => `${Math.round(opacity * 100)}%`;
+
 /** renderer へ渡す起動時設定。main プロセスで解決した実行環境の情報を含む。 */
 export interface GuiConfig extends GuiOptions {
   /** `~` 短縮に使うホームディレクトリ */
@@ -45,6 +68,8 @@ export interface GuiConfig extends GuiOptions {
   readonly alwaysOnTop: boolean;
   /** 起動時の見た目。CLI の指定と保存済みの設定から main が解決した値 */
   readonly appearance: Appearance;
+  /** ウィンドウの不透明度（main が実際に適用できた値） */
+  readonly opacity: number;
 }
 
 /**

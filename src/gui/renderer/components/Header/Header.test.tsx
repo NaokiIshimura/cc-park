@@ -9,6 +9,7 @@ afterEach(cleanup);
 const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
   const onToggleNotify = vi.fn();
   const onToggleAlwaysOnTop = vi.fn();
+  const onCycleOpacity = vi.fn();
   const onRefresh = vi.fn();
   const onOpenSchedules = vi.fn();
   const onOpenSettings = vi.fn();
@@ -18,9 +19,11 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
       lastUpdatedAt={null}
       notifyEnabled
       alwaysOnTop={false}
+      opacity={1}
       isFetching={false}
       onToggleNotify={onToggleNotify}
       onToggleAlwaysOnTop={onToggleAlwaysOnTop}
+      onCycleOpacity={onCycleOpacity}
       onRefresh={onRefresh}
       onOpenSchedules={onOpenSchedules}
       onOpenSettings={onOpenSettings}
@@ -31,6 +34,7 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
     ...result,
     onToggleNotify,
     onToggleAlwaysOnTop,
+    onCycleOpacity,
     onRefresh,
     onOpenSchedules,
     onOpenSettings,
@@ -95,6 +99,26 @@ describe('Header', () => {
     const { onToggleAlwaysOnTop, user } = setup();
     await user.click(screen.getByRole('button', { name: 'top:off' }));
     expect(onToggleAlwaysOnTop).toHaveBeenCalledTimes(1);
+  });
+
+  it('不透明なら非押下状態で 100% と表示する', () => {
+    setup({ opacity: 1 });
+    expect(
+      screen.getByRole('button', { name: 'opacity:100%' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('透過中なら押下状態で不透明度を表示する', () => {
+    setup({ opacity: 0.8 });
+    expect(screen.getByRole('button', { name: 'opacity:80%' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+  });
+
+  it('不透明度トグルを押すと切り替えを要求する', async () => {
+    const { onCycleOpacity, user } = setup();
+    await user.click(screen.getByRole('button', { name: 'opacity:100%' }));
+    expect(onCycleOpacity).toHaveBeenCalledTimes(1);
   });
 
   it('更新ボタンを押すと再取得する', async () => {

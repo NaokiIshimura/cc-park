@@ -20,6 +20,7 @@ const bridge: CcParkBridge = {
   setAlwaysOnTop: (value: boolean) => ipcRenderer.invoke(IPC_CHANNELS.setAlwaysOnTop, value),
   setAppearance: (appearance: Appearance) =>
     ipcRenderer.invoke(IPC_CHANNELS.setAppearance, appearance),
+  setOpacity: (value: number) => ipcRenderer.invoke(IPC_CHANNELS.setOpacity, value),
   pickDirectory: (defaultPath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.pickDirectory, defaultPath),
   listSchedules: () => ipcRenderer.invoke(IPC_CHANNELS.listSchedules),

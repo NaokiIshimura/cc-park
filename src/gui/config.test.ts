@@ -3,7 +3,11 @@ import {
   CONFIG_FLAG,
   DEFAULT_ALWAYS_ON_TOP,
   DEFAULT_GUI_OPTIONS,
+  DEFAULT_OPACITY,
   encodeGuiOptions,
+  formatOpacity,
+  nextOpacity,
+  OPACITY_LEVELS,
   parseGuiOptions,
   type GuiOptions,
 } from './config.js';
@@ -101,5 +105,47 @@ describe('parseGuiOptions', () => {
 describe('DEFAULT_ALWAYS_ON_TOP', () => {
   it('最前面固定は既定で有効', () => {
     expect(DEFAULT_ALWAYS_ON_TOP).toBe(true);
+  });
+});
+
+describe('DEFAULT_OPACITY', () => {
+  it('起動時は不透明', () => {
+    expect(DEFAULT_OPACITY).toBe(1);
+  });
+
+  it('段階の先頭と一致する', () => {
+    expect(OPACITY_LEVELS[0]).toBe(DEFAULT_OPACITY);
+  });
+});
+
+describe('nextOpacity', () => {
+  it.each([
+    [1, 0.8],
+    [0.8, 0.6],
+    [0.6, 1],
+  ])('%s の次は %s', (current, expected) => {
+    expect(nextOpacity(current)).toBe(expected);
+  });
+
+  it('丸め誤差を含む値でも次の段階へ進む', () => {
+    expect(nextOpacity(0.800000011920929)).toBe(0.6);
+  });
+
+  it('段階に無い値は、それより薄い最初の段階へ進む', () => {
+    expect(nextOpacity(0.9)).toBe(0.8);
+  });
+
+  it('最も薄い段階より薄ければ不透明へ戻す', () => {
+    expect(nextOpacity(0.3)).toBe(1);
+  });
+});
+
+describe('formatOpacity', () => {
+  it.each([
+    [1, '100%'],
+    [0.8, '80%'],
+    [0.6000000238418579, '60%'],
+  ])('%s を %s と表示する', (opacity, expected) => {
+    expect(formatOpacity(opacity)).toBe(expected);
   });
 });

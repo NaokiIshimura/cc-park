@@ -58,6 +58,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
   const onToggleNotify = vi.fn(() => true);
   const onExit = vi.fn();
   const onToggleAlwaysOnTop = vi.fn(() => true);
+  const onCycleOpacity = vi.fn(() => 0.8);
   const onToggleSchedules = vi.fn();
   const copy = vi.fn(async () => true);
   const stop = vi.fn(async () => stopped);
@@ -69,6 +70,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
       onToggleNotify={onToggleNotify}
       onExit={onExit}
       onToggleAlwaysOnTop={onToggleAlwaysOnTop}
+      onCycleOpacity={onCycleOpacity}
       onToggleSchedules={onToggleSchedules}
       copy={copy}
       stop={stop}
@@ -82,6 +84,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
     onToggleNotify,
     onExit,
     onToggleAlwaysOnTop,
+    onCycleOpacity,
     onToggleSchedules,
     copy,
     stop,
@@ -179,6 +182,31 @@ describe('useGuiSelection', () => {
     press('t');
     await act(async () => undefined);
     expect(onToggleAlwaysOnTop).not.toHaveBeenCalled();
+    expect(snapshot.pendingAction).toBeNull();
+    expect(snapshot.message).toBe('stop を取り消しました');
+  });
+
+  it('o で不透明度を切り替え、適用後の値をメッセージに出す', async () => {
+    const { onCycleOpacity } = setup();
+    press('o');
+    await act(async () => undefined);
+    expect(onCycleOpacity).toHaveBeenCalledTimes(1);
+    expect(snapshot.message).toBe('不透明度を 80% にしました');
+  });
+
+  it('非同期に適用される不透明度でも結果を待って表示する', async () => {
+    setup({ onCycleOpacity: vi.fn(async () => 0.6) });
+    press('o');
+    await act(async () => undefined);
+    expect(snapshot.message).toBe('不透明度を 60% にしました');
+  });
+
+  it('stop の確認待ち中の o は取消として扱う', async () => {
+    const { onCycleOpacity } = setup({ agents: [background('a')] });
+    press('s');
+    press('o');
+    await act(async () => undefined);
+    expect(onCycleOpacity).not.toHaveBeenCalled();
     expect(snapshot.pendingAction).toBeNull();
     expect(snapshot.message).toBe('stop を取り消しました');
   });
