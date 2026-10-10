@@ -4,7 +4,7 @@ import { useAnimationTick } from '../../hooks/useAnimationTick.js';
 import { useNotifications } from '../../hooks/useNotifications.js';
 import { useTransitions } from '../../hooks/useTransitions.js';
 import { flattenGroups, groupAgents } from '../../shared/groupAgents.js';
-import type { GuiConfig } from '../config.js';
+import { nextOpacity, type GuiConfig } from '../config.js';
 import type { CcParkBridge } from '../ipc.js';
 import { createBridgeFetcher } from './bridge.js';
 import { AgentList } from './components/AgentList/index.js';
@@ -31,6 +31,7 @@ export interface GuiAppProps {
 export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   const [notifyEnabled, setNotifyEnabled] = useState(config.notify);
   const [alwaysOnTop, setAlwaysOnTop] = useState(config.alwaysOnTop);
+  const [opacity, setOpacity] = useState(config.opacity);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -74,6 +75,12 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     return applied;
   }, [alwaysOnTop, bridge]);
 
+  const applyOpacity = useCallback(async () => {
+    const applied = await bridge.setOpacity(nextOpacity(opacity));
+    setOpacity(applied);
+    return applied;
+  }, [opacity, bridge]);
+
   const schedules = useSchedules(bridge);
 
   const toggleSchedules = useCallback(() => {
@@ -93,12 +100,14 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     copyAt,
     setMessage,
     toggleAlwaysOnTop,
+    cycleOpacity,
   } = useGuiSelection({
     agents: sorted,
     onRefresh: refresh,
     onToggleNotify: toggleNotify,
     onExit: bridge.quit,
     onToggleAlwaysOnTop: applyAlwaysOnTop,
+    onCycleOpacity: applyOpacity,
     onToggleSchedules: toggleSchedules,
     copy: bridge.writeClipboard,
     stop: bridge.stopAgent,
@@ -133,11 +142,13 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
         lastUpdatedAt={lastUpdatedAt}
         notifyEnabled={notifyEnabled}
         alwaysOnTop={alwaysOnTop}
+        opacity={opacity}
         isFetching={isFetching}
         onToggleNotify={() => {
           run('toggleNotify');
         }}
         onToggleAlwaysOnTop={toggleAlwaysOnTop}
+        onCycleOpacity={cycleOpacity}
         onRefresh={() => {
           run('refresh');
         }}

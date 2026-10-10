@@ -1,13 +1,17 @@
 import { formatClock } from '../../../../shared/formatClock.js';
+import { formatOpacity } from '../../../config.js';
 
 interface HeaderProps {
   readonly count: number;
   readonly lastUpdatedAt: number | null;
   readonly notifyEnabled: boolean;
   readonly alwaysOnTop: boolean;
+  /** ウィンドウの不透明度（1 = 不透明） */
+  readonly opacity: number;
   readonly isFetching: boolean;
   readonly onToggleNotify: () => void;
   readonly onToggleAlwaysOnTop: () => void;
+  readonly onCycleOpacity: () => void;
   readonly onRefresh: () => void;
   readonly onOpenSchedules: () => void;
   readonly onOpenSettings: () => void;
@@ -19,9 +23,11 @@ export const Header = ({
   lastUpdatedAt,
   notifyEnabled,
   alwaysOnTop,
+  opacity,
   isFetching,
   onToggleNotify,
   onToggleAlwaysOnTop,
+  onCycleOpacity,
   onRefresh,
   onOpenSchedules,
   onOpenSettings,
@@ -40,6 +46,20 @@ export const Header = ({
         設定
       </button>
     </div>
+
+    {/*
+     * 操作側に並べると既定幅に収まらないため、タイトルの行の右端に置く。
+     * 透過している間だけ点灯させ、不透明に戻っていることを見分けやすくする。
+     */}
+    <button
+      type="button"
+      className={opacity < 1 ? 'toggle toggle--on header__opacity' : 'toggle header__opacity'}
+      aria-pressed={opacity < 1}
+      title="ウィンドウの不透明度を切り替える"
+      onClick={onCycleOpacity}
+    >
+      {`opacity:${formatOpacity(opacity)}`}
+    </button>
 
     <div className="header__actions">
       <button

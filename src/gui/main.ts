@@ -36,7 +36,12 @@ import {
   type Appearance,
 } from '../shared/themes.js';
 import type { Agent } from '../types/agent.js';
-import { DEFAULT_ALWAYS_ON_TOP, parseGuiOptions, type GuiConfig } from './config.js';
+import {
+  DEFAULT_ALWAYS_ON_TOP,
+  DEFAULT_OPACITY,
+  parseGuiOptions,
+  type GuiConfig,
+} from './config.js';
 import { IPC_CHANNELS, type FetchAgentsRequest } from './ipc.js';
 
 /**
@@ -87,6 +92,7 @@ const config: GuiConfig = {
   platform: process.platform,
   alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,
   appearance: DEFAULT_APPEARANCE,
+  opacity: DEFAULT_OPACITY,
 };
 
 /** 現在の見た目。起動時に保存済みの設定から解決し、renderer からの変更で差し替える。 */
@@ -127,6 +133,7 @@ const createWindow = async (): Promise<void> => {
     title: 'CC Park',
     backgroundColor: windowBackgroundColor(),
     alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,
+    opacity: DEFAULT_OPACITY,
     // 描画が整うまで待ってから見せ、白い画面のちらつきを防ぐ
     show: false,
     webPreferences: {
@@ -203,6 +210,7 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
     ...config,
     alwaysOnTop: window?.isAlwaysOnTop() ?? DEFAULT_ALWAYS_ON_TOP,
     appearance,
+    opacity: window?.getOpacity() ?? DEFAULT_OPACITY,
   };
 });
 
@@ -243,6 +251,21 @@ ipcMain.handle(IPC_CHANNELS.setAppearance, async (event, value: unknown) => {
   BrowserWindow.fromWebContents(event.sender)?.setBackgroundColor(windowBackgroundColor());
   await saveAppearance(appearance, { home: config.home });
   return appearance;
+});
+
+/**
+ * ウィンドウ全体の不透明度。
+ *
+ * `transparent: true` は生成時にしか指定できず、実行中に戻せないため使わない。
+ * setOpacity は Linux では効かないので、実際の値を返して表示を追従させる。
+ */
+ipcMain.handle(IPC_CHANNELS.setOpacity, (event, value: number) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window === null) {
+    return DEFAULT_OPACITY;
+  }
+  window.setOpacity(value);
+  return window.getOpacity();
 });
 
 /**

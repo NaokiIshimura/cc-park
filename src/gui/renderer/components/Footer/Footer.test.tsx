@@ -16,6 +16,11 @@ describe('Footer', () => {
     expect(screen.getByText(/t 最前面/)).toBeDefined();
   });
 
+  it('透過のキーを案内する', () => {
+    render(<Footer message={null} />);
+    expect(screen.getByText(/o 透過/)).toBeDefined();
+  });
+
   it('メッセージが無ければ何も出さない', () => {
     const { container } = render(<Footer message={null} />);
     expect(container.querySelector('.footer__message')).toBeNull();

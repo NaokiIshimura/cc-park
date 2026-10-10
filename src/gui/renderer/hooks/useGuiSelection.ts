@@ -8,13 +8,24 @@ import {
 import type { KillAgentResult } from '../../../core/killAgent.js';
 import type { StopAgentResult } from '../../../core/stopAgent.js';
 import type { Agent } from '../../../types/agent.js';
+import { formatOpacity } from '../../config.js';
 
 /**
  * GUI で扱う操作。共有の状態機械が知る操作に、GUI 固有のものを足したもの。
- * `toggleAlwaysOnTop`（ウィンドウ）と `toggleSchedules`（予約画面）は
+ * `toggleAlwaysOnTop` / `cycleOpacity`（ウィンドウ）と `toggleSchedules`（予約画面）は
  * GUI にしかない概念なので core には置かない。
  */
-export type GuiCommand = SelectionCommand | 'toggleAlwaysOnTop' | 'toggleSchedules';
+export type GuiCommand =
+  | SelectionCommand
+  | 'toggleAlwaysOnTop'
+  | 'cycleOpacity'
+  | 'toggleSchedules';
+
+/** 一覧の操作ではなく GUI 側で処理する操作か。 */
+const isGuiOnlyCommand = (
+  command: GuiCommand,
+): command is 'toggleAlwaysOnTop' | 'cycleOpacity' | 'toggleSchedules' =>
+  command === 'toggleAlwaysOnTop' || command === 'cycleOpacity' || command === 'toggleSchedules';
 
 /** キー入力のうち判定に使う部分だけを取り出した型。 */
 export interface KeyInput {
@@ -53,6 +64,8 @@ export const toGuiSelectionCommand = (event: KeyInput): GuiCommand | null => {
       return 'requestKill';
     case 't':
       return 'toggleAlwaysOnTop';
+    case 'o':
+      return 'cycleOpacity';
     case 'a':
       return 'toggleSchedules';
     case 'q':
@@ -82,6 +95,8 @@ export interface UseGuiSelectionOptions {
   readonly onExit: () => void;
   /** 最前面固定を切り替え、切り替え後に固定されているかを返す */
   readonly onToggleAlwaysOnTop: () => boolean | Promise<boolean>;
+  /** 不透明度を次の段階へ進め、適用後の不透明度を返す */
+  readonly onCycleOpacity: () => number | Promise<number>;
   /** 予約画面の開閉 */
   readonly onToggleSchedules: () => void;
   readonly copy: CopyText;
@@ -94,6 +109,8 @@ export interface UseGuiSelectionOptions {
 export interface UseGuiSelectionResult extends UseSelectionCoreResult {
   /** 最前面固定の切り替え（キー操作・ヘッダのトグルの双方から使う） */
   readonly toggleAlwaysOnTop: () => void;
+  /** 不透明度の切り替え（キー操作・ヘッダのトグルの双方から使う） */
+  readonly cycleOpacity: () => void;
 }
 
 /**
@@ -107,6 +124,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     onToggleNotify,
     onExit,
     onToggleAlwaysOnTop,
+    onCycleOpacity,
     onToggleSchedules,
     copy,
     stop,
@@ -135,6 +153,12 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     });
   }, [onToggleAlwaysOnTop, setMessage]);
 
+  const cycleOpacity = useCallback(() => {
+    void Promise.resolve(onCycleOpacity()).then((opacity) => {
+      setMessage(`不透明度を ${formatOpacity(opacity)} にしました`);
+    });
+  }, [onCycleOpacity, setMessage]);
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -149,7 +173,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
         return;
       }
 
-      if (command === 'toggleAlwaysOnTop' || command === 'toggleSchedules') {
+      if (isGuiOnlyCommand(command)) {
         // 確認待ち中は他キーと同様に取消として消費し、誤操作を防ぐ
         if (pendingAction !== null) {
           run('cancel');
@@ -157,6 +181,10 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
         }
         if (command === 'toggleSchedules') {
           onToggleSchedules();
+          return;
+        }
+        if (command === 'cycleOpacity') {
+          cycleOpacity();
           return;
         }
         toggleAlwaysOnTop();
@@ -170,7 +198,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [run, enabled, pendingAction, toggleAlwaysOnTop, onToggleSchedules]);
+  }, [run, enabled, pendingAction, toggleAlwaysOnTop, cycleOpacity, onToggleSchedules]);
 
-  return { ...core, toggleAlwaysOnTop };
+  return { ...core, toggleAlwaysOnTop, cycleOpacity };
 };

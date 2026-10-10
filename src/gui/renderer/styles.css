@@ -111,8 +111,8 @@ body {
   justify-content: space-between;
   /*
    * 幅を詰めるとタイトル側の文字がボタンへ重なるため、入りきらなければ段を分ける。
-   * 1 行に収まるのは幅 480px 前後から（操作側が 309px 固定で、タイトル側は
-   * セッション数の桁数ぶん伸びる）。既定幅ではタイトルと操作が上下に分かれる。
+   * 1 行に収まるのは幅 640px 前後から（操作側が 309px 固定で、タイトル側は
+   * 設定ボタンと不透明度のトグルを含み、セッション数の桁数ぶん伸びる）。既定幅ではタイトルと操作が上下に分かれる。
    */
   flex-wrap: wrap;
   gap: 8px;
@@ -124,6 +124,8 @@ body {
 
 .header__title-area {
   display: flex;
+  /* 不透明度のトグルを行の右端まで寄せられるよう、余った幅を引き受ける */
+  flex: 1 0 auto;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
@@ -148,6 +150,13 @@ body {
 .header__count {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.header__opacity {
+  flex-shrink: 0;
+  margin-left: auto;
+  /* ボタンは文字より背が高いため、上下を詰めてタイトルの行の高さを変えない */
+  margin-block: -3px;
 }
 
 .header__actions {
