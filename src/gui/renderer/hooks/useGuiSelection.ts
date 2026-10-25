@@ -8,7 +8,7 @@ import {
 import type { KillAgentResult } from '../../../core/killAgent.js';
 import type { StopAgentResult } from '../../../core/stopAgent.js';
 import type { Agent } from '../../../types/agent.js';
-import type { CompactMode } from '../../compact.js';
+import type { CompactMode } from '../../../shared/compactSettings.js';
 import { formatOpacity } from '../../config.js';
 
 /**

@@ -144,6 +144,8 @@ body {
 
 .header__count,
 .header__clock {
+  /* 取得中の表示（spinner）と合わせて、操作の行の右端に寄せる */
+  margin-left: auto;
   color: var(--fg-muted);
   white-space: nowrap;
 }
@@ -164,8 +166,11 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  /* 縮むと日本語ラベルが 2 行に折れてヘッダの高さが変わるため、固定して段を分けさせる */
-  flex-shrink: 0;
+  /*
+   * 縮むと日本語ラベルが 2 行に折れてヘッダの高さが変わるため、固定して段を分けさせる。
+   * 段を分けたときは行の幅いっぱいまで広げ、更新時刻を右端へ寄せられるようにする。
+   */
+  flex: 1 0 auto;
 }
 
 .button,
@@ -835,6 +840,26 @@ body {
   color: var(--fg-muted);
 }
 
-.mini-view__expand {
-  align-self: stretch;
+/* ボタンは縦に積む。縦 1 列では列の幅（AA 1 体ぶん）いっぱいに広げる */
+.mini-view__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 横 1 列。グループもタイルも横に並べ、高さを AA 1 体ぶんに保つ */
+.mini-view--horizontal {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.mini-view--horizontal .mini-view__groups,
+.mini-view--horizontal .mini-group__tiles {
+  flex-direction: row;
+}
+
+/* 横 1 列ではボタンを右端に置き、行の高さを分け合う */
+.mini-view--horizontal .mini-view__expand,
+.mini-view--horizontal .mini-view__layout {
+  flex: 1 1 auto;
 }

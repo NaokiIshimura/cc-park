@@ -2,17 +2,22 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DEFAULT_APPEARANCE, type Appearance } from '../shared/themes.js';
+import { DEFAULT_COMPACT_SETTINGS } from '../shared/compactSettings.js';
 import type { ScheduleFileSystem } from './scheduleStore.js';
 import {
   buildSettingsPath,
-  loadAppearance,
-  parseAppearance,
-  saveAppearance,
-  serializeAppearance,
+  DEFAULT_SETTINGS,
+  loadSettings,
+  parseSettings,
+  saveSettings,
+  serializeSettings,
+  type Settings,
 } from './settingsStore.js';
 
-const appearance: Appearance = { theme: 'navy', accent: '#f59e0b', frame: false };
+const settings: Settings = {
+  appearance: { theme: 'navy', accent: '#f59e0b', frame: false },
+  compact: { mode: 'on', layout: 'horizontal' },
+};
 
 /** 書き込みが必ず失敗するファイルシステム。 */
 const failingFs: ScheduleFileSystem = {
@@ -32,39 +37,53 @@ describe('buildSettingsPath', () => {
   });
 });
 
-describe('parseAppearance', () => {
-  it('serializeAppearance の出力を復元できる', () => {
-    expect(parseAppearance(serializeAppearance(appearance))).toEqual(appearance);
+describe('parseSettings', () => {
+  it('serializeSettings の出力を復元できる', () => {
+    expect(parseSettings(serializeSettings(settings))).toEqual(settings);
   });
 
   it('JSON として壊れていれば既定値を返す', () => {
-    expect(parseAppearance('{')).toEqual(DEFAULT_APPEARANCE);
+    expect(parseSettings('{')).toEqual(DEFAULT_SETTINGS);
   });
 
   it('オブジェクト以外なら既定値を返す', () => {
-    expect(parseAppearance('42')).toEqual(DEFAULT_APPEARANCE);
-    expect(parseAppearance('null')).toEqual(DEFAULT_APPEARANCE);
+    expect(parseSettings('42')).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings('null')).toEqual(DEFAULT_SETTINGS);
   });
 
-  it('appearance が無ければ既定値を返す', () => {
-    expect(parseAppearance(JSON.stringify({ version: 1 }))).toEqual(DEFAULT_APPEARANCE);
+  it('項目が無ければ既定値を返す', () => {
+    expect(parseSettings(JSON.stringify({ version: 1 }))).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('ミニ表示の設定を持たない古いファイルは、見た目だけ読んでミニ表示は既定にする', () => {
+    const text = JSON.stringify({ version: 1, appearance: settings.appearance });
+    expect(parseSettings(text)).toEqual({
+      appearance: settings.appearance,
+      compact: DEFAULT_COMPACT_SETTINGS,
+    });
   });
 
   it('解釈できない項目だけ既定値で埋める', () => {
-    const text = JSON.stringify({ appearance: { theme: 'rainbow', accent: '#123456' } });
-    expect(parseAppearance(text)).toEqual({ theme: 'system', accent: '#123456', frame: false });
+    const text = JSON.stringify({
+      appearance: { theme: 'rainbow', accent: '#123456' },
+      compact: { mode: 'on', layout: 'grid' },
+    });
+    expect(parseSettings(text)).toEqual({
+      appearance: { theme: 'system', accent: '#123456', frame: false },
+      compact: { mode: 'on', layout: 'vertical' },
+    });
   });
 });
 
-describe('serializeAppearance', () => {
+describe('serializeSettings', () => {
   it('版を付け、末尾を改行で終える', () => {
-    const text = serializeAppearance(appearance);
-    expect(JSON.parse(text)).toEqual({ version: 1, appearance });
+    const text = serializeSettings(settings);
+    expect(JSON.parse(text)).toEqual({ version: 1, ...settings });
     expect(text.endsWith('\n')).toBe(true);
   });
 });
 
-describe('loadAppearance / saveAppearance', () => {
+describe('loadSettings / saveSettings', () => {
   const directories: string[] = [];
 
   const createHome = async (): Promise<string> => {
@@ -79,19 +98,19 @@ describe('loadAppearance / saveAppearance', () => {
 
   it('保存したものを読み戻せる', async () => {
     const home = await createHome();
-    expect(await saveAppearance(appearance, { home })).toBe(true);
-    expect(await loadAppearance({ home })).toEqual(appearance);
-    expect(await readFile(buildSettingsPath(home), 'utf8')).toBe(serializeAppearance(appearance));
+    expect(await saveSettings(settings, { home })).toBe(true);
+    expect(await loadSettings({ home })).toEqual(settings);
+    expect(await readFile(buildSettingsPath(home), 'utf8')).toBe(serializeSettings(settings));
   });
 
   it('ファイルが無ければ既定値で起動する', async () => {
     const home = await createHome();
-    expect(await loadAppearance({ home })).toEqual(DEFAULT_APPEARANCE);
+    expect(await loadSettings({ home })).toEqual(DEFAULT_SETTINGS);
   });
 
   it('読めなければ既定値、書けなければ false を返す', async () => {
     // home を省くと実行ユーザーのホームを使う。実ファイルには触れないよう fs を差し替える
-    expect(await loadAppearance({ fs: failingFs })).toEqual(DEFAULT_APPEARANCE);
-    expect(await saveAppearance(appearance, { fs: failingFs })).toBe(false);
+    expect(await loadSettings({ fs: failingFs })).toEqual(DEFAULT_SETTINGS);
+    expect(await saveSettings(settings, { fs: failingFs })).toBe(false);
   });
 });

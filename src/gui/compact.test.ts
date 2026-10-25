@@ -1,17 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  anchoredBounds,
-  DEFAULT_COMPACT_MODE,
-  directoryName,
-  isValidSize,
-  shouldCompact,
-} from './compact.js';
-
-describe('DEFAULT_COMPACT_MODE', () => {
-  it('既定では畳まない', () => {
-    expect(DEFAULT_COMPACT_MODE).toBe('off');
-  });
-});
+import { anchoredBounds, directoryName, isValidSize, shouldCompact } from './compact.js';
 
 describe('shouldCompact', () => {
   it('ON ならミニ表示にする', () => {

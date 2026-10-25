@@ -1,3 +1,4 @@
+import type { CompactSettings } from '../shared/compactSettings.js';
 import { isAccentColor, isThemeId, type Appearance, type ThemeId } from '../shared/themes.js';
 
 /** CLI から GUI へ設定を引き渡すフラグ名。 */
@@ -70,6 +71,8 @@ export interface GuiConfig extends GuiOptions {
   readonly appearance: Appearance;
   /** ウィンドウの不透明度（main が実際に適用できた値） */
   readonly opacity: number;
+  /** 起動時のミニ表示の設定。前回の終了時の状態を保存済みの設定から読んだ値 */
+  readonly compact: CompactSettings;
 }
 
 /**
