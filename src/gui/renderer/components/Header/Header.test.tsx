@@ -10,6 +10,7 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
   const onToggleNotify = vi.fn();
   const onToggleAlwaysOnTop = vi.fn();
   const onCycleOpacity = vi.fn();
+  const onToggleCompact = vi.fn();
   const onRefresh = vi.fn();
   const onOpenSchedules = vi.fn();
   const onOpenSettings = vi.fn();
@@ -20,10 +21,12 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
       notifyEnabled
       alwaysOnTop={false}
       opacity={1}
+      compactMode="off"
       isFetching={false}
       onToggleNotify={onToggleNotify}
       onToggleAlwaysOnTop={onToggleAlwaysOnTop}
       onCycleOpacity={onCycleOpacity}
+      onToggleCompact={onToggleCompact}
       onRefresh={onRefresh}
       onOpenSchedules={onOpenSchedules}
       onOpenSettings={onOpenSettings}
@@ -35,6 +38,7 @@ const setup = (overrides: Partial<Parameters<typeof Header>[0]> = {}) => {
     onToggleNotify,
     onToggleAlwaysOnTop,
     onCycleOpacity,
+    onToggleCompact,
     onRefresh,
     onOpenSchedules,
     onOpenSettings,
@@ -119,6 +123,22 @@ describe('Header', () => {
     const { onCycleOpacity, user } = setup();
     await user.click(screen.getByRole('button', { name: 'opacity:100%' }));
     expect(onCycleOpacity).toHaveBeenCalledTimes(1);
+  });
+
+  it('ミニ表示を使わないときはトグルを非押下状態にする', () => {
+    setup({ compactMode: 'off' });
+    expect(screen.getByRole('button', { name: 'mini' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('ミニ表示が ON ならトグルを押下状態にする', () => {
+    setup({ compactMode: 'on' });
+    expect(screen.getByRole('button', { name: 'mini' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('ミニ表示のトグルを押すと切り替えを要求する', async () => {
+    const { onToggleCompact, user } = setup();
+    await user.click(screen.getByRole('button', { name: 'mini' }));
+    expect(onToggleCompact).toHaveBeenCalledTimes(1);
   });
 
   it('更新ボタンを押すと再取得する', async () => {
