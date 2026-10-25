@@ -135,8 +135,8 @@ describe('toAppearance', () => {
     );
   });
 
-  it('枠線の設定を持たない古い値は枠線ありとして読む', () => {
-    expect(toAppearance({ theme: 'navy', accent: null }).frame).toBe(true);
+  it('枠線の設定を持たない古い値は枠線なしとして読む', () => {
+    expect(toAppearance({ theme: 'navy', accent: null }).frame).toBe(false);
   });
 
   it('オブジェクト以外は既定値にする', () => {
