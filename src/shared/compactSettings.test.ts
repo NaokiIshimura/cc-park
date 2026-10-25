@@ -4,6 +4,7 @@ import {
   DEFAULT_COMPACT_MODE,
   DEFAULT_COMPACT_SETTINGS,
   nextCompactLayout,
+  startupCompactSettings,
   toCompactSettings,
 } from './compactSettings.js';
 
@@ -48,6 +49,22 @@ describe('toCompactSettings', () => {
     expect(toCompactSettings({ mode: 'on', layout: 'grid' })).toEqual({
       mode: 'on',
       layout: 'vertical',
+    });
+  });
+});
+
+describe('startupCompactSettings', () => {
+  it.each(['vertical', 'horizontal'] as const)(
+    'ミニ表示のまま終了しても通常表示から始め、並び（%s）は引き継ぐ',
+    (layout) => {
+      expect(startupCompactSettings({ mode: 'on', layout })).toEqual({ mode: 'off', layout });
+    },
+  );
+
+  it('通常表示で終了した場合もそのまま通常表示から始める', () => {
+    expect(startupCompactSettings({ mode: 'off', layout: 'horizontal' })).toEqual({
+      mode: 'off',
+      layout: 'horizontal',
     });
   });
 });

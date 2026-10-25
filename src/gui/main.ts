@@ -28,6 +28,7 @@ import { resolveShellPath } from '../core/shellPath.js';
 import { stopAgent } from '../core/stopAgent.js';
 import {
   DEFAULT_COMPACT_SETTINGS,
+  startupCompactSettings,
   toCompactSettings,
   type CompactSettings,
 } from '../shared/compactSettings.js';
@@ -132,7 +133,7 @@ const windowBackgroundColor = (): string =>
 
 /**
  * 保存済みの設定を読み込む。見た目は CLI の指定を優先して決め、
- * ミニ表示は前回の状態から再開する。
+ * ミニ表示は通常表示から始め、並びだけを前回から引き継ぐ。
  */
 const prepareSettings = async (): Promise<void> => {
   const saved = await loadSettings({ home: config.home });
@@ -143,7 +144,7 @@ const prepareSettings = async (): Promise<void> => {
     ),
   );
   storedAppearance = saved.appearance;
-  compactSettings = saved.compact;
+  compactSettings = startupCompactSettings(saved.compact);
 };
 
 /** 設定をまとめて保存する。1 つのファイルに書くため、どれを変えたときも全体を書く。 */

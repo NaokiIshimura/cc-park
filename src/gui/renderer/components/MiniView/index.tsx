@@ -12,8 +12,8 @@ const CWD_MAX_WIDTH = 60;
 
 /** 並びの切り替えボタンの表記。押したあとの並びを示す。 */
 const LAYOUT_BUTTON = {
-  vertical: { label: '縦', title: '縦 1 列に並べる' },
-  horizontal: { label: '横', title: '横 1 列に並べる' },
+  vertical: { label: '縦向', title: '縦 1 列に並べる' },
+  horizontal: { label: '横向', title: '横 1 列に並べる' },
 } as const satisfies Record<CompactLayout, { label: string; title: string }>;
 
 interface MiniViewProps {

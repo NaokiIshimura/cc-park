@@ -100,18 +100,18 @@ describe('MiniView', () => {
   it('縦 1 列では横 1 列へ切り替えるボタンを出す', () => {
     const { container } = setup({ layout: 'vertical' });
     expect(container.querySelector('.mini-view--horizontal')).toBeNull();
-    expect(screen.getByRole('button', { name: '横' }).getAttribute('title')).toBe('横 1 列に並べる');
+    expect(screen.getByRole('button', { name: '横向' }).getAttribute('title')).toBe('横 1 列に並べる');
   });
 
   it('横 1 列では横並びのクラスを付け、縦 1 列へ切り替えるボタンを出す', () => {
     const { container } = setup({ layout: 'horizontal' });
     expect(container.querySelector('.mini-view--horizontal')).not.toBeNull();
-    expect(screen.getByRole('button', { name: '縦' }).getAttribute('title')).toBe('縦 1 列に並べる');
+    expect(screen.getByRole('button', { name: '縦向' }).getAttribute('title')).toBe('縦 1 列に並べる');
   });
 
   it.each([
-    ['vertical', '横'],
-    ['horizontal', '縦'],
+    ['vertical', '横向'],
+    ['horizontal', '縦向'],
   ] as const)('%s では並びの切り替え（%s）・開くの順にボタンを置く', (layout, label) => {
     setup({ layout });
     expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
@@ -122,7 +122,7 @@ describe('MiniView', () => {
 
   it('並びの切り替えを通知する', async () => {
     const { onToggleLayout, user } = setup();
-    await user.click(screen.getByRole('button', { name: '横' }));
+    await user.click(screen.getByRole('button', { name: '横向' }));
     expect(onToggleLayout).toHaveBeenCalledTimes(1);
   });
 
