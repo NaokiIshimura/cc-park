@@ -4,6 +4,7 @@ import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
 import type { Appearance } from '../shared/themes.js';
 import type { Agent } from '../types/agent.js';
+import type { Size } from './compact.js';
 import { IPC_CHANNELS, type CcParkBridge, type FetchAgentsRequest } from './ipc.js';
 
 /**
@@ -21,6 +22,8 @@ const bridge: CcParkBridge = {
   setAppearance: (appearance: Appearance) =>
     ipcRenderer.invoke(IPC_CHANNELS.setAppearance, appearance),
   setOpacity: (value: number) => ipcRenderer.invoke(IPC_CHANNELS.setOpacity, value),
+  setCompact: (compact: boolean, size: Size | null) =>
+    ipcRenderer.invoke(IPC_CHANNELS.setCompact, compact, size),
   pickDirectory: (defaultPath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.pickDirectory, defaultPath),
   listSchedules: () => ipcRenderer.invoke(IPC_CHANNELS.listSchedules),

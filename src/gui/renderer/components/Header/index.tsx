@@ -1,4 +1,5 @@
 import { formatClock } from '../../../../shared/formatClock.js';
+import type { CompactMode } from '../../../compact.js';
 import { formatOpacity } from '../../../config.js';
 
 interface HeaderProps {
@@ -8,10 +9,13 @@ interface HeaderProps {
   readonly alwaysOnTop: boolean;
   /** ウィンドウの不透明度（1 = 不透明） */
   readonly opacity: number;
+  /** ミニ表示の ON / OFF */
+  readonly compactMode: CompactMode;
   readonly isFetching: boolean;
   readonly onToggleNotify: () => void;
   readonly onToggleAlwaysOnTop: () => void;
   readonly onCycleOpacity: () => void;
+  readonly onToggleCompact: () => void;
   readonly onRefresh: () => void;
   readonly onOpenSchedules: () => void;
   readonly onOpenSettings: () => void;
@@ -24,10 +28,12 @@ export const Header = ({
   notifyEnabled,
   alwaysOnTop,
   opacity,
+  compactMode,
   isFetching,
   onToggleNotify,
   onToggleAlwaysOnTop,
   onCycleOpacity,
+  onToggleCompact,
   onRefresh,
   onOpenSchedules,
   onOpenSettings,
@@ -44,6 +50,16 @@ export const Header = ({
         onClick={onOpenSettings}
       >
         設定
+      </button>
+      {/* 既定幅のタイトルの行に収めるため状態は文字にせず、他のトグルと同じく点灯で示す */}
+      <button
+        type="button"
+        className={compactMode === 'on' ? 'toggle toggle--on' : 'toggle'}
+        aria-pressed={compactMode === 'on'}
+        title="ウィンドウを AA だけのミニ表示に畳む"
+        onClick={onToggleCompact}
+      >
+        mini
       </button>
     </div>
 

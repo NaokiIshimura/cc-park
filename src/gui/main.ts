@@ -10,6 +10,7 @@ import {
   nativeTheme,
   Notification,
   powerMonitor,
+  screen,
   type OpenDialogOptions,
 } from 'electron';
 import { fetchAgents } from '../core/fetchAgents.js';
@@ -36,6 +37,7 @@ import {
   type Appearance,
 } from '../shared/themes.js';
 import type { Agent } from '../types/agent.js';
+import { anchoredBounds, isValidSize, type Size } from './compact.js';
 import {
   DEFAULT_ALWAYS_ON_TOP,
   DEFAULT_OPACITY,
@@ -124,7 +126,11 @@ const prepareAppearance = async (): Promise<void> => {
 /** vite の dev サーバ経由で起動する場合の URL。未設定ならビルド済み HTML を読む。 */
 const devServerUrl = process.env['CC_PARK_DEV_SERVER'];
 
+/** 畳む前のウィンドウの大きさ。ミニ表示から戻すときに使う。null なら通常表示中。 */
+let normalSize: Size | null = null;
+
 const createWindow = async (): Promise<void> => {
+  normalSize = null;
   const window = new BrowserWindow({
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
@@ -266,6 +272,53 @@ ipcMain.handle(IPC_CHANNELS.setOpacity, (event, value: number) => {
   }
   window.setOpacity(value);
   return window.getOpacity();
+});
+
+/**
+ * ミニ表示への切り替え。
+ *
+ * 大きさは renderer が実測した内容の大きさに、タイトルバーなど枠のぶんを足して決める。
+ * 置いた側の端からずれないよう、位置は `anchoredBounds` に任せる。
+ * ミニ表示の間は手動のリサイズを止め、自動で合わせる大きさと競合させない。
+ */
+ipcMain.handle(IPC_CHANNELS.setCompact, (event, compact: boolean, size: unknown) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window === null) {
+    return false;
+  }
+
+  const bounds = window.getBounds();
+  const { workArea } = screen.getDisplayMatching(bounds);
+
+  if (compact) {
+    // renderer から来た値なので、大きさとして使えないものは無視して今の状態を返す
+    if (!isValidSize(size)) {
+      return normalSize !== null;
+    }
+    // 件数が変わって測り直したときは、畳む前の大きさを上書きしない
+    if (normalSize === null) {
+      const [width = WINDOW_WIDTH, height = WINDOW_HEIGHT] = window.getSize();
+      normalSize = { width, height };
+      window.setResizable(false);
+      window.setMinimumSize(1, 1);
+    }
+    const content = window.getContentBounds();
+    const target = {
+      width: Math.ceil(size.width) + bounds.width - content.width,
+      height: Math.ceil(size.height) + bounds.height - content.height,
+    };
+    window.setBounds(anchoredBounds(bounds, target, workArea));
+    return true;
+  }
+
+  if (normalSize === null) {
+    return false;
+  }
+  window.setResizable(true);
+  window.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+  window.setBounds(anchoredBounds(bounds, normalSize, workArea));
+  normalSize = null;
+  return false;
 });
 
 /**

@@ -7,6 +7,7 @@ import type { Schedule } from '../shared/schedule.js';
 import type { Appearance } from '../shared/themes.js';
 import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
 import type { Agent } from '../types/agent.js';
+import type { Size } from './compact.js';
 import type { GuiConfig } from './config.js';
 
 /**
@@ -30,6 +31,8 @@ export const IPC_CHANNELS = {
   setAppearance: 'appearance:set',
   /** ウィンドウの不透明度の変更 */
   setOpacity: 'window:opacity',
+  /** ミニ表示への切り替え（ウィンドウの大きさの変更） */
+  setCompact: 'window:compact',
   /** ディレクトリ選択ダイアログの表示 */
   pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
@@ -67,6 +70,11 @@ export interface CcParkBridge {
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;
   /** ウィンドウの不透明度（0〜1）を変える。適用後の値を返す */
   readonly setOpacity: (value: number) => Promise<number>;
+  /**
+   * ミニ表示へ畳む / 通常表示へ戻す。適用後にミニ表示かどうかを返す。
+   * 畳むときは renderer が実測した内容の大きさを渡し、ウィンドウをその大きさに合わせる。
+   */
+  readonly setCompact: (compact: boolean, size: Size | null) => Promise<boolean>;
   /**
    * 見た目を変更して保存する。適用後の値を返す。
    * OS 部品の明暗（`nativeTheme`）は main でしか変えられないため、変更のたびに呼ぶ。

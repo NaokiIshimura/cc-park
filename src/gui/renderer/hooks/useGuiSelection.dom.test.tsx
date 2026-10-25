@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { KillAgentResult } from '../../../core/killAgent.js';
 import type { StopAgentResult } from '../../../core/stopAgent.js';
 import type { Agent } from '../../../types/agent.js';
+import type { CompactMode } from '../../compact.js';
 import { isControlActivation, useGuiSelection, type UseGuiSelectionOptions } from './useGuiSelection.js';
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
@@ -59,6 +60,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
   const onExit = vi.fn();
   const onToggleAlwaysOnTop = vi.fn(() => true);
   const onCycleOpacity = vi.fn(() => 0.8);
+  const onToggleCompact = vi.fn((): CompactMode => 'on');
   const onToggleSchedules = vi.fn();
   const copy = vi.fn(async () => true);
   const stop = vi.fn(async () => stopped);
@@ -71,6 +73,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
       onExit={onExit}
       onToggleAlwaysOnTop={onToggleAlwaysOnTop}
       onCycleOpacity={onCycleOpacity}
+      onToggleCompact={onToggleCompact}
       onToggleSchedules={onToggleSchedules}
       copy={copy}
       stop={stop}
@@ -85,6 +88,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
     onExit,
     onToggleAlwaysOnTop,
     onCycleOpacity,
+    onToggleCompact,
     onToggleSchedules,
     copy,
     stop,
@@ -209,6 +213,27 @@ describe('useGuiSelection', () => {
     expect(onCycleOpacity).not.toHaveBeenCalled();
     expect(snapshot.pendingAction).toBeNull();
     expect(snapshot.message).toBe('stop を取り消しました');
+  });
+
+  it('m でミニ表示を切り替え、変更後の状態をメッセージに出す', () => {
+    const { onToggleCompact } = setup();
+    press('m');
+    expect(onToggleCompact).toHaveBeenCalledTimes(1);
+    expect(snapshot.message).toBe('ミニ表示にしました');
+  });
+
+  it('ミニ表示を解除したときはその旨をメッセージに出す', () => {
+    setup({ onToggleCompact: vi.fn((): CompactMode => 'off') });
+    press('m');
+    expect(snapshot.message).toBe('ミニ表示を解除しました');
+  });
+
+  it('stop の確認待ち中の m は取消として扱う', () => {
+    const { onToggleCompact } = setup({ agents: [background('a')] });
+    press('s');
+    press('m');
+    expect(onToggleCompact).not.toHaveBeenCalled();
+    expect(snapshot.pendingAction).toBeNull();
   });
 
   it('q で終了する', () => {

@@ -127,7 +127,8 @@ body {
   /* 不透明度のトグルを行の右端まで寄せられるよう、余った幅を引き受ける */
   flex: 1 0 auto;
   align-items: baseline;
-  gap: 8px;
+  /* ミニ表示のトグルまで含めて、既定幅でも不透明度のトグルと同じ行に収める */
+  gap: 6px;
   min-width: 0;
   /* 段を分けてもなお入りきらないとき、文字が箱からあふれて重なるのを防ぐ */
   overflow: hidden;
@@ -745,4 +746,95 @@ body {
   color: var(--fg-muted);
   opacity: 0.5;
   cursor: default;
+}
+
+/*
+ * ミニ表示。ウィンドウを内容の大きさまで縮めるため、画面いっぱいに広げず
+ * 中身の大きさ（max-content）で組み、その寸法を main へ渡す。
+ */
+.app--mini {
+  height: auto;
+  width: max-content;
+}
+
+.mini-view {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: max-content;
+  padding: 4px;
+}
+
+/* グループもタイルも縦 1 列に積み、幅は AA 1 体ぶんに保つ */
+.mini-view__groups,
+.mini-group__tiles {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-view__groups {
+  gap: 6px;
+}
+
+.mini-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-group__tiles {
+  gap: 2px;
+}
+
+.mini-group__header {
+  margin: 0;
+  padding: 0 2px;
+  /* タイルと同じく、長いディレクトリ名で列の幅を広げず省略する */
+  width: 0;
+  min-width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-cyan);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  /* 選択できないので枠やホバーの強調は付けない */
+  padding: 4px 6px;
+  cursor: default;
+  user-select: none;
+}
+
+.mini-tile__name {
+  /*
+   * タイルの幅は AA で決め、名前はその幅に収めて長ければ省略する。
+   * 幅 0 にして内容の大きさに数えさせず、min-width でタイルの幅まで広げる。
+   */
+  align-self: stretch;
+  width: 0;
+  min-width: 100%;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-view__empty {
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--fg-muted);
+}
+
+.mini-view__expand {
+  align-self: stretch;
 }

@@ -68,6 +68,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
   setAppearance: vi.fn(async (value: Appearance) => value),
   setOpacity: vi.fn(async (value: number) => value),
+  setCompact: vi.fn(async (compact: boolean) => compact),
   pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
@@ -610,5 +611,110 @@ describe('GuiApp', () => {
 
     expect(setAppearance).toHaveBeenCalledWith({ theme: 'system', accent: null, frame: true });
     expect(document.documentElement.dataset['frame']).toBe('on');
+  });
+});
+
+describe('GuiApp のミニ表示', () => {
+  const pressKey = (key: string) => {
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    });
+  };
+
+  const working = () =>
+    vi.fn(async () => ({ ok: true as const, agents: [agent('a', { state: 'working' })] }));
+
+  it('起動直後は畳まない', async () => {
+    await setup({ fetchAgents: working() });
+    expect(screen.getByRole('button', { name: 'mini' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByRole('button', { name: '開く' })).toBeNull();
+  });
+
+  it('mini を押すとすぐに畳み、測った大きさを main へ伝える', async () => {
+    const setCompact = vi.fn(async (compact: boolean) => compact);
+    const { user } = await setup({ fetchAgents: working(), setCompact });
+
+    await user.click(screen.getByRole('button', { name: 'mini' }));
+    expect(screen.getByRole('button', { name: '開く' })).toBeDefined();
+    expect(screen.queryByRole('banner')).toBeNull();
+    expect(setCompact).toHaveBeenCalledWith(true, { width: 0, height: 0 });
+  });
+
+  it('「開く」で通常表示へ戻し、main に元の大きさへ戻させる', async () => {
+    const setCompact = vi.fn(async (compact: boolean) => compact);
+    const { user } = await setup({ fetchAgents: working(), setCompact });
+    pressKey('m');
+
+    await user.click(screen.getByRole('button', { name: '開く' }));
+    expect(screen.getByRole('button', { name: 'mini' }).getAttribute('aria-pressed')).toBe('false');
+    expect(setCompact).toHaveBeenLastCalledWith(false, null);
+  });
+
+  it('m キーでも切り替えられ、もう一度押すと通常表示へ戻す', async () => {
+    await setup({ fetchAgents: working() });
+
+    pressKey('m');
+    expect(screen.getByRole('button', { name: '開く' })).toBeDefined();
+
+    pressKey('m');
+    expect(screen.getByRole('button', { name: 'mini' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it.each(['blocked', 'justFinished', 'unknown'] as const)(
+    '%s のセッションがあっても畳んだままにする',
+    async (state) => {
+      await setup({
+        fetchAgents: vi.fn(async () => ({ ok: true as const, agents: [agent('a', { state })] })),
+      });
+      pressKey('m');
+      expect(screen.getByRole('button', { name: '開く' })).toBeDefined();
+    },
+  );
+
+  it('取得に失敗している間は通常表示でエラーを見せる', async () => {
+    await setup({
+      fetchAgents: vi.fn(async () => ({
+        ok: false as const,
+        error: { kind: 'not-found' as const, message: 'claude が見つかりません' },
+      })),
+    });
+    pressKey('m');
+    expect(screen.getByRole('alert')).toBeDefined();
+  });
+
+  it('ミニ表示中に予約画面を開いたら広げて見せ、閉じたら畳み直す', async () => {
+    await setup({ fetchAgents: working() });
+    pressKey('m');
+
+    pressKey('a');
+    expect(screen.getByRole('dialog', { name: '予約' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: '開く' })).toBeNull();
+
+    pressKey('Escape');
+    expect(screen.getByRole('button', { name: '開く' })).toBeDefined();
+  });
+
+  it('ミニ表示中に stop を求めたら広げて確認ダイアログを見せる', async () => {
+    await setup({
+      fetchAgents: vi.fn(async () => ({
+        ok: true as const,
+        agents: [agent('a', { state: 'working', kind: 'background', id: 'bg-a' })],
+      })),
+    });
+    pressKey('m');
+    expect(screen.getByRole('button', { name: '開く' })).toBeDefined();
+
+    pressKey('s');
+    expect(screen.getByRole('dialog')).toBeDefined();
+  });
+
+  it('ミニ表示ではタイルを選択できない', async () => {
+    const writeClipboard = vi.fn(async () => true);
+    const { container, user } = await setup({ fetchAgents: working(), writeClipboard });
+    pressKey('m');
+
+    await user.dblClick(container.querySelector('.mini-tile') as HTMLElement);
+    expect(screen.queryByRole('option')).toBeNull();
+    expect(writeClipboard).not.toHaveBeenCalled();
   });
 });
