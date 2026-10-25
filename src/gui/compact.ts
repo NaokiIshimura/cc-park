@@ -1,3 +1,4 @@
+import type { CompactMode } from '../shared/compactSettings.js';
 import { UNKNOWN_CWD_LABEL } from '../shared/groupAgents.js';
 
 /**
@@ -6,12 +7,6 @@ import { UNKNOWN_CWD_LABEL } from '../shared/groupAgents.js';
  * main（ウィンドウの位置・大きさ）と renderer（いつ畳むか）の双方から使うため、
  * Node / DOM のどちらにも依存しない純粋関数だけを置く。
  */
-
-/** ミニ表示の切り替え。ヘッダの `mini` トグル・`m` キーで ON にし、ミニ表示の `開く` で OFF に戻す。 */
-export type CompactMode = 'off' | 'on';
-
-/** 起動時の切り替え。邪魔に感じたときに自分で ON にする機能なので、既定では畳まない。 */
-export const DEFAULT_COMPACT_MODE: CompactMode = 'off';
 
 /**
  * ミニ表示にするかを返す。

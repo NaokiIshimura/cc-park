@@ -163,6 +163,12 @@ describe('Header', () => {
     expect(onOpenSchedules).toHaveBeenCalledTimes(1);
   });
 
+  it('mini トグルは設定ボタンの左に置く', () => {
+    setup();
+    const names = screen.getAllByRole('button').map((button) => button.textContent);
+    expect(names.indexOf('mini')).toBe(names.indexOf('設定') - 1);
+  });
+
   it('設定ボタンで設定画面を開く', async () => {
     const { user, onOpenSettings } = setup();
     await user.click(screen.getByRole('button', { name: '設定' }));

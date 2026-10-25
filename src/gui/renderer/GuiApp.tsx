@@ -3,8 +3,13 @@ import { useAgents } from '../../hooks/useAgents.js';
 import { useAnimationTick } from '../../hooks/useAnimationTick.js';
 import { useNotifications } from '../../hooks/useNotifications.js';
 import { useTransitions } from '../../hooks/useTransitions.js';
+import {
+  nextCompactLayout,
+  type CompactMode,
+  type CompactSettings,
+} from '../../shared/compactSettings.js';
 import { flattenGroups, groupAgents } from '../../shared/groupAgents.js';
-import { DEFAULT_COMPACT_MODE, shouldCompact, type CompactMode } from '../compact.js';
+import { shouldCompact } from '../compact.js';
 import { nextOpacity, type GuiConfig } from '../config.js';
 import type { CcParkBridge } from '../ipc.js';
 import { createBridgeFetcher } from './bridge.js';
@@ -37,7 +42,8 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   const [opacity, setOpacity] = useState(config.opacity);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [compactMode, setCompactMode] = useState<CompactMode>(DEFAULT_COMPACT_MODE);
+  // 前回の終了時の状態から再開する
+  const [compactSettings, setCompactSettings] = useState<CompactSettings>(config.compact);
 
   const { appearance, change: changeAppearance } = useAppearance(bridge, config.appearance);
 
@@ -95,12 +101,28 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     setSettingsOpen((open) => !open);
   }, []);
 
+  // 自分で切り替えたときだけ保存する。予約画面などで一時的に広げたときは保存しない
+  const changeCompactSettings = useCallback(
+    (next: CompactSettings) => {
+      setCompactSettings(next);
+      void bridge.saveCompactSettings(next);
+    },
+    [bridge],
+  );
+
   // 切り替え後の状態を返し、フッタのメッセージに使わせる
   const toggleCompactMode = useCallback(() => {
-    const next: CompactMode = compactMode === 'on' ? 'off' : 'on';
-    setCompactMode(next);
+    const next: CompactMode = compactSettings.mode === 'on' ? 'off' : 'on';
+    changeCompactSettings({ ...compactSettings, mode: next });
     return next;
-  }, [compactMode]);
+  }, [compactSettings, changeCompactSettings]);
+
+  const toggleCompactLayout = useCallback(() => {
+    changeCompactSettings({
+      ...compactSettings,
+      layout: nextCompactLayout(compactSettings.layout),
+    });
+  }, [compactSettings, changeCompactSettings]);
 
   const {
     selectedIndex,
@@ -153,7 +175,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
    * ミニ表示では選択中の行が見えないので、キー操作で開いたときも見えないまま進めさせない。
    */
   const compact = shouldCompact(
-    compactMode,
+    compactSettings.mode,
     error !== null || scheduleOpen || settingsOpen || pendingAction !== null,
   );
   const { reportSize } = useCompact({ bridge, compact });
@@ -169,6 +191,8 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
           groups={groups}
           frame={frame}
           home={config.home}
+          layout={compactSettings.layout}
+          onToggleLayout={toggleCompactLayout}
           onExpand={toggleCompact}
           onResize={reportSize}
         />
@@ -184,7 +208,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
         notifyEnabled={notifyEnabled}
         alwaysOnTop={alwaysOnTop}
         opacity={opacity}
-        compactMode={compactMode}
+        compactMode={compactSettings.mode}
         isFetching={isFetching}
         onToggleNotify={() => {
           run('toggleNotify');

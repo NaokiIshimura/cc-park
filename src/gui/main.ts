@@ -23,9 +23,14 @@ import {
   saveSchedules,
 } from '../core/scheduleStore.js';
 import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
-import { loadAppearance, saveAppearance } from '../core/settingsStore.js';
+import { loadSettings, saveSettings } from '../core/settingsStore.js';
 import { resolveShellPath } from '../core/shellPath.js';
 import { stopAgent } from '../core/stopAgent.js';
+import {
+  DEFAULT_COMPACT_SETTINGS,
+  toCompactSettings,
+  type CompactSettings,
+} from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
 import {
@@ -95,10 +100,20 @@ const config: GuiConfig = {
   alwaysOnTop: DEFAULT_ALWAYS_ON_TOP,
   appearance: DEFAULT_APPEARANCE,
   opacity: DEFAULT_OPACITY,
+  compact: DEFAULT_COMPACT_SETTINGS,
 };
 
 /** 現在の見た目。起動時に保存済みの設定から解決し、renderer からの変更で差し替える。 */
 let appearance: Appearance = DEFAULT_APPEARANCE;
+
+/**
+ * 保存されている見た目。CLI の指定（保存しない）で上書きした `appearance` とは別に持ち、
+ * ミニ表示の設定だけを保存するときに CLI の指定まで書き込まないようにする。
+ */
+let storedAppearance: Appearance = DEFAULT_APPEARANCE;
+
+/** 現在のミニ表示の設定。起動時に保存済みの設定から読み、renderer からの変更で差し替える。 */
+let compactSettings: CompactSettings = DEFAULT_COMPACT_SETTINGS;
 
 /**
  * 見た目を main 側に反映する。
@@ -115,13 +130,25 @@ const applyAppearance = (next: Appearance): void => {
 const windowBackgroundColor = (): string =>
   resolvePalette(appearance.theme, nativeTheme.shouldUseDarkColors).variables['--bg'];
 
-/** 保存済みの見た目を読み込み、CLI の指定を優先して起動時の見た目を決める。 */
-const prepareAppearance = async (): Promise<void> => {
-  const saved = await loadAppearance({ home: config.home });
+/**
+ * 保存済みの設定を読み込む。見た目は CLI の指定を優先して決め、
+ * ミニ表示は前回の状態から再開する。
+ */
+const prepareSettings = async (): Promise<void> => {
+  const saved = await loadSettings({ home: config.home });
   applyAppearance(
-    resolveAppearance({ theme: config.theme, accent: config.accent, frame: config.frame }, saved),
+    resolveAppearance(
+      { theme: config.theme, accent: config.accent, frame: config.frame },
+      saved.appearance,
+    ),
   );
+  storedAppearance = saved.appearance;
+  compactSettings = saved.compact;
 };
+
+/** 設定をまとめて保存する。1 つのファイルに書くため、どれを変えたときも全体を書く。 */
+const persistSettings = (): Promise<boolean> =>
+  saveSettings({ appearance: storedAppearance, compact: compactSettings }, { home: config.home });
 
 /** vite の dev サーバ経由で起動する場合の URL。未設定ならビルド済み HTML を読む。 */
 const devServerUrl = process.env['CC_PARK_DEV_SERVER'];
@@ -217,6 +244,7 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
     alwaysOnTop: window?.isAlwaysOnTop() ?? DEFAULT_ALWAYS_ON_TOP,
     appearance,
     opacity: window?.getOpacity() ?? DEFAULT_OPACITY,
+    compact: compactSettings,
   };
 });
 
@@ -255,8 +283,17 @@ ipcMain.handle(IPC_CHANNELS.setAppearance, async (event, value: unknown) => {
   // renderer から来た値なので、解釈できない項目は既定値へ倒してから使う
   applyAppearance(toAppearance(value));
   BrowserWindow.fromWebContents(event.sender)?.setBackgroundColor(windowBackgroundColor());
-  await saveAppearance(appearance, { home: config.home });
+  // 設定画面で選んだ見た目は、CLI の指定を上書きしたものとして保存する
+  storedAppearance = appearance;
+  await persistSettings();
   return appearance;
+});
+
+ipcMain.handle(IPC_CHANNELS.saveCompactSettings, async (_event, value: unknown) => {
+  // renderer から来た値なので、解釈できない項目は既定値へ倒してから使う
+  compactSettings = toCompactSettings(value);
+  await persistSettings();
+  return compactSettings;
 });
 
 /**
@@ -382,7 +419,7 @@ app
   .whenReady()
   .then(applyDevDockIcon)
   .then(preparePath)
-  .then(prepareAppearance)
+  .then(prepareSettings)
   .then(createWindow)
   .then(startScheduler)
   .catch((error: unknown) => {

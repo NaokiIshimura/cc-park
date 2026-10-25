@@ -2,6 +2,7 @@ import type { FetchAgentsResult } from '../core/fetchAgents.js';
 import type { KillAgentResult } from '../core/killAgent.js';
 import type { StopAgentResult } from '../core/stopAgent.js';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
+import type { CompactSettings } from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
 import type { Appearance } from '../shared/themes.js';
@@ -33,6 +34,8 @@ export const IPC_CHANNELS = {
   setOpacity: 'window:opacity',
   /** ミニ表示への切り替え（ウィンドウの大きさの変更） */
   setCompact: 'window:compact',
+  /** ミニ表示の設定の保存 */
+  saveCompactSettings: 'compact:save',
   /** ディレクトリ選択ダイアログの表示 */
   pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
@@ -75,6 +78,11 @@ export interface CcParkBridge {
    * 畳むときは renderer が実測した内容の大きさを渡し、ウィンドウをその大きさに合わせる。
    */
   readonly setCompact: (compact: boolean, size: Size | null) => Promise<boolean>;
+  /**
+   * ミニ表示の ON / OFF と並びを保存し、次回の起動時に同じ表示から再開させる。保存した値を返す。
+   * 予約画面などで一時的に広げたときは呼ばない（`setCompact` とは別にしているのはこのため）。
+   */
+  readonly saveCompactSettings: (settings: CompactSettings) => Promise<CompactSettings>;
   /**
    * 見た目を変更して保存する。適用後の値を返す。
    * OS 部品の明暗（`nativeTheme`）は main でしか変えられないため、変更のたびに呼ぶ。

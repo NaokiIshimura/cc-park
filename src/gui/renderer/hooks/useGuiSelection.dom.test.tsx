@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { KillAgentResult } from '../../../core/killAgent.js';
 import type { StopAgentResult } from '../../../core/stopAgent.js';
 import type { Agent } from '../../../types/agent.js';
-import type { CompactMode } from '../../compact.js';
+import type { CompactMode } from '../../../shared/compactSettings.js';
 import { isControlActivation, useGuiSelection, type UseGuiSelectionOptions } from './useGuiSelection.js';
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FetchAgentsResult } from '../../core/fetchAgents.js';
 import type { ScheduleFiredEvent } from '../../core/scheduler.js';
+import { DEFAULT_COMPACT_SETTINGS, type CompactSettings } from '../../shared/compactSettings.js';
 import type { Schedule } from '../../shared/schedule.js';
 import { DEFAULT_APPEARANCE, PALETTES, type Appearance } from '../../shared/themes.js';
 import type { Agent } from '../../types/agent.js';
@@ -32,6 +33,7 @@ const config: GuiConfig = {
   accent: null,
   frame: null,
   appearance: DEFAULT_APPEARANCE,
+  compact: DEFAULT_COMPACT_SETTINGS,
 };
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
@@ -69,6 +71,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   setAppearance: vi.fn(async (value: Appearance) => value),
   setOpacity: vi.fn(async (value: number) => value),
   setCompact: vi.fn(async (compact: boolean) => compact),
+  saveCompactSettings: vi.fn(async (settings: CompactSettings) => settings),
   pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
@@ -648,6 +651,65 @@ describe('GuiApp のミニ表示', () => {
     await user.click(screen.getByRole('button', { name: '開く' }));
     expect(screen.getByRole('button', { name: 'mini' }).getAttribute('aria-pressed')).toBe('false');
     expect(setCompact).toHaveBeenLastCalledWith(false, null);
+  });
+
+  it('縦 1 列から始まり、ボタンで横 1 列と切り替えられる', async () => {
+    const { container, user } = await setup({ fetchAgents: working() });
+    pressKey('m');
+    expect(container.querySelector('.mini-view--horizontal')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '横' }));
+    expect(container.querySelector('.mini-view--horizontal')).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '縦' }));
+    expect(container.querySelector('.mini-view--horizontal')).toBeNull();
+  });
+
+  it('通常表示へ戻しても並びを覚えておく', async () => {
+    const { container, user } = await setup({ fetchAgents: working() });
+    pressKey('m');
+    await user.click(screen.getByRole('button', { name: '横' }));
+
+    pressKey('m');
+    pressKey('m');
+    expect(container.querySelector('.mini-view--horizontal')).not.toBeNull();
+  });
+
+  it('前回の設定がミニ表示・横 1 列なら、起動直後から横 1 列で畳む', async () => {
+    const setCompact = vi.fn(async (compact: boolean) => compact);
+    const { container } = await setup(
+      { fetchAgents: working(), setCompact },
+      { compact: { mode: 'on', layout: 'horizontal' } },
+    );
+    expect(screen.getByRole('button', { name: '開く' })).toBeDefined();
+    expect(container.querySelector('.mini-view--horizontal')).not.toBeNull();
+    expect(setCompact).toHaveBeenCalledWith(true, { width: 0, height: 0 });
+  });
+
+  it('切り替えるたびに ON / OFF と並びを保存する', async () => {
+    const saveCompactSettings = vi.fn(async (settings: CompactSettings) => settings);
+    const { user } = await setup({ fetchAgents: working(), saveCompactSettings });
+    expect(saveCompactSettings).not.toHaveBeenCalled();
+
+    pressKey('m');
+    expect(saveCompactSettings).toHaveBeenLastCalledWith({ mode: 'on', layout: 'vertical' });
+
+    await user.click(screen.getByRole('button', { name: '横' }));
+    expect(saveCompactSettings).toHaveBeenLastCalledWith({ mode: 'on', layout: 'horizontal' });
+
+    await user.click(screen.getByRole('button', { name: '開く' }));
+    expect(saveCompactSettings).toHaveBeenLastCalledWith({ mode: 'off', layout: 'horizontal' });
+  });
+
+  it('予約画面などで一時的に広げたときは保存しない', async () => {
+    const saveCompactSettings = vi.fn(async (settings: CompactSettings) => settings);
+    await setup({ fetchAgents: working(), saveCompactSettings });
+    pressKey('m');
+    saveCompactSettings.mockClear();
+
+    pressKey('a');
+    pressKey('Escape');
+    expect(saveCompactSettings).not.toHaveBeenCalled();
   });
 
   it('m キーでも切り替えられ、もう一度押すと通常表示へ戻す', async () => {

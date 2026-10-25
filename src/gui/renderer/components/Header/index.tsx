@@ -1,5 +1,5 @@
 import { formatClock } from '../../../../shared/formatClock.js';
-import type { CompactMode } from '../../../compact.js';
+import type { CompactMode } from '../../../../shared/compactSettings.js';
 import { formatOpacity } from '../../../config.js';
 
 interface HeaderProps {
@@ -42,15 +42,6 @@ export const Header = ({
     <div className="header__title-area">
       <h1 className="header__title">CC Park</h1>
       <span className="header__count">{`${count} sessions`}</span>
-      {/* 操作側は既定幅で余白が無いため、段を分けて空いているタイトル側に置く */}
-      <button
-        type="button"
-        className="button"
-        title="配色テーマと強調色を選ぶ"
-        onClick={onOpenSettings}
-      >
-        設定
-      </button>
       {/* 既定幅のタイトルの行に収めるため状態は文字にせず、他のトグルと同じく点灯で示す */}
       <button
         type="button"
@@ -60,6 +51,15 @@ export const Header = ({
         onClick={onToggleCompact}
       >
         mini
+      </button>
+      {/* 操作側は既定幅で余白が無いため、段を分けて空いているタイトル側に置く */}
+      <button
+        type="button"
+        className="button"
+        title="配色テーマと強調色を選ぶ"
+        onClick={onOpenSettings}
+      >
+        設定
       </button>
     </div>
 
