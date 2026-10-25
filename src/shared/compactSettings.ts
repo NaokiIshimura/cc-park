@@ -24,7 +24,7 @@ export const DEFAULT_COMPACT_LAYOUT: CompactLayout = 'vertical';
 export const nextCompactLayout = (layout: CompactLayout): CompactLayout =>
   layout === 'vertical' ? 'horizontal' : 'vertical';
 
-/** 保存するミニ表示の設定。次回の起動時に同じ表示から再開する。 */
+/** 保存するミニ表示の設定。次回の起動時は並びだけを引き継ぐ（{@link startupCompactSettings}）。 */
 export interface CompactSettings {
   readonly mode: CompactMode;
   readonly layout: CompactLayout;
@@ -54,3 +54,12 @@ export const toCompactSettings = (value: unknown): CompactSettings => {
     layout: isCompactLayout(layout) ? layout : DEFAULT_COMPACT_SETTINGS.layout,
   };
 };
+
+/**
+ * 起動時に使うミニ表示の設定。
+ * 畳んだまま終了しても、起動直後は一覧を見せたいので通常表示から始め、並びだけを引き継ぐ。
+ */
+export const startupCompactSettings = (saved: CompactSettings): CompactSettings => ({
+  ...saved,
+  mode: DEFAULT_COMPACT_MODE,
+});

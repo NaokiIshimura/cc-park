@@ -658,24 +658,24 @@ describe('GuiApp のミニ表示', () => {
     pressKey('m');
     expect(container.querySelector('.mini-view--horizontal')).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: '横' }));
+    await user.click(screen.getByRole('button', { name: '横向' }));
     expect(container.querySelector('.mini-view--horizontal')).not.toBeNull();
 
-    await user.click(screen.getByRole('button', { name: '縦' }));
+    await user.click(screen.getByRole('button', { name: '縦向' }));
     expect(container.querySelector('.mini-view--horizontal')).toBeNull();
   });
 
   it('通常表示へ戻しても並びを覚えておく', async () => {
     const { container, user } = await setup({ fetchAgents: working() });
     pressKey('m');
-    await user.click(screen.getByRole('button', { name: '横' }));
+    await user.click(screen.getByRole('button', { name: '横向' }));
 
     pressKey('m');
     pressKey('m');
     expect(container.querySelector('.mini-view--horizontal')).not.toBeNull();
   });
 
-  it('前回の設定がミニ表示・横 1 列なら、起動直後から横 1 列で畳む', async () => {
+  it('設定がミニ表示・横 1 列なら、横 1 列で畳む', async () => {
     const setCompact = vi.fn(async (compact: boolean) => compact);
     const { container } = await setup(
       { fetchAgents: working(), setCompact },
@@ -694,7 +694,7 @@ describe('GuiApp のミニ表示', () => {
     pressKey('m');
     expect(saveCompactSettings).toHaveBeenLastCalledWith({ mode: 'on', layout: 'vertical' });
 
-    await user.click(screen.getByRole('button', { name: '横' }));
+    await user.click(screen.getByRole('button', { name: '横向' }));
     expect(saveCompactSettings).toHaveBeenLastCalledWith({ mode: 'on', layout: 'horizontal' });
 
     await user.click(screen.getByRole('button', { name: '開く' }));
