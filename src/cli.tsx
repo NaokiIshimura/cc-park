@@ -39,7 +39,7 @@ const cli = meow(
     --finished-highlight <sec>   作業完了ハイライトの保持秒数 (既定: ${DEFAULT_HIGHLIGHT_MS / 1000})
     --theme <name>               GUI の配色テーマ (${THEME_IDS.join(' / ')})
     --accent <#rrggbb>           GUI の強調色 (枠線・選択行など)
-    --no-frame                   GUI のウィンドウ外周の枠線を描かない
+    --frame                      GUI のウィンドウ外周に枠線を描く (既定: OFF)
     --once                       1 回だけ取得して描画し終了する (CLI モード)
 
   例
@@ -65,7 +65,7 @@ const cli = meow(
       finishedHighlight: { type: 'number', default: DEFAULT_HIGHLIGHT_MS / 1000 },
       theme: { type: 'string' },
       accent: { type: 'string' },
-      frame: { type: 'boolean', default: true },
+      frame: { type: 'boolean', default: false },
       once: { type: 'boolean', default: false },
       cli: { type: 'boolean', default: false },
       gui: { type: 'boolean', default: false },

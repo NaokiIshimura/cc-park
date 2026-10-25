@@ -264,7 +264,7 @@ export interface Appearance {
   readonly frame: boolean;
 }
 
-export const DEFAULT_APPEARANCE: Appearance = { theme: DEFAULT_THEME, accent: null, frame: true };
+export const DEFAULT_APPEARANCE: Appearance = { theme: DEFAULT_THEME, accent: null, frame: false };
 
 /**
  * 外から来た値（保存ファイル・IPC）を見た目の設定として解釈する。
@@ -278,7 +278,7 @@ export const toAppearance = (value: unknown): Appearance => {
   return {
     theme: isThemeId(theme) ? theme : DEFAULT_APPEARANCE.theme,
     accent: isAccentColor(accent) ? accent : DEFAULT_APPEARANCE.accent,
-    // 枠線の設定を持たない古い保存ファイルは、これまでどおり枠線ありとして読む
+    // 枠線の設定を持たない古い保存ファイルは、既定（枠線なし）として読む
     frame: typeof frame === 'boolean' ? frame : DEFAULT_APPEARANCE.frame,
   };
 };

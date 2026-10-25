@@ -567,7 +567,7 @@ describe('GuiApp', () => {
     await user.click(screen.getByRole('button', { name: '設定' }));
     await user.click(screen.getByRole('radio', { name: 'フォレスト' }));
 
-    expect(setAppearance).toHaveBeenCalledWith({ theme: 'forest', accent: null, frame: true });
+    expect(setAppearance).toHaveBeenCalledWith({ theme: 'forest', accent: null, frame: false });
     expect(document.documentElement.dataset['theme']).toBe('forest');
   });
 
@@ -600,15 +600,15 @@ describe('GuiApp', () => {
     expect(screen.queryByRole('dialog', { name: '設定' })).toBeNull();
   });
 
-  it('設定で枠線を消すと main へ伝え、<html> 要素へ反映する', async () => {
+  it('設定で枠線を描くと main へ伝え、<html> 要素へ反映する', async () => {
     const setAppearance = vi.fn(async (value: Appearance) => value);
     const { user } = await setup({ setAppearance });
-    expect(document.documentElement.dataset['frame']).toBe('on');
+    expect(document.documentElement.dataset['frame']).toBe('off');
 
     await user.click(screen.getByRole('button', { name: '設定' }));
     await user.click(screen.getByRole('checkbox', { name: 'ウィンドウの外周に枠線を描く' }));
 
-    expect(setAppearance).toHaveBeenCalledWith({ theme: 'system', accent: null, frame: false });
-    expect(document.documentElement.dataset['frame']).toBe('off');
+    expect(setAppearance).toHaveBeenCalledWith({ theme: 'system', accent: null, frame: true });
+    expect(document.documentElement.dataset['frame']).toBe('on');
   });
 });

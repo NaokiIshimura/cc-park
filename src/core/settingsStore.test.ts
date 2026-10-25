@@ -52,7 +52,7 @@ describe('parseAppearance', () => {
 
   it('解釈できない項目だけ既定値で埋める', () => {
     const text = JSON.stringify({ appearance: { theme: 'rainbow', accent: '#123456' } });
-    expect(parseAppearance(text)).toEqual({ theme: 'system', accent: '#123456', frame: true });
+    expect(parseAppearance(text)).toEqual({ theme: 'system', accent: '#123456', frame: false });
   });
 });
 
