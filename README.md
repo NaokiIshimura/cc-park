@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.10.0/cc-park-0.10.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.10.1/cc-park-0.10.1-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.10.0/cc-park-0.10.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.10.1/cc-park-0.10.1-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
