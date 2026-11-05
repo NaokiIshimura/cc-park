@@ -93,11 +93,18 @@ jobs:
           ## 使い方
 
           配布用の証明書で署名・公証をしていないため、ブラウザでダウンロードすると初回は Gatekeeper に止められます。
-          ターミナルで次の 1 行を実行すると、このバージョンをダウンロードして `/Applications` に置けます
-          （CPU に合わせて arm64 / x64 を選び、古い `cc-park.app` は置き換えます）。
+          ターミナルで次のコマンドを実行すると、ダウンロードして `/Applications` に置けます（古い `cc-park.app` は置き換えます）。
+
+          Apple シリコン（M1 以降）:
 
           ```bash
-          arch=$(uname -m | sed 's/x86_64/x64/') && curl -fL -o /tmp/cc-park.zip "https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-${arch}.zip" && rm -rf /Applications/cc-park.app && ditto -x -k /tmp/cc-park.zip /Applications && rm /tmp/cc-park.zip
+          curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-arm64.zip && rm -rf /Applications/cc-park.app && ditto -x -k /tmp/cc-park.zip /Applications && rm /tmp/cc-park.zip
+          ```
+
+          Intel Mac:
+
+          ```bash
+          curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-x64.zip && rm -rf /Applications/cc-park.app && ditto -x -k /tmp/cc-park.zip /Applications && rm /tmp/cc-park.zip
           ```
 
           `curl` でダウンロードしたファイルには隔離属性（`com.apple.quarantine`）が付かないため、Gatekeeper に止められません。

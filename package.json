@@ -24,6 +24,8 @@
     "gui:package": "npm run build && electron-packager . --name=cc-park --icon=assets/icon.icns --app-bundle-id=io.github.naokiishimura.cc-park --out=release --overwrite --ignore=\"^/(?!dist($|/)|package\\.json$)\"",
     "postgui:package": "for app in release/cc-park-darwin-*/cc-park.app; do codesign --force --deep --sign - \"$app\" && codesign --verify --deep --strict \"$app\" || exit 1; done",
     "icon:build": "node --experimental-strip-types scripts/generate-icon.ts",
+    "readme:version": "node --experimental-strip-types scripts/sync-readme-version.ts",
+    "version": "npm run readme:version",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.gui.json"
   },
