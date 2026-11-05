@@ -92,10 +92,18 @@ jobs:
 
           ## 使い方
 
-          zip を展開して `cc-park.app` を `/Applications` に置いてください。
+          配布用の証明書で署名・公証をしていないため、ブラウザでダウンロードすると初回は Gatekeeper に止められます。
+          ターミナルで次の 1 行を実行すると、このバージョンをダウンロードして `/Applications` に置けます
+          （CPU に合わせて arm64 / x64 を選び、古い `cc-park.app` は置き換えます）。
 
-          配布用の証明書で署名・公証をしていないため、初回は Gatekeeper に止められます。
-          その場合は次のコマンドで隔離属性を外してください。
+          ```bash
+          arch=$(uname -m | sed 's/x86_64/x64/') && curl -fL -o /tmp/cc-park.zip "https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-${arch}.zip" && rm -rf /Applications/cc-park.app && ditto -x -k /tmp/cc-park.zip /Applications && rm /tmp/cc-park.zip
+          ```
+
+          `curl` でダウンロードしたファイルには隔離属性（`com.apple.quarantine`）が付かないため、Gatekeeper に止められません。
+
+          ブラウザでダウンロードした場合は、zip を展開して `cc-park.app` を `/Applications` に置き、
+          次のコマンドで隔離属性を外してください。
 
           ```bash
           xattr -dr com.apple.quarantine /Applications/cc-park.app

@@ -52,9 +52,17 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 | `cc-park-<version>-darwin-arm64.zip` | Apple シリコン（M1 以降） |
 | `cc-park-<version>-darwin-x64.zip` | Intel Mac |
 
-zip を展開して `cc-park.app` を `/Applications` に置いてください。
-配布用の証明書で署名・公証をしていないため、初回は Gatekeeper に止められます。
-その場合は隔離属性を外してください。
+配布用の証明書で署名・公証をしていないため、ブラウザでダウンロードすると初回は Gatekeeper に止められます。
+ターミナルで次の 1 行を実行すると、最新版をダウンロードして `/Applications` に置けます
+（CPU に合わせて arm64 / x64 を選び、古い `cc-park.app` は置き換えます）。
+
+```bash
+arch=$(uname -m | sed 's/x86_64/x64/') && tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/NaokiIshimura/cc-park/releases/latest | sed 's#.*/tag/##') && curl -fL -o /tmp/cc-park.zip "https://github.com/NaokiIshimura/cc-park/releases/download/${tag}/cc-park-${tag#v}-darwin-${arch}.zip" && rm -rf /Applications/cc-park.app && ditto -x -k /tmp/cc-park.zip /Applications && rm /tmp/cc-park.zip
+```
+
+`curl` でダウンロードしたファイルには隔離属性（`com.apple.quarantine`）が付かないため、Gatekeeper に止められません。
+
+ブラウザでダウンロードした場合は、zip を展開して `cc-park.app` を `/Applications` に置き、隔離属性を外してください。
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/cc-park.app
