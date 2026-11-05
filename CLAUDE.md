@@ -34,6 +34,8 @@ node dist/cli.js --once --all   # TUI を 1 回だけ描画（実描画の確認
 `version` を上げ忘れると、マージしてもリリースが作られず、修正が配布物に届かない。
 PR を作成するときは、変更内容に合わせて `package.json` の `version` を上げ、同じ PR に含めること
 （`package-lock.json` の `version` も揃える。`npm version <patch|minor> --no-git-tag-version` を使う）。
+README の「ダウンロード」にあるインストール手順の URL も、`npm version` の `version` スクリプト
+（`npm run readme:version`）が同じバージョンに書き換える。手で直さず、書き換わった README もコミットする。
 
 | 変更 | 上げる桁 |
 | --- | --- |
