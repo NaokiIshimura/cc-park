@@ -98,13 +98,19 @@ jobs:
           Apple シリコン（M1 以降）:
 
           ```bash
-          curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-arm64.zip && rm -rf /Applications/cc-park.app && ditto -x -k /tmp/cc-park.zip /Applications && rm /tmp/cc-park.zip
+          curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-arm64.zip && \
+            rm -rf /Applications/cc-park.app && \
+            ditto -x -k /tmp/cc-park.zip /Applications && \
+            rm /tmp/cc-park.zip
           ```
 
           Intel Mac:
 
           ```bash
-          curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-x64.zip && rm -rf /Applications/cc-park.app && ditto -x -k /tmp/cc-park.zip /Applications && rm /tmp/cc-park.zip
+          curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/vVERSION/cc-park-VERSION-darwin-x64.zip && \
+            rm -rf /Applications/cc-park.app && \
+            ditto -x -k /tmp/cc-park.zip /Applications && \
+            rm /tmp/cc-park.zip
           ```
 
           `curl` でダウンロードしたファイルには隔離属性（`com.apple.quarantine`）が付かないため、Gatekeeper に止められません。
