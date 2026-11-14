@@ -28,6 +28,8 @@ export interface GuiOptions {
   readonly accent: string | null;
   /** 外周の枠線の明示指定。null なら保存済みの設定（無ければ既定）に従う */
   readonly frame: boolean | null;
+  /** 受け取った出力と解釈できない値を `~/.cc-park/debug/` に記録する（`--debug`） */
+  readonly debug: boolean;
 }
 
 /**
@@ -111,6 +113,7 @@ export const DEFAULT_GUI_OPTIONS: GuiOptions = {
   theme: null,
   accent: null,
   frame: null,
+  debug: false,
   ...GUI_DEFAULT_FLAGS,
 };
 
@@ -168,5 +171,6 @@ export const parseGuiOptions = (argv: readonly string[]): GuiOptions => {
     theme: pick<ThemeId | null>(source.theme, isThemeId, DEFAULT_GUI_OPTIONS.theme),
     accent: pick<string | null>(source.accent, isAccentColor, DEFAULT_GUI_OPTIONS.accent),
     frame: pick<boolean | null>(source.frame, isBoolean, DEFAULT_GUI_OPTIONS.frame),
+    debug: pick(source.debug, isBoolean, DEFAULT_GUI_OPTIONS.debug),
   };
 };

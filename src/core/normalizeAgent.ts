@@ -75,3 +75,66 @@ export const normalizeAgents = (raws: readonly RawAgent[]): Agent[] =>
   raws
     .map((raw) => normalizeAgent(raw))
     .filter((agent): agent is Agent => agent !== null);
+
+/**
+ * `claude agents --json` の要素が持つと分かっているキー。
+ * これ以外のキーは、出力仕様が変わった手がかりとして記録する。
+ */
+const KNOWN_KEYS: ReadonlySet<string> = new Set([
+  'kind',
+  'sessionId',
+  'name',
+  'cwd',
+  'startedAt',
+  'pid',
+  'id',
+  'status',
+  'state',
+]);
+
+/**
+ * 1 要素のうち、解釈できなかった値を `kind=foo` / `state=bar status=baz` / `key=tty` の形で返す。
+ *
+ * 出力仕様は非公開で変わりうる。表示が `UNKNOWN` になったとき、どの値が原因かを
+ * すぐ特定できるよう、正規化の表と同じ場所で判定する（表を増やせば検出も追従する）。
+ */
+export const findUnknownValues = (raw: unknown): string[] => {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return [`element=${Array.isArray(raw) ? 'array' : raw === null ? 'null' : typeof raw}`];
+  }
+  const record = raw as Readonly<Record<string, unknown>>;
+  const found: string[] = [];
+
+  for (const key of Object.keys(record)) {
+    if (!KNOWN_KEYS.has(key)) {
+      found.push(`key=${key}`);
+    }
+  }
+
+  const { kind, state, status } = record;
+  if (kind !== undefined && !KINDS.some((candidate) => candidate === kind)) {
+    found.push(`kind=${String(kind)}`);
+  }
+
+  // 状態は state と status のどちらかが分かれば表示できるので、両方とも分からないときだけ記録する
+  const candidates = [state, status].filter(
+    (value): value is string => typeof value === 'string' && value !== '',
+  );
+  if (candidates.length > 0 && candidates.every((value) => toCharacterState(value) === 'unknown')) {
+    found.push(
+      [
+        typeof state === 'string' && state !== '' ? `state=${state}` : '',
+        typeof status === 'string' && status !== '' ? `status=${status}` : '',
+      ]
+        .filter((part) => part !== '')
+        .join(' '),
+    );
+  }
+  return found;
+};
+
+/** 出力全体のうち、解釈できなかった値を重複なく返す。 */
+export const findUnknownInOutput = (raws: readonly unknown[]): string[] => [
+  ...new Set(raws.flatMap((raw) => findUnknownValues(raw))),
+];
+

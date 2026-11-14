@@ -117,6 +117,7 @@ cc-park --cli    # ターミナル（TUI）で起動する
 | `--accent <#rrggbb>` | 保存済みの設定（無ければ配色ごとの既定） | GUI の強調色（枠線・選択行・タイトル） |
 | `--frame` | 保存済みの設定（無ければ枠線なし） | GUI のウィンドウ外周に枠線を描く（`--no-frame` で消す） |
 | `--once` | なし | 1 回だけ取得して描画し終了する（CLI モード） |
+| `--debug` | OFF | 受け取った `claude agents --json` の出力と解釈できない値を `~/.cc-park/debug/` に記録する（[出力仕様の変化への備え](#出力仕様の変化への備え)） |
 
 ```bash
 cc-park --all --cwd ~/GitHub
@@ -1010,6 +1011,27 @@ node --watch dist/cli.js --cli
 ```
 
 `dist/cli.js` は既定で GUI を起動するので、TUI を確認するときは `--cli` を付けます。
+
+### 出力仕様の変化への備え
+
+`claude agents --json` の出力仕様は公開されておらず、Claude Code の更新で変わることがあります。
+表示が `UNKNOWN` になったときに原因の値をすぐ特定できるよう、解釈できない値を記録します。
+
+| 記録する値 | 例 |
+| --- | --- |
+| 知らないキー | `key=tty` |
+| 知らない `kind` | `kind=remote` |
+| `state` も `status` も解釈できない状態 | `state=hibernating status=napping` |
+
+| モード | 記録先 |
+| --- | --- |
+| GUI | main プロセスのログ（ターミナルから起動したときの標準エラー）に、値ごとに 1 回だけ出す |
+| `--debug`（CLI / GUI） | `~/.cc-park/debug/unknown.log` に時刻付きで追記し、受け取った出力の最新を `~/.cc-park/debug/agents.json` に保存する |
+
+CLI モードは端末の描画が崩れるため、`--debug` のときだけファイルへ記録します。
+
+実際に見た出力は `src/core/__fixtures__/agents/` にサンプルとして置き、正規化のテストで使っています。
+新しい形を見つけたら、`~/.cc-park/debug/agents.json` を匿名化してそこに足し、テストが通るように直します。
 
 ### 設計メモ
 

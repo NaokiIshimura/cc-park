@@ -16,6 +16,7 @@ import {
   type NativeImage,
   type OpenDialogOptions,
 } from 'electron';
+import { buildDebugPath, createAgentsObserver } from '../core/agentsDebug.js';
 import { createLaunchAppCache, fetchAgents } from '../core/fetchAgents.js';
 import { focusSession } from '../core/focusSession.js';
 import { killAgent } from '../core/killAgent.js';
@@ -370,6 +371,17 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
 /** 起動元アプリの判定結果。知らないセッションが現れたときだけ `ps` を実行させる。 */
 const launchAppCache = createLaunchAppCache();
 
+/**
+ * 出力仕様の変化の見張り。解釈できない値は main プロセスのログへ値ごとに 1 回出し、
+ * `--debug` のときは `~/.cc-park/debug/` にも記録する。
+ */
+const observeAgents = createAgentsObserver({
+  warn: (message) => {
+    console.warn(message);
+  },
+  debugDirectory: config.debug ? buildDebugPath(config.home) : undefined,
+});
+
 ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequest) =>
   // transcript の読み取りは node 側でしかできないため、ここで合成して renderer へ返す
   fetchAgents({
@@ -378,6 +390,7 @@ ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequ
     meta: config.prompt || config.tokens || config.subagents,
     launchApp: true,
     launchAppCache,
+    observe: observeAgents,
     home: config.home,
     contextLimit: config.contextLimit === 0 ? undefined : config.contextLimit,
   }),

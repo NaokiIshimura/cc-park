@@ -40,6 +40,7 @@ const config: GuiConfig = {
   theme: null,
   accent: null,
   frame: null,
+  debug: false,
   appearance: DEFAULT_APPEARANCE,
   compact: DEFAULT_COMPACT_SETTINGS,
   attention: DEFAULT_ATTENTION_SETTINGS,

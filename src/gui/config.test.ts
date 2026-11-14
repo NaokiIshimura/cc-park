@@ -26,7 +26,20 @@ const options: GuiOptions = {
   theme: 'navy',
   accent: '#f59e0b',
   frame: false,
+  debug: true,
 };
+
+describe('--debug の受け渡し', () => {
+  it('既定では記録しない', () => {
+    expect(DEFAULT_GUI_OPTIONS.debug).toBe(false);
+  });
+
+  it('真偽値でなければ既定に倒す', () => {
+    expect(parseGuiOptions([`--cc-park-config=${JSON.stringify({ debug: 'yes' })}`]).debug).toBe(
+      false,
+    );
+  });
+});
 
 describe('DEFAULT_GUI_OPTIONS', () => {
   it('GUI は prompt / tokens を既定で有効にする', () => {

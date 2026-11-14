@@ -345,3 +345,33 @@ describe('起動元アプリ', () => {
     });
   });
 });
+
+describe('出力の見張り（observe）', () => {
+  const stdout = JSON.stringify([{ kind: 'interactive', sessionId: 'a', status: 'busy' }]);
+
+  it('受け取った出力と、配列として読んだものを渡す', async () => {
+    const observe = vi.fn();
+    const runner: CommandRunner = vi.fn(async () => stdout);
+    await fetchAgents({ runner, observe });
+    expect(observe).toHaveBeenCalledWith(stdout, JSON.parse(stdout));
+  });
+
+  it('見張りが例外を投げても一覧は返る', async () => {
+    const runner: CommandRunner = vi.fn(async () => stdout);
+    const result = await fetchAgents({
+      runner,
+      observe: () => {
+        throw new Error('boom');
+      },
+    });
+    expect(result.ok && result.agents).toHaveLength(1);
+  });
+
+  it('配列でない出力は見張りに渡さない', async () => {
+    const observe = vi.fn();
+    const runner: CommandRunner = vi.fn(async () => '{}');
+    await fetchAgents({ runner, observe });
+    expect(observe).not.toHaveBeenCalled();
+  });
+});
+

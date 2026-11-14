@@ -60,6 +60,11 @@ export interface FetchAgentsOptions {
    * 渡さなければ取得のたびに `ps` を実行する。
    */
   readonly launchAppCache?: LaunchAppCache;
+  /**
+   * 受け取った出力を見張る。出力仕様の変化（解釈できない値）に気づくために使う。
+   * 例外を投げても一覧の取得は続ける。
+   */
+  readonly observe?: ((stdout: string, raws: readonly unknown[]) => void) | undefined;
   /** `~/.claude/projects` を探す起点 */
   readonly home?: string;
   /** コンテキスト上限の明示指定 */
@@ -129,6 +134,12 @@ export const fetchAgents = async (
       ok: false,
       error: { kind: 'parse', message: 'claude agents --json の出力が配列ではありません。' },
     };
+  }
+
+  try {
+    options.observe?.(stdout, parsed);
+  } catch {
+    // 見張りの失敗で一覧を止めない
   }
 
   const normalized = normalizeAgents(parsed as RawAgent[]);
