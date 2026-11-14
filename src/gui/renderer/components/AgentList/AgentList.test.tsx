@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Agent } from '../../../../types/agent.js';
+import { collapseGroups, type DisplayGroup } from '../../../../shared/filterAgents.js';
 import type { AgentGroup } from '../../../../shared/groupAgents.js';
 import { AgentList } from './index.js';
 
@@ -23,14 +24,20 @@ const agent = (sessionId: string, cwd = '/tmp'): Agent => ({
 });
 
 /** 1 グループに全員が入る、既定のグループ構成。 */
-const oneGroup = (agents: readonly Agent[]): AgentGroup[] =>
-  agents.length === 0 ? [] : [{ cwd: agents[0]?.cwd ?? '', agents }];
+const oneGroup = (agents: readonly Agent[]): DisplayGroup[] =>
+  open(agents.length === 0 ? [] : [{ cwd: agents[0]?.cwd ?? '', agents }]);
+
+/** 畳んでいないグループとして表示用にする。 */
+function open(groups: readonly AgentGroup[]): DisplayGroup[] {
+  return collapseGroups(groups, new Set());
+}
 
 afterEach(cleanup);
 
 const setup = (overrides: Partial<Parameters<typeof AgentList>[0]> = {}) => {
   const onSelect = vi.fn();
   const onOpen = vi.fn();
+  const onToggleGroup = vi.fn();
   const result = render(
     <AgentList
       groups={oneGroup([agent('a'), agent('b'), agent('c')])}
@@ -45,10 +52,11 @@ const setup = (overrides: Partial<Parameters<typeof AgentList>[0]> = {}) => {
       showTokens={false}
       onSelect={onSelect}
       onOpen={onOpen}
+      onToggleGroup={onToggleGroup}
       {...overrides}
     />,
   );
-  return { ...result, onSelect, onOpen, user: userEvent.setup() };
+  return { ...result, onSelect, onOpen, onToggleGroup, user: userEvent.setup() };
 };
 
 describe('AgentList', () => {
@@ -102,10 +110,11 @@ describe('AgentList', () => {
 });
 
 describe('AgentList のグループ表示', () => {
-  const twoGroups: AgentGroup[] = [
+  const rawGroups: AgentGroup[] = [
     { cwd: `${HOME}/GitHub/app`, agents: [agent('a', `${HOME}/GitHub/app`)] },
     { cwd: '/tmp/work', agents: [agent('b', '/tmp/work'), agent('c', '/tmp/work')] },
   ];
+  const twoGroups = open(rawGroups);
 
   it('cwd ごとに見出しを 1 回だけ出す', () => {
     setup({ groups: twoGroups });
@@ -114,7 +123,7 @@ describe('AgentList のグループ表示', () => {
   });
 
   it('cwd が空のグループは (不明) と表示する', () => {
-    setup({ groups: [{ cwd: '', agents: [agent('a', '')] }] });
+    setup({ groups: open([{ cwd: '', agents: [agent('a', '')] }]) });
     expect(screen.getByText('(不明)')).toBeDefined();
   });
 
@@ -127,5 +136,25 @@ describe('AgentList のグループ表示', () => {
     const { onSelect, user } = setup({ groups: twoGroups });
     await user.click(screen.getAllByRole('option')[2] as HTMLElement);
     expect(onSelect).toHaveBeenCalledWith(2);
+  });
+
+  it('見出しを押すとそのディレクトリを畳む / 開くよう伝える', async () => {
+    const { onToggleGroup, user } = setup({ groups: twoGroups });
+    await user.click(screen.getByRole('button', { name: /\/tmp\/work/ }));
+    expect(onToggleGroup).toHaveBeenCalledWith('/tmp/work');
+  });
+
+  it('畳んだグループは件数だけを出し、行は出さない', () => {
+    setup({ groups: collapseGroups(rawGroups, new Set(['/tmp/work'])) });
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+    expect(screen.getByText('2 件')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /\/tmp\/work/ }).getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
+  it('絞り込みで 0 件なら、解除の仕方を案内する', () => {
+    setup({ groups: [], filtered: true });
+    expect(screen.getByText('条件に合うセッションはありません。')).toBeDefined();
   });
 });

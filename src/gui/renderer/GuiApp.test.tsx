@@ -742,6 +742,85 @@ describe('GuiApp の通知の条件', () => {
   });
 });
 
+describe('GuiApp の絞り込み', () => {
+  const mixed = () =>
+    vi.fn(async () => ({
+      ok: true as const,
+      agents: [
+        agent('web', { state: 'waiting' }),
+        agent('api', { state: 'working' }),
+        agent('cli', { state: 'blocked', cwd: '/tmp/other' }),
+      ],
+    }));
+
+  const press = (key: string) => {
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    });
+  };
+
+  it('f で操作待ちだけを表示し、件数を 表示/全体 で出す', async () => {
+    await setup({ fetchAgents: mixed() });
+    press('f');
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+    expect(screen.getByText('2/3').getAttribute('title')).toBe('2/3 sessions [操作待ち]');
+    expect(screen.getByRole('button', { name: '操作待ちだけ' })).toBeDefined();
+
+    press('f');
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+  });
+
+  it('/ で検索欄を開き、入力した語で絞り込む。入力中の文字は一覧の操作に使わない', async () => {
+    const quit = vi.fn();
+    const { user } = await setup({ fetchAgents: mixed(), quit });
+    press('/');
+    const input = screen.getByRole('searchbox', { name: 'セッションを検索' });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(input);
+    });
+
+    await user.type(input, 'qweb');
+    expect(quit).not.toHaveBeenCalled();
+    // q は検索語に入り、web と合わせてどれにも当てはまらない
+    expect(screen.getByText('条件に合うセッションはありません。')).toBeDefined();
+
+    await user.clear(input);
+    await user.type(input, 'web');
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+  });
+
+  it('検索欄の Esc で検索語を消して閉じる', async () => {
+    const { user } = await setup({ fetchAgents: mixed() });
+    press('/');
+    const input = screen.getByRole('searchbox', { name: 'セッションを検索' });
+    await user.type(input, 'web{Escape}');
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+  });
+
+  it('Enter で確定すると一覧のキー操作に戻り、Esc で検索語を消せる', async () => {
+    const { user } = await setup({ fetchAgents: mixed() });
+    press('/');
+    const input = screen.getByRole('searchbox', { name: 'セッションを検索' });
+    await user.type(input, 'web{Enter}');
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+
+    press('Escape');
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+  });
+
+  it('見出しを押すとそのディレクトリを畳み、もう一度押すと開く', async () => {
+    const { user } = await setup({ fetchAgents: mixed() });
+    const header = screen.getByRole('button', { name: /\/tmp\/other/ });
+    await user.click(header);
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+    expect(screen.getByText('1 件')).toBeDefined();
+
+    await user.click(screen.getByRole('button', { name: /\/tmp\/other/ }));
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+  });
+});
+
 describe('GuiApp のミニ表示', () => {
   const pressKey = (key: string) => {
     act(() => {

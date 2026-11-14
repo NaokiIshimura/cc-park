@@ -19,6 +19,8 @@ describe('toGuiSelectionCommand', () => {
     ['c', 'copy'],
     ['r', 'refresh'],
     ['n', 'toggleNotify'],
+    ['f', 'toggleFilter'],
+    ['/', 'search'],
     ['s', 'requestStop'],
     ['x', 'requestKill'],
     ['t', 'toggleAlwaysOnTop'],

@@ -893,3 +893,71 @@ body {
 .mini-view--horizontal .mini-view__layout {
   flex: 1 1 auto;
 }
+
+/* 見出しはボタンにして、押すとそのディレクトリを畳む。見た目は見出しのまま */
+.agent-group__toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-group__chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.agent-group__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-group__hidden {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+/* 絞り込みの状態と検索欄。ヘッダの下に、絞り込んでいる間だけ出す */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.search-bar {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.search-bar__mark {
+  color: var(--ink-cyan);
+  font-weight: 700;
+}
+
+.search-bar__input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+

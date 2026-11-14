@@ -1,4 +1,5 @@
 import { Text } from 'ink';
+import { useState } from 'react';
 import { render } from 'ink-testing-library';
 import { describe, expect, it, vi } from 'vitest';
 import type { Agent } from '../types/agent.js';
@@ -219,6 +220,124 @@ describe('useSelection', () => {
     rerender(<Harness {...props} agents={[agent('a')]} />);
     await wait();
     expect(parse(lastFrame())).toMatchObject({ selectedIndex: 0, selectedSessionId: 'a' });
+    unmount();
+  });
+});
+
+/** 検索語を親で持つ形の確認用。 */
+const SearchHarness = (props: Omit<UseSelectionOptions, 'query' | 'onQueryChange'>) => {
+  const [query, setQuery] = useState('');
+  const { searching, message } = useSelection({ ...props, query, onQueryChange: setQuery });
+  return <Text>{JSON.stringify({ query, searching, message })}</Text>;
+};
+
+const setupSearch = (overrides: Partial<UseSelectionOptions> = {}) => {
+  const onRefresh = vi.fn();
+  const onToggleFilter = vi.fn(() => true);
+  const result = render(
+    <SearchHarness
+      agents={[agent('a'), agent('b')]}
+      onRefresh={onRefresh}
+      onToggleNotify={vi.fn(() => true)}
+      onToggleFilter={onToggleFilter}
+      copy={vi.fn(() => true)}
+      {...overrides}
+    />,
+  );
+  const read = () =>
+    JSON.parse((result.lastFrame() ?? '{}').replaceAll('\n', '')) as {
+      query: string;
+      searching: boolean;
+      message: string | null;
+    };
+  return { ...result, onRefresh, onToggleFilter, read };
+};
+
+describe('useSelection の絞り込み', () => {
+  it('f で操作待ちだけの表示を切り替える', async () => {
+    const { stdin, onToggleFilter, read, unmount } = setupSearch();
+    stdin.write('f');
+    await wait();
+    expect(onToggleFilter).toHaveBeenCalledTimes(1);
+    expect(read().message).toBe('操作待ちのセッションだけを表示します（f で解除）');
+    unmount();
+  });
+
+  it('/ で検索を始め、入力した文字は一覧の操作に使わない', async () => {
+    const { stdin, onRefresh, read, unmount } = setupSearch();
+    stdin.write('/');
+    await wait();
+    expect(read().searching).toBe(true);
+    stdin.write('r');
+    await wait();
+    stdin.write('e');
+    await wait();
+    expect(read().query).toBe('re');
+    expect(onRefresh).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('Backspace で 1 文字消し、Enter で確定して一覧の操作へ戻る', async () => {
+    const { stdin, onRefresh, read, unmount } = setupSearch();
+    stdin.write('/');
+    await wait();
+    stdin.write('ab');
+    await wait();
+    stdin.write(String.fromCharCode(127));
+    await wait();
+    expect(read().query).toBe('a');
+    stdin.write(ENTER);
+    await wait();
+    expect(read()).toMatchObject({ query: 'a', searching: false });
+    stdin.write('r');
+    await wait();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it('/ と続く文字がまとめて届いても（貼り付けなど）検索語に入る', async () => {
+    const { stdin, onRefresh, read, unmount } = setupSearch();
+    stdin.write('/web');
+    await wait();
+    expect(read()).toMatchObject({ query: 'web', searching: true });
+    stdin.write('ri');
+    await wait();
+    expect(read().query).toBe('webri');
+    expect(onRefresh).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('まとめて届いた入力に改行があれば、そこで確定する', async () => {
+    const { stdin, read, unmount } = setupSearch();
+    stdin.write(`/web${ENTER}`);
+    await wait();
+    expect(read()).toMatchObject({ query: 'web', searching: false });
+    unmount();
+  });
+
+  it('入力中の Esc は検索語を消して戻る', async () => {
+    const { stdin, read, unmount } = setupSearch();
+    stdin.write('/');
+    await wait();
+    stdin.write('ab');
+    await wait();
+    stdin.write(ESC);
+    await wait();
+    expect(read()).toMatchObject({ query: '', searching: false });
+    unmount();
+  });
+
+  it('確定した検索語も Esc で消せる', async () => {
+    const { stdin, read, unmount } = setupSearch();
+    stdin.write('/');
+    await wait();
+    stdin.write('ab');
+    await wait();
+    stdin.write(ENTER);
+    await wait();
+    stdin.write(ESC);
+    await wait();
+    expect(read().query).toBe('');
     unmount();
   });
 });

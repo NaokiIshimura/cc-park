@@ -24,7 +24,8 @@ type GuiOnlyCommand =
   | 'cycleOpacity'
   | 'toggleCompact'
   | 'toggleSchedules'
-  | 'open';
+  | 'open'
+  | 'search';
 
 export type GuiCommand = SelectionCommand | GuiOnlyCommand;
 
@@ -34,7 +35,8 @@ const isGuiOnlyCommand = (command: GuiCommand): command is GuiOnlyCommand =>
   command === 'cycleOpacity' ||
   command === 'toggleCompact' ||
   command === 'toggleSchedules' ||
-  command === 'open';
+  command === 'open' ||
+  command === 'search';
 
 /** キー入力のうち判定に使う部分だけを取り出した型。 */
 export interface KeyInput {
@@ -69,6 +71,10 @@ export const toGuiSelectionCommand = (event: KeyInput): GuiCommand | null => {
       return 'refresh';
     case 'n':
       return 'toggleNotify';
+    case 'f':
+      return 'toggleFilter';
+    case '/':
+      return 'search';
     case 's':
       return 'requestStop';
     case 'x':
@@ -114,6 +120,12 @@ export interface UseGuiSelectionOptions {
   readonly onToggleCompact: () => CompactMode;
   /** 予約画面の開閉 */
   readonly onToggleSchedules: () => void;
+  /** 「操作待ちだけ表示」を切り替え、切り替え後に絞っているかを返す */
+  readonly onToggleFilter?: () => boolean;
+  /** 検索欄を開いて入力を始める（`/`） */
+  readonly onOpenSearch?: () => void;
+  /** 確認待ちでないときの Esc。確定した検索語を消すのに使う */
+  readonly onEscape?: () => void;
   readonly copy: CopyText;
   readonly stop: (agent: Agent) => Promise<StopAgentResult>;
   readonly kill: (agent: Agent) => Promise<KillAgentResult>;
@@ -155,6 +167,9 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     stop,
     kill,
     focus,
+    onToggleFilter,
+    onOpenSearch,
+    onEscape,
     enabled = true,
   } = options;
 
@@ -163,6 +178,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     onRefresh,
     onToggleNotify,
     onExit,
+    ...(onToggleFilter === undefined ? {} : { onToggleFilter }),
     // Electron の通知・クリップボードはプラットフォームを問わず使える
     notifySupported: true,
     copy,
@@ -239,6 +255,10 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
           run('cancel');
           return;
         }
+        if (command === 'search') {
+          onOpenSearch?.();
+          return;
+        }
         if (command === 'open') {
           openAt(selectedIndex);
           return;
@@ -259,6 +279,10 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
         return;
       }
 
+      if (command === 'cancel' && pendingAction === null && onEscape !== undefined) {
+        onEscape();
+        return;
+      }
       run(command);
     };
 
@@ -276,6 +300,8 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     onToggleSchedules,
     openAt,
     selectedIndex,
+    onOpenSearch,
+    onEscape,
   ]);
 
   return { ...core, toggleAlwaysOnTop, cycleOpacity, toggleCompact, openAt };

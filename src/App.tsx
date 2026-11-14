@@ -12,6 +12,7 @@ import { ErrorView } from './components/ErrorView/index.js';
 import { Footer } from './components/Footer/index.js';
 import { Header } from './components/Header/index.js';
 import { CHARACTER_WIDTH, countMiniHeight, miniPerRow } from './shared/characters.js';
+import { filterAgents, formatFilterLabel, isFiltering } from './shared/filterAgents.js';
 import { flattenGroups, groupAgents } from './shared/groupAgents.js';
 import { visibleSubagentCount } from './shared/subagents.js';
 import { useAgents } from './hooks/useAgents.js';
@@ -126,6 +127,10 @@ export const App = ({
     contextLimit: contextLimit === 0 ? undefined : contextLimit,
   });
 
+  const [needsYouOnly, setNeedsYouOnly] = useState(false);
+  const [query, setQuery] = useState('');
+  const filter = useMemo(() => ({ needsYouOnly, query }), [needsYouOnly, query]);
+
   const { agents: decorated, transitions } = useTransitions(agents, previousAgents, {
     highlightMs,
     now,
@@ -134,7 +139,7 @@ export const App = ({
   useNotifications(transitions, { enabled: notifyEnabled, notifier: osNotify });
 
   // 描画は cwd ごとのグループ、選択はフラットな添字。順序を必ず一致させる
-  const groups = useMemo(() => groupAgents(decorated), [decorated]);
+  const groups = useMemo(() => groupAgents(filterAgents(decorated, filter)), [decorated, filter]);
   const sorted = useMemo(() => flattenGroups(groups), [groups]);
   /*
    * ミニキャラクターが付くセッションは、その行数ぶん（折り返しの空行を含む）高くなる。
@@ -156,10 +161,19 @@ export const App = ({
     return next;
   }, [notifyEnabled]);
 
-  const { selectedIndex, message } = useSelection({
+  const toggleFilter = useCallback(() => {
+    const next = !needsYouOnly;
+    setNeedsYouOnly(next);
+    return next;
+  }, [needsYouOnly]);
+
+  const { selectedIndex, message, searching } = useSelection({
     agents: sorted,
     onRefresh: refresh,
     onToggleNotify: toggleNotify,
+    onToggleFilter: toggleFilter,
+    query,
+    onQueryChange: setQuery,
     notifySupported,
     enabled: interactive,
   });
@@ -168,6 +182,8 @@ export const App = ({
     <Box flexDirection="column" paddingX={1}>
       <Header
         count={sorted.length}
+        total={decorated.length}
+        filterLabel={formatFilterLabel(filter)}
         lastUpdatedAt={lastUpdatedAt}
         notifyEnabled={notifyEnabled}
         isFetching={isFetching}
@@ -186,13 +202,18 @@ export const App = ({
           showTokens={tokens}
           showSubagents={subagents}
           maxVisible={maxVisible}
+          filtered={isFiltering(filter)}
         />
       ) : (
         <ErrorView error={error} />
       )}
 
       {interactive ? (
-        <Footer message={message} showPlatformNotice={!notifySupported} />
+        <Footer
+          message={message}
+          showPlatformNotice={!notifySupported}
+          searchInput={searching ? query : null}
+        />
       ) : null}
     </Box>
   );
