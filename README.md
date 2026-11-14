@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.14.0/cc-park-0.14.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.15.0/cc-park-0.15.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.14.0/cc-park-0.14.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.15.0/cc-park-0.15.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -400,7 +400,7 @@ GUI では加えて次の操作ができます。
 | **ウィンドウの透過** | なし | `o` ＋ ヘッダの `opacity` トグル（既定 100%） |
 | **ミニ表示** | なし | `m` ＋ ヘッダの `mini` トグル（既定 OFF・起動時は常に通常表示） |
 | **予約（定期起動）** | なし | `a` ＋ ヘッダの `予約` ボタン |
-| **配色テーマ** | なし | ヘッダの `設定` ボタン |
+| **配色テーマ・通知の条件** | なし | ヘッダの `設定` ボタン |
 | **操作待ちの件数（Dock・メニューバー）** | なし | 常時表示（`設定` で個別に消せる） |
 | 終了 | `q` `Ctrl+C` | `q` `Cmd+W` `Cmd+Q` |
 
@@ -917,6 +917,24 @@ CLI モードは `osascript`（macOS のみ）、GUI モードは Electron の N
 | `BUSY` → `IDLE` | 作業完了・入力待ちになった |
 | `*` → `BLOCKED` | 承認を待っている。[承認待ちの対象](#承認待ちの対象) が分かれば添える（例: `cc-park が承認を待っています: Bash: npm test`） |
 | `*` → `DONE` | バックグラウンドが完了した |
+
+### 通知の条件（GUI）
+
+GUI ではヘッダの `設定` から、どの遷移を通知するかを選べます。選んだ条件は `~/.cc-park/settings.json` に保存されます。
+ヘッダの `notify` トグル（`n` キー・`--no-notify`）は、これまでどおり通知全体の ON / OFF です。
+
+| 項目 | 既定 | 内容 |
+| --- | --- | --- |
+| 承認待ち（`BLOCKED`） | ON | `*` → `BLOCKED` を通知する |
+| 作業完了（`BUSY` → `IDLE`） | ON | `BUSY` → `IDLE` を通知する |
+| バックグラウンドの完了（`DONE`） | ON | `*` → `DONE` を通知する |
+| 作業完了を通知する作業時間 | すべて | `30 秒以上`〜`10 分以上` を選ぶと、それより短い作業の完了は通知しない |
+| 通知音を鳴らす | ON | OFF にすると音を鳴らさずに通知する |
+
+- 作業時間は `BUSY` になった時刻から数えます。cc-park を起動する前から作業中だったセッションは始めた時刻が分からないため、短い作業と決めつけずに通知します
+- 作業時間の条件は作業完了だけに効き、承認待ち・バックグラウンドの完了には効きません
+- `notify` を OFF にしている間の遷移は、ON に戻しても後から通知しません
+- CLI モードには設定画面が無いため、すべての遷移を通知します（`osascript` の通知は元から音が鳴りません）
 
 ## 開発
 

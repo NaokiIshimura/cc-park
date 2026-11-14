@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_ATTENTION_SETTINGS } from '../shared/attention.js';
 import { DEFAULT_COMPACT_SETTINGS } from '../shared/compactSettings.js';
+import { DEFAULT_NOTIFICATION_SETTINGS } from '../shared/notificationSettings.js';
 import type { ScheduleFileSystem } from './scheduleStore.js';
 import {
   buildSettingsPath,
@@ -19,6 +20,7 @@ const settings: Settings = {
   appearance: { theme: 'navy', accent: '#f59e0b', frame: false },
   compact: { mode: 'on', layout: 'horizontal' },
   attention: { dockBadge: false, tray: true },
+  notification: { blocked: true, finished: false, done: true, minWorkSeconds: 300, sound: false },
 };
 
 /** 書き込みが必ず失敗するファイルシステム。 */
@@ -63,6 +65,7 @@ describe('parseSettings', () => {
       appearance: settings.appearance,
       compact: DEFAULT_COMPACT_SETTINGS,
       attention: DEFAULT_ATTENTION_SETTINGS,
+      notification: DEFAULT_NOTIFICATION_SETTINGS,
     });
   });
 
@@ -72,7 +75,21 @@ describe('parseSettings', () => {
       appearance: settings.appearance,
       compact: settings.compact,
     });
-    expect(parseSettings(text)).toEqual({ ...settings, attention: DEFAULT_ATTENTION_SETTINGS });
+    expect(parseSettings(text)).toEqual({
+      ...settings,
+      attention: DEFAULT_ATTENTION_SETTINGS,
+      notification: DEFAULT_NOTIFICATION_SETTINGS,
+    });
+  });
+
+  it('通知の条件を持たない古いファイルは、通知の条件だけ既定にする', () => {
+    const text = JSON.stringify({
+      version: 1,
+      appearance: settings.appearance,
+      compact: settings.compact,
+      attention: settings.attention,
+    });
+    expect(parseSettings(text)).toEqual({ ...settings, notification: DEFAULT_NOTIFICATION_SETTINGS });
   });
 
   it('解釈できない項目だけ既定値で埋める', () => {
@@ -85,6 +102,7 @@ describe('parseSettings', () => {
       appearance: { theme: 'system', accent: '#123456', frame: false },
       compact: { mode: 'on', layout: 'vertical' },
       attention: { dockBadge: true, tray: false },
+      notification: DEFAULT_NOTIFICATION_SETTINGS,
     });
   });
 });

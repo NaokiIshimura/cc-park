@@ -9,6 +9,10 @@ import {
   type AttentionSettings,
 } from '../../shared/attention.js';
 import { DEFAULT_COMPACT_SETTINGS, type CompactSettings } from '../../shared/compactSettings.js';
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  type NotificationSettings,
+} from '../../shared/notificationSettings.js';
 import type { Schedule } from '../../shared/schedule.js';
 import { DEFAULT_APPEARANCE, PALETTES, type Appearance } from '../../shared/themes.js';
 import type { Agent } from '../../types/agent.js';
@@ -39,6 +43,7 @@ const config: GuiConfig = {
   appearance: DEFAULT_APPEARANCE,
   compact: DEFAULT_COMPACT_SETTINGS,
   attention: DEFAULT_ATTENTION_SETTINGS,
+  notification: DEFAULT_NOTIFICATION_SETTINGS,
 };
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
@@ -80,6 +85,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   saveCompactSettings: vi.fn(async (settings: CompactSettings) => settings),
   setAttention: vi.fn(),
   saveAttentionSettings: vi.fn(async (settings: AttentionSettings) => settings),
+  saveNotificationSettings: vi.fn(async (settings: NotificationSettings) => settings),
   pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
@@ -698,6 +704,41 @@ describe('GuiApp の操作待ちの件数の設定', () => {
       (screen.getByRole('checkbox', { name: 'メニューバーにアイコンを出す' }) as HTMLInputElement)
         .checked,
     ).toBe(false);
+  });
+});
+
+describe('GuiApp の通知の条件', () => {
+  it('設定で切った種類の遷移は通知しない', async () => {
+    const notify = vi.fn();
+    const responses: FetchAgentsResult[] = [
+      { ok: true, agents: [agent('a', { state: 'working' })] },
+      { ok: true, agents: [agent('a', { state: 'waiting' })] },
+    ];
+    const fetchAgents = vi.fn(async () => responses.shift() ?? { ok: true as const, agents: [] });
+    const { user } = await setup(
+      { notify, fetchAgents },
+      { notification: { ...DEFAULT_NOTIFICATION_SETTINGS, finished: false } },
+    );
+
+    await user.click(screen.getByRole('button', { name: '更新' }));
+    await waitFor(() => {
+      expect(fetchAgents).toHaveBeenCalledTimes(2);
+    });
+    await act(async () => undefined);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('設定画面で変えた条件を main へ伝えて保存させる', async () => {
+    const saveNotificationSettings = vi.fn(async (settings: NotificationSettings) => settings);
+    const { user } = await setup({ saveNotificationSettings });
+
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    await user.click(screen.getByRole('checkbox', { name: '通知音を鳴らす' }));
+
+    expect(saveNotificationSettings).toHaveBeenCalledWith({
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      sound: false,
+    });
   });
 });
 

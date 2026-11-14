@@ -6,6 +6,7 @@ import type { ScheduleFiredEvent } from '../core/scheduler.js';
 import type { AttentionCounts, AttentionSettings } from '../shared/attention.js';
 import type { CompactSettings } from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
+import type { NotificationSettings } from '../shared/notificationSettings.js';
 import type { Schedule } from '../shared/schedule.js';
 import type { Appearance } from '../shared/themes.js';
 import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
@@ -44,6 +45,8 @@ export const IPC_CHANNELS = {
   setAttention: 'attention:set',
   /** 操作待ちの件数の出し方の変更と保存 */
   saveAttentionSettings: 'attention:save',
+  /** 通知の条件の変更と保存 */
+  saveNotificationSettings: 'notification:save',
   /** ディレクトリ選択ダイアログの表示 */
   pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
@@ -105,6 +108,10 @@ export interface CcParkBridge {
   readonly setAttention: (counts: AttentionCounts) => void;
   /** 件数を Dock のバッジ・メニューバーに出すかを変更して保存する。適用後の値を返す */
   readonly saveAttentionSettings: (settings: AttentionSettings) => Promise<AttentionSettings>;
+  /** どの遷移を OS 通知するかを変更して保存する。保存した値を返す */
+  readonly saveNotificationSettings: (
+    settings: NotificationSettings,
+  ) => Promise<NotificationSettings>;
   /**
    * ディレクトリ選択ダイアログを開く。選ばれた絶対パスを返し、取り消したら null。
    * `defaultPath` は最初に開く場所（空文字なら OS に任せる）。

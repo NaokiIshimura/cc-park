@@ -752,6 +752,20 @@ body {
   border-radius: 1px;
 }
 
+.settings__select {
+  margin-left: auto;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.settings__select:disabled {
+  opacity: 0.5;
+}
+
 .settings__color {
   width: 48px;
   height: 26px;

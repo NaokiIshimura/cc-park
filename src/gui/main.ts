@@ -50,6 +50,11 @@ import {
   type CompactSettings,
 } from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  toNotificationSettings,
+  type NotificationSettings,
+} from '../shared/notificationSettings.js';
 import type { Schedule } from '../shared/schedule.js';
 import {
   DEFAULT_APPEARANCE,
@@ -120,6 +125,7 @@ const config: GuiConfig = {
   opacity: DEFAULT_OPACITY,
   compact: DEFAULT_COMPACT_SETTINGS,
   attention: DEFAULT_ATTENTION_SETTINGS,
+  notification: DEFAULT_NOTIFICATION_SETTINGS,
 };
 
 /** 現在の見た目。起動時に保存済みの設定から解決し、renderer からの変更で差し替える。 */
@@ -136,6 +142,9 @@ let compactSettings: CompactSettings = DEFAULT_COMPACT_SETTINGS;
 
 /** 操作待ちの件数の出し方。起動時に保存済みの設定から読み、renderer からの変更で差し替える。 */
 let attentionSettings: AttentionSettings = DEFAULT_ATTENTION_SETTINGS;
+
+/** どの遷移を OS 通知するか。判断は renderer が行い、main は保存と受け渡しだけをする。 */
+let notificationSettings: NotificationSettings = DEFAULT_NOTIFICATION_SETTINGS;
 
 /** renderer が数えた操作待ちの件数。 */
 let attentionCounts: AttentionCounts = NO_ATTENTION;
@@ -170,12 +179,18 @@ const prepareSettings = async (): Promise<void> => {
   storedAppearance = saved.appearance;
   compactSettings = startupCompactSettings(saved.compact);
   attentionSettings = saved.attention;
+  notificationSettings = saved.notification;
 };
 
 /** 設定をまとめて保存する。1 つのファイルに書くため、どれを変えたときも全体を書く。 */
 const persistSettings = (): Promise<boolean> =>
   saveSettings(
-    { appearance: storedAppearance, compact: compactSettings, attention: attentionSettings },
+    {
+      appearance: storedAppearance,
+      compact: compactSettings,
+      attention: attentionSettings,
+      notification: notificationSettings,
+    },
     { home: config.home },
   );
 
@@ -291,7 +306,11 @@ const showNotification = (payload: NotificationPayload): void => {
   if (!Notification.isSupported()) {
     return;
   }
-  new Notification({ title: payload.title, body: payload.message }).show();
+  new Notification({
+    title: payload.title,
+    body: payload.message,
+    silent: payload.silent === true,
+  }).show();
 };
 
 /** 開いているすべてのウィンドウへ送る。 */
@@ -344,6 +363,7 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
     opacity: window?.getOpacity() ?? DEFAULT_OPACITY,
     compact: compactSettings,
     attention: attentionSettings,
+    notification: notificationSettings,
   };
 });
 
@@ -405,6 +425,13 @@ ipcMain.handle(IPC_CHANNELS.saveAttentionSettings, async (_event, value: unknown
   applyAttention();
   await persistSettings();
   return attentionSettings;
+});
+
+ipcMain.handle(IPC_CHANNELS.saveNotificationSettings, async (_event, value: unknown) => {
+  // renderer から来た値なので、解釈できない項目は既定値へ倒してから使う
+  notificationSettings = toNotificationSettings(value);
+  await persistSettings();
+  return notificationSettings;
 });
 
 ipcMain.handle(IPC_CHANNELS.saveCompactSettings, async (_event, value: unknown) => {
