@@ -1,6 +1,7 @@
 import type { Agent } from '../../../../types/agent.js';
 import { formatCwd } from '../../../../shared/formatCwd.js';
-import { UNKNOWN_CWD_LABEL, type AgentGroup } from '../../../../shared/groupAgents.js';
+import type { DisplayGroup } from '../../../../shared/filterAgents.js';
+import { UNKNOWN_CWD_LABEL } from '../../../../shared/groupAgents.js';
 import {
   findScheduledLaunch,
   type ScheduledLaunch,
@@ -12,7 +13,7 @@ import { EmptyState } from '../EmptyState/index.js';
 const CWD_MAX_WIDTH = 60;
 
 interface AgentListProps {
-  readonly groups: readonly AgentGroup[];
+  readonly groups: readonly DisplayGroup[];
   readonly frame: number;
   readonly selectedIndex: number;
   readonly now: number;
@@ -28,6 +29,10 @@ interface AgentListProps {
   readonly showSubagents: boolean;
   readonly onSelect: (index: number) => void;
   readonly onOpen: (index: number) => void;
+  /** 見出しのクリックで、そのディレクトリを畳む / 開く */
+  readonly onToggleGroup: (cwd: string) => void;
+  /** 絞り込みが効いているか。0 件のときの案内を変える */
+  readonly filtered?: boolean;
 }
 
 /** グループ見出しの表示文字列。cwd 不明はまとめて 1 つの見出しにする。 */
@@ -51,9 +56,11 @@ export const AgentList = ({
   showSubagents,
   onSelect,
   onOpen,
+  onToggleGroup,
+  filtered = false,
 }: AgentListProps) => {
   if (groups.length === 0) {
-    return <EmptyState />;
+    return <EmptyState filtered={filtered} />;
   }
 
   // 選択カーソルはフラットな添字なので、描画しながら通し番号を振る
@@ -63,7 +70,26 @@ export const AgentList = ({
     <ul className="agent-list" role="listbox" aria-label="セッション一覧">
       {groups.map((group) => (
         <li key={group.cwd} className="agent-group" role="presentation">
-          <h2 className="agent-group__header">{headerLabel(group.cwd, home)}</h2>
+          <h2 className="agent-group__header">
+            {/* 見出しを押すと畳む。畳んでいる間は件数だけを出し、カーソルも止めない */}
+            <button
+              type="button"
+              className="agent-group__toggle"
+              aria-expanded={!group.collapsed}
+              title={group.collapsed ? 'クリックで開く' : 'クリックで畳む'}
+              onClick={() => {
+                onToggleGroup(group.cwd);
+              }}
+            >
+              <span className="agent-group__chevron" aria-hidden="true">
+                {group.collapsed ? '▸' : '▾'}
+              </span>
+              <span className="agent-group__label">{headerLabel(group.cwd, home)}</span>
+              {group.collapsed ? (
+                <span className="agent-group__hidden">{`${group.hiddenCount} 件`}</span>
+              ) : null}
+            </button>
+          </h2>
 
           <ul className="agent-group__items" role="presentation">
             {group.agents.map((agent: Agent) => {

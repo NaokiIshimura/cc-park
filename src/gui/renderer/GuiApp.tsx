@@ -8,6 +8,13 @@ import {
   type CompactMode,
   type CompactSettings,
 } from '../../shared/compactSettings.js';
+import {
+  collapseGroups,
+  filterAgents,
+  formatFilterLabel,
+  isFiltering,
+  toggleCollapsed,
+} from '../../shared/filterAgents.js';
 import { flattenGroups, groupAgents } from '../../shared/groupAgents.js';
 import { shouldCompact } from '../compact.js';
 import { nextOpacity, type GuiConfig } from '../config.js';
@@ -20,6 +27,7 @@ import { Header } from './components/Header/index.js';
 import { MiniView } from './components/MiniView/index.js';
 import { ConfirmDialog } from './components/ConfirmDialog/index.js';
 import { SchedulePanel } from './components/SchedulePanel/index.js';
+import { SearchBar } from './components/SearchBar/index.js';
 import { SettingsPanel } from './components/SettingsPanel/index.js';
 import { systemPrefersDark } from './appearance.js';
 import { useAppearance } from './hooks/useAppearance.js';
@@ -88,8 +96,45 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   useAttentionReport(bridge, decorated);
 
   // 描画は cwd ごとのグループ、選択はフラットな添字。順序を必ず一致させる
-  const groups = useMemo(() => groupAgents(decorated), [decorated]);
+  // 絞り込み。畳んだディレクトリは保存せず、起動のたびに開いた状態から始める
+  const [needsYouOnly, setNeedsYouOnly] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const filter = useMemo(() => ({ needsYouOnly, query }), [needsYouOnly, query]);
+
+  // ミニ表示は畳まずに絞り込みだけを効かせる（タイルに見出しの操作は無いため）
+  const filteredGroups = useMemo(
+    () => groupAgents(filterAgents(decorated, filter)),
+    [decorated, filter],
+  );
+  const groups = useMemo(
+    () => collapseGroups(filteredGroups, collapsed),
+    [filteredGroups, collapsed],
+  );
   const sorted = useMemo(() => flattenGroups(groups), [groups]);
+
+  const toggleFilter = useCallback(() => {
+    const next = !needsYouOnly;
+    setNeedsYouOnly(next);
+    return next;
+  }, [needsYouOnly]);
+
+  const openSearch = useCallback(() => {
+    setSearchOpen(true);
+    setSearchFocused(true);
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setQuery('');
+    setSearchOpen(false);
+    setSearchFocused(false);
+  }, []);
+
+  const toggleGroup = useCallback((cwd: string) => {
+    setCollapsed((current) => toggleCollapsed(current, cwd));
+  }, []);
 
   // 切り替え後の状態を返し、フッタのメッセージに使わせる
   const toggleNotify = useCallback(() => {
@@ -169,7 +214,12 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     kill: bridge.killAgent,
     focus: bridge.focusSession,
     // 予約・設定の画面を開いている間は、一覧のキー操作を止める
-    enabled: !scheduleOpen && !settingsOpen,
+    onToggleFilter: toggleFilter,
+    onOpenSearch: openSearch,
+    // 確定した検索語は Esc で消す
+    ...(query === '' ? {} : { onEscape: clearSearch }),
+    // 検索欄に入力している間は、文字を一覧の操作として受け取らない
+    enabled: !scheduleOpen && !settingsOpen && !searchFocused,
   });
 
   // 予約の発火はフッタにも出す。通知を切っていても画面で気づけるようにする
@@ -209,7 +259,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     return (
       <div className={appClassName}>
         <MiniView
-          groups={groups}
+          groups={filteredGroups}
           frame={frame}
           home={config.home}
           layout={compactSettings.layout}
@@ -224,7 +274,9 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   return (
     <div className={appClassName}>
       <Header
-        count={sorted.length}
+        count={filteredGroups.reduce((total, group) => total + group.agents.length, 0)}
+        total={decorated.length}
+        filterLabel={formatFilterLabel(filter)}
         lastUpdatedAt={lastUpdatedAt}
         notifyEnabled={notifyEnabled}
         alwaysOnTop={alwaysOnTop}
@@ -244,6 +296,43 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
         onOpenSettings={toggleSettings}
       />
 
+      {needsYouOnly || searchOpen || query !== '' ? (
+        <div className="filter-bar">
+          {needsYouOnly ? (
+            <button
+              type="button"
+              className="toggle toggle--on"
+              title="f で解除"
+              onClick={() => {
+                run('toggleFilter');
+              }}
+            >
+              操作待ちだけ
+            </button>
+          ) : null}
+          {searchOpen || query !== '' ? (
+            <SearchBar
+              query={query}
+              focused={searchFocused}
+              onChange={setQuery}
+              onCommit={() => {
+                setSearchFocused(false);
+                if (query === '') {
+                  setSearchOpen(false);
+                }
+              }}
+              onClear={clearSearch}
+              onFocus={() => {
+                setSearchFocused(true);
+              }}
+              onBlur={() => {
+                setSearchFocused(false);
+              }}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       <main className="app__body">
         {error === null ? (
           <AgentList
@@ -259,6 +348,8 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
             showSubagents={config.subagents}
             onSelect={select}
             onOpen={handleOpen}
+            onToggleGroup={toggleGroup}
+            filtered={isFiltering(filter)}
           />
         ) : (
           <ErrorView error={error} />

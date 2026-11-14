@@ -11,6 +11,8 @@ const KEY_HELP: readonly (readonly [key: string, label: string])[] = [
   ['x', 'kill'],
   ['r', '更新'],
   ['n', '通知'],
+  ['f', '操作待ち'],
+  ['/', '検索'],
   ['t', '最前面'],
   ['o', '透過'],
   ['m', 'ミニ'],

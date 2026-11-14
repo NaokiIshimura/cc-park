@@ -18,6 +18,7 @@ export type SelectionCommand =
   | 'copy'
   | 'refresh'
   | 'toggleNotify'
+  | 'toggleFilter'
   | 'requestStop'
   | 'requestKill'
   | 'confirm'
@@ -55,6 +56,8 @@ export interface UseSelectionCoreOptions {
   readonly onToggleNotify: () => boolean;
   /** アプリを終了する */
   readonly onExit: () => void;
+  /** 「操作待ちだけ表示」を切り替え、切り替え後に絞っているかを返す */
+  readonly onToggleFilter?: () => boolean;
   /** 実行環境が OS 通知に対応しているか */
   readonly notifySupported: boolean;
   readonly copy: CopyText;
@@ -88,7 +91,17 @@ export interface UseSelectionCoreResult {
  * 入力の解釈（どのキーがどの操作か）だけを呼び出し側が受け持つ。
  */
 export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelectionCoreResult => {
-  const { agents, onRefresh, onToggleNotify, onExit, notifySupported, copy, stop, kill } = options;
+  const {
+    agents,
+    onRefresh,
+    onToggleNotify,
+    onExit,
+    onToggleFilter,
+    notifySupported,
+    copy,
+    stop,
+    kill,
+  } = options;
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
@@ -271,6 +284,15 @@ export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelection
         case 'toggleNotify':
           toggleNotify();
           return;
+        case 'toggleFilter':
+          if (onToggleFilter !== undefined) {
+            setMessage(
+              onToggleFilter()
+                ? '操作待ちのセッションだけを表示します（f で解除）'
+                : 'すべてのセッションを表示します',
+            );
+          }
+          return;
         case 'requestStop':
           request('stop');
           return;
@@ -293,6 +315,7 @@ export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelection
       copySelected,
       onRefresh,
       toggleNotify,
+      onToggleFilter,
       request,
       onExit,
     ],

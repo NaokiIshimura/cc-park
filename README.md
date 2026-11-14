@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.15.0/cc-park-0.15.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.16.0/cc-park-0.16.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.15.0/cc-park-0.15.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.16.0/cc-park-0.16.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -181,6 +181,24 @@ cc-park --cli
 - cwd を取得できないセッションは `(不明)` としてまとめ、最後に置きます
 - 上下キーはグループをまたいで移動します
 
+### 絞り込み
+
+セッションが多いときは、表示を絞り込めます。CLI モード・GUI モードの両方で使えます。
+
+| 操作 | 内容 |
+| --- | --- |
+| `f` | 操作待ち（`BLOCKED` / `DONE!` / `IDLE` / `UNKNOWN`）だけを表示する。もう一度押すと戻す。作業中（`BUSY`）と終わったもの（`DONE` / `STOPPED`）を隠す |
+| `/` | 検索語を入力する。名前・作業ディレクトリ・最終プロンプト・起動元アプリを、大文字小文字を区別せず部分一致で探す。空白で区切った語はすべて含むものだけを残す |
+| Enter | 検索語を確定し、一覧の操作に戻る（絞り込みは残る） |
+| Esc | 検索語を消す（入力中でも、確定した後でも） |
+| 見出しをクリック（GUI） | そのディレクトリを畳む / 開く。畳んでいる間は件数だけを出し、カーソルも止まらない |
+
+- 絞り込んでいる間は、見出しの件数を `2/5 sessions`（GUI は `2/5`）と出し、絞り込みの内容（`[操作待ち] /web`）を添えます
+- 0 件になったときは、解除の仕方を案内します
+- 絞り込みは表示だけに効きます。OS 通知・Dock のバッジ・メニューバーの件数は、隠れたセッションも数えます
+- 絞り込み・検索語・畳んだディレクトリは保存せず、起動のたびにすべて表示した状態から始めます
+- 検索語の入力中は、文字を一覧の操作（`q` で終了など）に使いません
+
 ### キーバインド
 
 | キー | 動作 |
@@ -192,6 +210,8 @@ cc-park --cli
 | `x` | 選択中のセッションのプロセスを kill（`y` で確定 / 他キーで取消） |
 | `r` | 即時リフレッシュ |
 | `n` | OS 通知の ON / OFF 切り替え |
+| `f` | 操作待ちのセッションだけを表示する / 戻す（[絞り込み](#絞り込み)） |
+| `/` | 検索語を入力して絞り込む（Enter で確定 / Esc で解除） |
 | `q` / `Ctrl+C` | 終了 |
 
 #### `c`（コピー）でコピーされる内容
@@ -396,6 +416,8 @@ GUI では加えて次の操作ができます。
 | 確認の取消 | 確認待ち中の `y` 以外のキー | 同左 ＋ `Esc` ＋ 取消ボタン |
 | 即時更新 | `r` | 同左 ＋ 更新ボタン |
 | 通知 ON / OFF | `n` | 同左 ＋ ヘッダのトグル |
+| 操作待ちだけ表示 / 検索 | `f` / `/` | 同左 ＋ 絞り込み中に出る `操作待ちだけ` ボタン・検索欄 |
+| **ディレクトリを畳む** | なし | 見出しをクリック |
 | **最前面に固定** | なし | `t` ＋ ヘッダの `top` トグル（既定 ON） |
 | **ウィンドウの透過** | なし | `o` ＋ ヘッダの `opacity` トグル（既定 100%） |
 | **ミニ表示** | なし | `m` ＋ ヘッダの `mini` トグル（既定 OFF・起動時は常に通常表示） |

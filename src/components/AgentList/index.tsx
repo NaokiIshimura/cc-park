@@ -25,6 +25,8 @@ interface AgentListProps {
   readonly showSubagents: boolean;
   /** 同時に表示できる最大件数。端末の高さから算出する */
   readonly maxVisible: number;
+  /** 絞り込みが効いているか。0 件のときの案内を変える */
+  readonly filtered?: boolean;
 }
 
 /** 1 セッションが占める行数（本体 3 行 + 行間 1 行） */
@@ -87,9 +89,10 @@ export const AgentList = ({
   showTokens,
   showSubagents,
   maxVisible,
+  filtered = false,
 }: AgentListProps) => {
   if (agents.length === 0) {
-    return <EmptyState />;
+    return <EmptyState filtered={filtered} />;
   }
 
   const { start, end } = computeWindow(agents.length, selectedIndex, maxVisible);

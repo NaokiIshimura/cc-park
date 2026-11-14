@@ -1,9 +1,14 @@
 import { formatClock } from '../../../../shared/formatClock.js';
+import { formatCount } from '../../../../shared/filterAgents.js';
 import type { CompactMode } from '../../../../shared/compactSettings.js';
 import { formatOpacity } from '../../../config.js';
 
 interface HeaderProps {
   readonly count: number;
+  /** 絞り込む前の件数。省略時は `count` と同じ（絞り込んでいない） */
+  readonly total?: number;
+  /** 絞り込みの内容（`[操作待ち] /foo` など）。絞り込んでいなければ空文字 */
+  readonly filterLabel?: string;
   readonly lastUpdatedAt: number | null;
   readonly notifyEnabled: boolean;
   readonly alwaysOnTop: boolean;
@@ -24,6 +29,8 @@ interface HeaderProps {
 /** タイトル・件数・最終更新時刻・各トグルを表示し、更新と切り替えの操作を提供する。 */
 export const Header = ({
   count,
+  total = count,
+  filterLabel = '',
   lastUpdatedAt,
   notifyEnabled,
   alwaysOnTop,
@@ -41,7 +48,16 @@ export const Header = ({
   <header className="header">
     <div className="header__title-area">
       <h1 className="header__title">CC Park</h1>
-      <span className="header__count">{`${count} sessions`}</span>
+      {/*
+        既定幅ではタイトルの行に余白が無いので、絞り込み中は `1/3` と短く出し、
+        内訳（`1/3 sessions [操作待ち] /web`）はツールチップで見せる
+      */}
+      <span
+        className="header__count"
+        title={count === total ? undefined : `${formatCount(count, total)} ${filterLabel}`.trim()}
+      >
+        {count === total ? formatCount(count, total) : `${count}/${total}`}
+      </span>
       {/* 既定幅のタイトルの行に収めるため状態は文字にせず、他のトグルと同じく点灯で示す */}
       <button
         type="button"
