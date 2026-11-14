@@ -71,6 +71,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   fetchAgents: vi.fn(async (): Promise<FetchAgentsResult> => ({ ok: true, agents: [] })),
   stopAgent: vi.fn(async () => ({ ok: true as const })),
   killAgent: vi.fn(async () => ({ ok: true as const })),
+  focusSession: vi.fn(async () => ({ ok: false as const, reason: '移動できません' })),
   writeClipboard: vi.fn(async () => true),
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
   setAppearance: vi.fn(async (value: Appearance) => value),
@@ -154,14 +155,38 @@ describe('GuiApp', () => {
     expect(screen.getAllByRole('option')[1]?.getAttribute('aria-selected')).toBe('true');
   });
 
-  it('ダブルクリックでその行の resume コマンドをコピーする', async () => {
+  it('ダブルクリックでその行のセッションの画面へ移動する', async () => {
+    const focusSession = vi.fn(async () => ({
+      ok: true as const,
+      target: 'tab' as const,
+      app: 'iTerm2',
+    }));
+    const writeClipboard = vi.fn(async () => true);
+    const { user } = await setup({
+      focusSession,
+      writeClipboard,
+      fetchAgents: vi.fn(async () => ({ ok: true as const, agents: [agent('a'), agent('b')] })),
+    });
+    await user.dblClick(screen.getAllByRole('option')[1] as HTMLElement);
+    expect(focusSession).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'b' }));
+    expect(writeClipboard).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText('iTerm2 のタブへ移動しました: b')).toBeDefined();
+    });
+  });
+
+  it('移動できなければダブルクリックした行の resume コマンドをコピーする', async () => {
     const writeClipboard = vi.fn(async () => true);
     const { user } = await setup({
       writeClipboard,
       fetchAgents: vi.fn(async () => ({ ok: true as const, agents: [agent('a'), agent('b')] })),
     });
     await user.dblClick(screen.getAllByRole('option')[1] as HTMLElement);
-    expect(writeClipboard).toHaveBeenCalledWith('cd /Users/naoki/GitHub/app && claude --resume b');
+    await waitFor(() => {
+      expect(writeClipboard).toHaveBeenCalledWith(
+        'cd /Users/naoki/GitHub/app && claude --resume b',
+      );
+    });
   });
 
   it('更新ボタンで再取得する', async () => {

@@ -19,6 +19,7 @@ const bridge: CcParkBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.fetchAgents, request),
   stopAgent: (agent: Agent) => ipcRenderer.invoke(IPC_CHANNELS.stopAgent, agent),
   killAgent: (agent: Agent) => ipcRenderer.invoke(IPC_CHANNELS.killAgent, agent),
+  focusSession: (agent: Agent) => ipcRenderer.invoke(IPC_CHANNELS.focusSession, agent),
   writeClipboard: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.writeClipboard, text),
   setAlwaysOnTop: (value: boolean) => ipcRenderer.invoke(IPC_CHANNELS.setAlwaysOnTop, value),
   setAppearance: (appearance: Appearance) =>

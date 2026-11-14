@@ -27,7 +27,7 @@ interface AgentListProps {
   /** 実行中のサブエージェントをミニキャラクターで表示するか */
   readonly showSubagents: boolean;
   readonly onSelect: (index: number) => void;
-  readonly onCopy: (index: number) => void;
+  readonly onOpen: (index: number) => void;
 }
 
 /** グループ見出しの表示文字列。cwd 不明はまとめて 1 つの見出しにする。 */
@@ -50,7 +50,7 @@ export const AgentList = ({
   showTokens,
   showSubagents,
   onSelect,
-  onCopy,
+  onOpen,
 }: AgentListProps) => {
   if (groups.length === 0) {
     return <EmptyState />;
@@ -84,8 +84,8 @@ export const AgentList = ({
                   onSelect={() => {
                     onSelect(index);
                   }}
-                  onCopy={() => {
-                    onCopy(index);
+                  onOpen={() => {
+                    onOpen(index);
                   }}
                 />
               );

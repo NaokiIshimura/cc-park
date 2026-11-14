@@ -55,7 +55,8 @@ interface AgentRowProps {
   /** 実行中のサブエージェントをミニキャラクターで表示するか */
   readonly showSubagents: boolean;
   readonly onSelect: () => void;
-  readonly onCopy: () => void;
+  /** ダブルクリック。セッションの画面へ移動する（できなければコマンドをコピーする） */
+  readonly onOpen: () => void;
 }
 
 /**
@@ -76,7 +77,7 @@ const AgentRowComponent = ({
   showTokens,
   showSubagents,
   onSelect,
-  onCopy,
+  onOpen,
 }: AgentRowProps) => {
   const appearance = getAppearance(agent.state);
   const elapsed = agent.startedAt > 0 ? formatDuration(now - agent.startedAt) : '-';
@@ -97,7 +98,7 @@ const AgentRowComponent = ({
       role="option"
       aria-selected={selected}
       onClick={onSelect}
-      onDoubleClick={onCopy}
+      onDoubleClick={onOpen}
       title={subagents.length === 0 ? undefined : subagentTitle(subagents)}
     >
       <div className="agent-row__main">

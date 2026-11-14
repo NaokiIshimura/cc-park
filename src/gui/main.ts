@@ -17,6 +17,7 @@ import {
   type OpenDialogOptions,
 } from 'electron';
 import { fetchAgents } from '../core/fetchAgents.js';
+import { focusSession } from '../core/focusSession.js';
 import { killAgent } from '../core/killAgent.js';
 import { launchAgent } from '../core/launchAgent.js';
 import {
@@ -361,6 +362,8 @@ ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequ
 ipcMain.handle(IPC_CHANNELS.stopAgent, async (_event, agent: Agent) => stopAgent(agent));
 
 ipcMain.handle(IPC_CHANNELS.killAgent, async (_event, agent: Agent) => killAgent(agent));
+
+ipcMain.handle(IPC_CHANNELS.focusSession, async (_event, agent: Agent) => focusSession(agent));
 
 ipcMain.handle(IPC_CHANNELS.writeClipboard, (_event, text: string) => {
   clipboard.writeText(text);

@@ -28,6 +28,13 @@ const APP_ALIASES: Readonly<Record<string, string>> = {
   iTerm: 'iTerm2',
 };
 
+/**
+ * 表示名から `.app` の名前（`open -a` に渡す名前）へ戻す。
+ * 別名を付けていないアプリは表示名が `.app` の名前そのもの。
+ */
+export const appBundleName = (displayName: string): string =>
+  Object.entries(APP_ALIASES).find(([, alias]) => alias === displayName)?.[0] ?? displayName;
+
 /** `ps -axo pid=,ppid=,comm=` の出力を解析する。解析できない行は読み飛ばす。 */
 export const parseProcessTable = (stdout: string): ProcessTable => {
   const table = new Map<number, ProcessEntry>();

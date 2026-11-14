@@ -15,6 +15,7 @@ describe('toGuiSelectionCommand', () => {
     ['k', 'up'],
     ['ArrowDown', 'down'],
     ['j', 'down'],
+    ['Enter', 'open'],
     ['c', 'copy'],
     ['r', 'refresh'],
     ['n', 'toggleNotify'],
@@ -38,11 +39,6 @@ describe('toGuiSelectionCommand', () => {
   it('装飾キーは無視する', () => {
     expect(toGuiSelectionCommand(key('Shift'))).toBeNull();
     expect(toGuiSelectionCommand(key('Tab'))).toBeNull();
-  });
-
-  // コピーは c だけに割り当てる。Enter は印字文字でないので取消にもならない
-  it('Enter は無視する', () => {
-    expect(toGuiSelectionCommand(key('Enter'))).toBeNull();
   });
 
   it.each(['ctrlKey', 'metaKey', 'altKey'] as const)(
