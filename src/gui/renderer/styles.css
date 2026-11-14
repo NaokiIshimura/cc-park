@@ -379,6 +379,15 @@ body {
 .agent-row__detail {
   margin-left: auto;
   padding-left: 12px;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* 経過時間は説明が長くても切り詰めずに残す */
+.agent-row__elapsed {
+  flex-shrink: 0;
+  padding-left: 1ch;
+  color: var(--fg-muted);
 }
 
 /* コンテキスト使用量。名前を押し出さないよう右端へ寄せる */

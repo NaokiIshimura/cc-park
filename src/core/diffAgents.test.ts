@@ -28,6 +28,21 @@ describe('diffAgents', () => {
     ]);
   });
 
+  it('BLOCKED へ遷移したら承認待ちの対象を添える', () => {
+    const blocked: Agent = {
+      ...agent('a', 'blocked'),
+      meta: {
+        lastPrompt: undefined,
+        tokens: undefined,
+        subagents: [],
+        pendingTool: { name: 'Bash', detail: 'npm test' },
+      },
+    };
+    expect(diffAgents([agent('a', 'working')], [blocked], 100)).toEqual([
+      { sessionId: 'a', name: 'name-a', from: 'working', to: 'blocked', at: 100, reason: 'Bash: npm test' },
+    ]);
+  });
+
   it('状態が変化していなければ何も返さない', () => {
     expect(diffAgents([agent('a', 'working')], [agent('a', 'working')], 100)).toEqual([]);
   });

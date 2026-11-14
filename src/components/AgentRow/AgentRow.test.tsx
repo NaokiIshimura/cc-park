@@ -189,6 +189,41 @@ describe('AgentRow のレイアウト', () => {
     expect(status).toMatch(/BUSY\s{2,}working\.\.\./);
   });
 
+  it('BLOCKED なら承認待ちの対象を説明に出す', () => {
+    const status = renderRow({
+      state: 'blocked',
+      meta: {
+        lastPrompt: undefined,
+        tokens: undefined,
+        subagents: [],
+        pendingTool: { name: 'Bash', detail: 'npm test' },
+      },
+    }).split('\n')[1];
+
+    expect(status?.trimEnd().endsWith('Bash: npm test 3m12s')).toBe(true);
+  });
+
+  it('承認待ちの対象が長くても切り詰め、経過時間は残す', () => {
+    const lines = renderRow(
+      {
+        state: 'blocked',
+        meta: {
+          lastPrompt: undefined,
+          tokens: undefined,
+          subagents: [],
+          pendingTool: { name: 'Bash', detail: `echo ${'x'.repeat(200)}` },
+        },
+      },
+      { infoWidth: 40 },
+    )
+      .split('\n')
+      .filter((line) => line.trim() !== '');
+
+    expect(lines).toHaveLength(3);
+    expect(lines[1]?.trimEnd().endsWith(' 3m12s')).toBe(true);
+    expect(lines[1]).toContain('Bash: echo');
+  });
+
   it('状態行の右端は 1 行目のトークン表示と揃う', () => {
     const lines = renderRow({
       meta: { lastPrompt: undefined, tokens: { used: 90_000, limit: 200_000, ratio: 0.45 } , subagents: [] },

@@ -22,6 +22,12 @@ describe('toNotification', () => {
     );
   });
 
+  it('承認待ちの対象が分かれば通知に添える', () => {
+    expect(
+      toNotification({ ...event('working', 'blocked'), reason: 'Bash: rm -rf dist' })?.message,
+    ).toBe('session-a が承認を待っています: Bash: rm -rf dist');
+  });
+
   it('done への遷移は完了通知になる', () => {
     expect(toNotification(event('working', 'done'))?.message).toBe(
       'バックグラウンド session-a が完了しました',

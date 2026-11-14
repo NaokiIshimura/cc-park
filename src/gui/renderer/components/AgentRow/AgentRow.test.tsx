@@ -62,7 +62,25 @@ describe('AgentRow', () => {
   it('状態ラベルと説明・経過時間を表示する', () => {
     setup();
     expect(screen.getByText('BUSY')).toBeDefined();
-    expect(screen.getByText('working... 1m')).toBeDefined();
+    expect(screen.getByText('working...')).toBeDefined();
+    expect(screen.getByText('1m')).toBeDefined();
+  });
+
+  it('BLOCKED なら承認待ちの対象を説明に出し、全文をツールチップで見せる', () => {
+    setup({
+      agent: agent({
+        state: 'blocked',
+        meta: {
+          lastPrompt: undefined,
+          tokens: undefined,
+          subagents: [],
+          pendingTool: { name: 'Bash', detail: 'rm -rf dist' },
+        },
+      }),
+    });
+    const detail = screen.getByText('Bash: rm -rf dist');
+    expect(detail.getAttribute('title')).toBe('承認待ち: Bash: rm -rf dist');
+    expect(screen.getByText('1m')).toBeDefined();
   });
 
   it('未知の状態では生の状態文字列を添える', () => {
@@ -72,7 +90,7 @@ describe('AgentRow', () => {
 
   it('起動時刻が無ければ経過時間を - にする', () => {
     setup({ agent: agent({ startedAt: 0 }) });
-    expect(screen.getByText(/working\.\.\. -/)).toBeDefined();
+    expect(screen.getByText('-')).toBeDefined();
   });
 
   it('background セッションには [bg] を付ける', () => {

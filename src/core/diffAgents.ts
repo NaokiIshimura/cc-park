@@ -1,3 +1,4 @@
+import { blockedReason } from '../shared/statusDetail.js';
 import type { Agent, TransitionEvent } from '../types/agent.js';
 
 /**
@@ -27,12 +28,14 @@ export const diffAgents = (
       continue;
     }
 
+    const reason = blockedReason(agent);
     events.push({
       sessionId: agent.sessionId,
       name: agent.name,
       from,
       to: agent.state,
       at,
+      ...(reason === undefined ? {} : { reason }),
     });
   }
 

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionMeta } from '../types/agent.js';
 import {
+  describeToolUse,
   emptyScan,
   extendScan,
+  PENDING_DETAIL_MAX_LENGTH,
   scanModelId,
   toSessionMeta,
   toSingleLine,
@@ -488,5 +490,107 @@ describe('extendScan の累積', () => {
   it('起動を拾っていない完了通知は無視する', () => {
     const scan = extendScan(emptyScan(), line(notification('toolu_1')));
     expect(toSessionMeta(scan).subagents).toEqual([]);
+  });
+});
+
+/** ツールを呼んだ assistant 行（複数同時に呼べる）。 */
+const callTools = (...calls: readonly (readonly [id: string, name: string, input: unknown])[]) => ({
+  type: 'assistant',
+  message: {
+    content: calls.map(([id, name, input]) => ({ type: 'tool_use', id, name, input })),
+  },
+});
+
+describe('未完了のツール呼び出し（pendingTool）', () => {
+  it('結果がまだ返っていないツールを主な引数とともに返す', () => {
+    const chunk = line(callTools(['t1', 'Bash', { command: 'npm test', description: 'テスト' }]));
+    expect(parse(chunk).pendingTool).toEqual({ name: 'Bash', detail: 'npm test' });
+  });
+
+  it('結果が返ったら外す', () => {
+    const chunk = [
+      line(callTools(['t1', 'Bash', { command: 'npm test' }])),
+      line(toolResult('t1', 'ok')),
+    ].join('\n');
+    expect(parse(chunk).pendingTool).toBeUndefined();
+  });
+
+  it('増分を跨いでも結果で外れる', () => {
+    const first = extendScan(emptyScan(), line(callTools(['t1', 'Edit', { file_path: '/a.ts' }])));
+    expect(toSessionMeta(first).pendingTool).toEqual({ name: 'Edit', detail: '/a.ts' });
+    const second = extendScan(first, line(toolResult('t1', 'ok')));
+    expect(toSessionMeta(second).pendingTool).toBeUndefined();
+  });
+
+  it('並列で呼んだときは、承認の要らない読み取りより承認の要るものを選ぶ', () => {
+    const chunk = line(
+      callTools(
+        ['t1', 'Bash', { command: 'rm -rf dist' }],
+        ['t2', 'Read', { file_path: '/a.ts' }],
+      ),
+    );
+    expect(parse(chunk).pendingTool).toEqual({ name: 'Bash', detail: 'rm -rf dist' });
+  });
+
+  it('承認の要るものが複数なら最後に呼んだものを選ぶ', () => {
+    const chunk = line(
+      callTools(['t1', 'Write', { file_path: '/a.ts' }], ['t2', 'Bash', { command: 'ls' }]),
+    );
+    expect(parse(chunk).pendingTool?.name).toBe('Bash');
+  });
+
+  it('読み取りしか残っていなければそれを返す', () => {
+    const chunk = line(callTools(['t1', 'Read', { file_path: '/a.ts' }]));
+    expect(parse(chunk).pendingTool).toEqual({ name: 'Read', detail: '/a.ts' });
+  });
+
+  it('サブエージェントの起動は含めない', () => {
+    expect(parse(line(spawn('t1', 'Agent', { description: '調査' }))).pendingTool).toBeUndefined();
+  });
+
+  it('追跡する件数には上限があり、古いものから捨てる', () => {
+    const chunk = Array.from({ length: 40 }, (_, index) =>
+      line(callTools([`t${index}`, 'Bash', { command: `echo ${index}` }])),
+    ).join('\n');
+    const scan = extendScan(emptyScan(), chunk);
+    expect(scan.pending.size).toBe(32);
+    expect(scan.pending.has('t0')).toBe(false);
+    expect(toSessionMeta(scan).pendingTool?.detail).toBe('echo 39');
+  });
+});
+
+describe('describeToolUse', () => {
+  it.each([
+    ['Bash', { command: 'git push' }, 'git push'],
+    ['Write', { file_path: '/x/y.ts', content: '...' }, '/x/y.ts'],
+    ['NotebookEdit', { notebook_path: '/n.ipynb' }, '/n.ipynb'],
+    ['WebFetch', { url: 'https://example.com', prompt: '要約' }, 'https://example.com'],
+    ['WebSearch', { query: 'vitest' }, 'vitest'],
+  ])('%s は主な引数を使う', (name, input, detail) => {
+    expect(describeToolUse(name, input)).toEqual({ name, detail });
+  });
+
+  it('AskUserQuestion は最初の質問を使う', () => {
+    expect(
+      describeToolUse('AskUserQuestion', { questions: [{ question: 'どちらにしますか?' }] }),
+    ).toEqual({ name: 'AskUserQuestion', detail: 'どちらにしますか?' });
+  });
+
+  it('知らないツールは最初の文字列の値を使う', () => {
+    expect(describeToolUse('mcp__github__create_issue', { count: 1, title: 'バグ' })).toEqual({
+      name: 'mcp__github__create_issue',
+      detail: 'バグ',
+    });
+  });
+
+  it('引数が無ければ空文字', () => {
+    expect(describeToolUse('ExitPlanMode', undefined)).toEqual({ name: 'ExitPlanMode', detail: '' });
+  });
+
+  it('改行を潰し、長すぎる引数は切り詰める', () => {
+    expect(describeToolUse('Bash', { command: 'a\nb' }).detail).toBe('a b');
+    const { detail } = describeToolUse('Bash', { command: 'x'.repeat(500) });
+    expect(detail).toHaveLength(PENDING_DETAIL_MAX_LENGTH);
+    expect(detail.endsWith('…')).toBe(true);
   });
 });
