@@ -28,7 +28,7 @@ afterEach(cleanup);
 
 const setup = (overrides: Partial<Parameters<typeof AgentRow>[0]> = {}) => {
   const onSelect = vi.fn();
-  const onCopy = vi.fn();
+  const onOpen = vi.fn();
   const result = render(
     <AgentRow
       agent={agent()}
@@ -41,11 +41,11 @@ const setup = (overrides: Partial<Parameters<typeof AgentRow>[0]> = {}) => {
       showTokens
       showSubagents
       onSelect={onSelect}
-      onCopy={onCopy}
+      onOpen={onOpen}
       {...overrides}
     />,
   );
-  return { ...result, onSelect, onCopy, user: userEvent.setup() };
+  return { ...result, onSelect, onOpen, user: userEvent.setup() };
 };
 
 describe('AgentRow', () => {
@@ -136,10 +136,10 @@ describe('AgentRow', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
-  it('ダブルクリックでコピーする', async () => {
-    const { onCopy, user } = setup();
+  it('ダブルクリックでセッションを開く', async () => {
+    const { onOpen, user } = setup();
     await user.dblClick(screen.getByRole('option'));
-    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });
 

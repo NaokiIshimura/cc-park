@@ -138,7 +138,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     pendingAction,
     run,
     select,
-    copyAt,
+    openAt,
     setMessage,
     toggleAlwaysOnTop,
     cycleOpacity,
@@ -155,6 +155,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     copy: bridge.writeClipboard,
     stop: bridge.stopAgent,
     kill: bridge.killAgent,
+    focus: bridge.focusSession,
     // 予約・設定の画面を開いている間は、一覧のキー操作を止める
     enabled: !scheduleOpen && !settingsOpen,
   });
@@ -167,13 +168,13 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     }
   }, [firedEvent, setMessage]);
 
-  // ダブルクリックは「選択してコピー」。選択の反映を待たずに済むよう位置を直接渡す
-  const handleCopy = useCallback(
+  // ダブルクリックは「選択して開く」。選択の反映を待たずに済むよう位置を直接渡す
+  const handleOpen = useCallback(
     (index: number) => {
       select(index);
-      copyAt(index);
+      openAt(index);
     },
-    [select, copyAt],
+    [select, openAt],
   );
 
   const pendingAgent = sorted.find((agent) => agent.sessionId === pendingAction?.sessionId);
@@ -245,7 +246,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
             showTokens={config.tokens}
             showSubagents={config.subagents}
             onSelect={select}
-            onCopy={handleCopy}
+            onOpen={handleOpen}
           />
         ) : (
           <ErrorView error={error} />

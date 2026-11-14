@@ -30,7 +30,7 @@ afterEach(cleanup);
 
 const setup = (overrides: Partial<Parameters<typeof AgentList>[0]> = {}) => {
   const onSelect = vi.fn();
-  const onCopy = vi.fn();
+  const onOpen = vi.fn();
   const result = render(
     <AgentList
       groups={oneGroup([agent('a'), agent('b'), agent('c')])}
@@ -44,11 +44,11 @@ const setup = (overrides: Partial<Parameters<typeof AgentList>[0]> = {}) => {
       showPrompt={false}
       showTokens={false}
       onSelect={onSelect}
-      onCopy={onCopy}
+      onOpen={onOpen}
       {...overrides}
     />,
   );
-  return { ...result, onSelect, onCopy, user: userEvent.setup() };
+  return { ...result, onSelect, onOpen, user: userEvent.setup() };
 };
 
 describe('AgentList', () => {
@@ -95,9 +95,9 @@ describe('AgentList', () => {
   });
 
   it('ダブルクリックした行の位置を通知する', async () => {
-    const { onCopy, user } = setup();
+    const { onOpen, user } = setup();
     await user.dblClick(screen.getAllByRole('option')[0] as HTMLElement);
-    expect(onCopy).toHaveBeenCalledWith(0);
+    expect(onOpen).toHaveBeenCalledWith(0);
   });
 });
 

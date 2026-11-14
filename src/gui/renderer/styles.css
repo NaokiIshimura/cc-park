@@ -488,8 +488,15 @@ body {
 }
 
 .footer__help {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.2ch;
   color: var(--fg-muted);
   font-size: 11px;
+}
+
+.footer__key {
+  white-space: nowrap;
 }
 
 .footer__message {

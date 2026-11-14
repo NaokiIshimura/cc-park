@@ -11,6 +11,11 @@ describe('Footer', () => {
     expect(screen.getByText(/c コピー/)).toBeDefined();
   });
 
+  it('セッションを開くキーを案内する', () => {
+    render(<Footer message={null} />);
+    expect(screen.getByText(/Enter 開く/)).toBeDefined();
+  });
+
   it('最前面固定のキーを案内する', () => {
     render(<Footer message={null} />);
     expect(screen.getByText(/t 最前面/)).toBeDefined();

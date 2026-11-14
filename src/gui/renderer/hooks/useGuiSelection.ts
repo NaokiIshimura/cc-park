@@ -5,18 +5,26 @@ import {
   type SelectionCommand,
   type UseSelectionCoreResult,
 } from '../../../hooks/useSelectionCore.js';
+import type { FocusSessionResult } from '../../../core/focusSession.js';
 import type { KillAgentResult } from '../../../core/killAgent.js';
 import type { StopAgentResult } from '../../../core/stopAgent.js';
 import type { Agent } from '../../../types/agent.js';
 import type { CompactMode } from '../../../shared/compactSettings.js';
+import { buildResumeCommand } from '../../../shared/resumeCommand.js';
 import { formatOpacity } from '../../config.js';
 
 /**
  * GUI で扱う操作。共有の状態機械が知る操作に、GUI 固有のものを足したもの。
- * `toggleAlwaysOnTop` / `cycleOpacity` / `toggleCompact`（ウィンドウ）と `toggleSchedules`（予約画面）は
+ * `toggleAlwaysOnTop` / `cycleOpacity` / `toggleCompact`（ウィンドウ）と `toggleSchedules`（予約画面）、
+ * `open`（起動元アプリへの移動。Electron の main プロセスで AppleScript を使う）は
  * GUI にしかない概念なので core には置かない。
  */
-type GuiOnlyCommand = 'toggleAlwaysOnTop' | 'cycleOpacity' | 'toggleCompact' | 'toggleSchedules';
+type GuiOnlyCommand =
+  | 'toggleAlwaysOnTop'
+  | 'cycleOpacity'
+  | 'toggleCompact'
+  | 'toggleSchedules'
+  | 'open';
 
 export type GuiCommand = SelectionCommand | GuiOnlyCommand;
 
@@ -25,7 +33,8 @@ const isGuiOnlyCommand = (command: GuiCommand): command is GuiOnlyCommand =>
   command === 'toggleAlwaysOnTop' ||
   command === 'cycleOpacity' ||
   command === 'toggleCompact' ||
-  command === 'toggleSchedules';
+  command === 'toggleSchedules' ||
+  command === 'open';
 
 /** キー入力のうち判定に使う部分だけを取り出した型。 */
 export interface KeyInput {
@@ -52,6 +61,8 @@ export const toGuiSelectionCommand = (event: KeyInput): GuiCommand | null => {
     case 'ArrowDown':
     case 'j':
       return 'down';
+    case 'Enter':
+      return 'open';
     case 'c':
       return 'copy';
     case 'r':
@@ -106,6 +117,8 @@ export interface UseGuiSelectionOptions {
   readonly copy: CopyText;
   readonly stop: (agent: Agent) => Promise<StopAgentResult>;
   readonly kill: (agent: Agent) => Promise<KillAgentResult>;
+  /** セッションの画面（端末のタブ・アプリ）を前面に出す */
+  readonly focus: (agent: Agent) => Promise<FocusSessionResult>;
   /** false の場合はキー入力を受け付けない */
   readonly enabled?: boolean;
 }
@@ -117,6 +130,11 @@ export interface UseGuiSelectionResult extends UseSelectionCoreResult {
   readonly cycleOpacity: () => void;
   /** ミニ表示の切り替え（キー操作・ヘッダのトグル・ミニ表示の `開く` から使う） */
   readonly toggleCompact: () => void;
+  /**
+   * 位置を指定してセッションを開く（`Enter`・ダブルクリック）。
+   * 起動元アプリのタブへ移動し、移動できなければセッションを開くコマンドをコピーする。
+   */
+  readonly openAt: (index: number) => void;
 }
 
 /**
@@ -136,6 +154,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     copy,
     stop,
     kill,
+    focus,
     enabled = true,
   } = options;
 
@@ -151,7 +170,35 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     kill,
   });
 
-  const { run, setMessage, pendingAction } = core;
+  const { run, setMessage, pendingAction, selectedIndex } = core;
+
+  const openAt = useCallback(
+    (index: number) => {
+      const agent = agents[index];
+      if (agent === undefined) {
+        return;
+      }
+      void focus(agent).then(async (result) => {
+        if (result.ok) {
+          setMessage(
+            result.target === 'tab'
+              ? `${result.app} のタブへ移動しました: ${agent.name}`
+              : `${result.app} を前面に出しました: ${agent.name}`,
+          );
+          return;
+        }
+        // 移動できないセッションは、これまでどおり開くコマンドをコピーして渡す
+        const command = buildResumeCommand(agent);
+        const copied = await copy(command);
+        setMessage(
+          copied
+            ? `${result.reason}。コマンドをコピーしました: ${command}`
+            : `${result.reason}: ${command}`,
+        );
+      });
+    },
+    [agents, focus, copy, setMessage],
+  );
 
   const toggleAlwaysOnTop = useCallback(() => {
     // 押したときにどちらへ切り替わったかがわかるようメッセージを出す
@@ -192,6 +239,10 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
           run('cancel');
           return;
         }
+        if (command === 'open') {
+          openAt(selectedIndex);
+          return;
+        }
         if (command === 'toggleSchedules') {
           onToggleSchedules();
           return;
@@ -223,7 +274,9 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     cycleOpacity,
     toggleCompact,
     onToggleSchedules,
+    openAt,
+    selectedIndex,
   ]);
 
-  return { ...core, toggleAlwaysOnTop, cycleOpacity, toggleCompact };
+  return { ...core, toggleAlwaysOnTop, cycleOpacity, toggleCompact, openAt };
 };

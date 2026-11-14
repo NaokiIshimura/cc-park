@@ -1,4 +1,5 @@
 import type { FetchAgentsResult } from '../core/fetchAgents.js';
+import type { FocusSessionResult } from '../core/focusSession.js';
 import type { KillAgentResult } from '../core/killAgent.js';
 import type { StopAgentResult } from '../core/stopAgent.js';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
@@ -25,6 +26,8 @@ export const IPC_CHANNELS = {
   stopAgent: 'agents:stop',
   /** セッションの OS プロセスへシグナルを送る */
   killAgent: 'agents:kill',
+  /** セッションの画面（端末のタブ・アプリ）を前面に出す */
+  focusSession: 'agents:focus',
   /** クリップボードへの書き込み */
   writeClipboard: 'clipboard:write',
   /** ウィンドウの最前面固定の切り替え */
@@ -73,6 +76,8 @@ export interface CcParkBridge {
   readonly fetchAgents: (request: FetchAgentsRequest) => Promise<FetchAgentsResult>;
   readonly stopAgent: (agent: Agent) => Promise<StopAgentResult>;
   readonly killAgent: (agent: Agent) => Promise<KillAgentResult>;
+  /** セッションの画面（端末のタブ・アプリ）を前面に出す。移動できなければ理由を返す */
+  readonly focusSession: (agent: Agent) => Promise<FocusSessionResult>;
   readonly writeClipboard: (text: string) => Promise<boolean>;
   /** ウィンドウを最前面に固定する / 解除する。適用後の状態を返す */
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;

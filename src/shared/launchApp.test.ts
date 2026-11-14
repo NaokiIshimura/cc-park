@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { appNameFromCommand, parseProcessTable, resolveLaunchApp } from './launchApp.js';
+import {
+  appBundleName,
+  appNameFromCommand,
+  parseProcessTable,
+  resolveLaunchApp,
+} from './launchApp.js';
 
 const VSCODE = '/Applications/Visual Studio Code.app/Contents/MacOS/Code';
 const VSCODE_HELPER =
   '/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Plugin).app/Contents/MacOS/Code Helper (Plugin)';
+
+describe('appBundleName', () => {
+  it('別名を付けたアプリは .app の名前へ戻す', () => {
+    expect(appBundleName('VS Code')).toBe('Visual Studio Code');
+    expect(appBundleName('iTerm2')).toBe('iTerm');
+  });
+
+  it('別名の無いアプリは表示名のまま', () => {
+    expect(appBundleName('Terminal')).toBe('Terminal');
+  });
+});
 
 describe('parseProcessTable', () => {
   it('空白を含む実行ファイルのパスをそのまま読む', () => {

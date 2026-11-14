@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { FocusSessionResult } from '../../../core/focusSession.js';
 import type { KillAgentResult } from '../../../core/killAgent.js';
 import type { StopAgentResult } from '../../../core/stopAgent.js';
 import type { Agent } from '../../../types/agent.js';
@@ -65,6 +66,9 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
   const copy = vi.fn(async () => true);
   const stop = vi.fn(async () => stopped);
   const kill = vi.fn(async () => killed);
+  const focus = vi.fn(
+    async (): Promise<FocusSessionResult> => ({ ok: true, target: 'tab', app: 'iTerm2' }),
+  );
   const result = render(
     <Harness
       agents={[agent('a'), agent('b'), agent('c')]}
@@ -78,6 +82,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
       copy={copy}
       stop={stop}
       kill={kill}
+      focus={focus}
       {...overrides}
     />,
   );
@@ -93,6 +98,7 @@ const setup = (overrides: Partial<UseGuiSelectionOptions> = {}) => {
     copy,
     stop,
     kill,
+    focus,
   };
 };
 
@@ -129,12 +135,42 @@ describe('useGuiSelection', () => {
     expect(snapshot.message).toBe('コピーしました: cd /tmp && claude --resume a');
   });
 
-  it('Enter ではコピーしない', async () => {
-    const { copy } = setup();
+  it('Enter で選択中のセッションの画面へ移動する', async () => {
+    const { focus, copy } = setup();
+    press('ArrowDown');
     press('Enter');
     await act(async () => undefined);
+    expect(focus).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'b' }));
     expect(copy).not.toHaveBeenCalled();
-    expect(snapshot.message).toBeNull();
+    expect(snapshot.message).toBe('iTerm2 のタブへ移動しました: b');
+  });
+
+  it('タブまで選べなかったときはアプリを前面に出したと伝える', async () => {
+    setup({ focus: vi.fn(async () => ({ ok: true as const, target: 'app' as const, app: 'VS Code' })) });
+    press('Enter');
+    await act(async () => undefined);
+    expect(snapshot.message).toBe('VS Code を前面に出しました: a');
+  });
+
+  it('移動できないセッションは、理由とともに開くコマンドをコピーする', async () => {
+    const { copy } = setup({
+      focus: vi.fn(async () => ({ ok: false as const, reason: 'tmux のセッションへは移動できません' })),
+    });
+    press('Enter');
+    await act(async () => undefined);
+    expect(copy).toHaveBeenCalledWith('cd /tmp && claude --resume a');
+    expect(snapshot.message).toBe(
+      'tmux のセッションへは移動できません。コマンドをコピーしました: cd /tmp && claude --resume a',
+    );
+  });
+
+  it('stop の確認待ち中の Enter は取消として扱う', async () => {
+    const { focus } = setup({ agents: [background('a')] });
+    press('s');
+    press('Enter');
+    await act(async () => undefined);
+    expect(focus).not.toHaveBeenCalled();
+    expect(snapshot.message).toBe('stop を取り消しました');
   });
 
   it('コピーできない環境では非対応と伝える', async () => {

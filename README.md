@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.11.0/cc-park-0.11.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.12.0/cc-park-0.12.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.11.0/cc-park-0.11.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.12.0/cc-park-0.12.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -237,6 +237,24 @@ interactive セッションを止める手段として `x` を用意していま
 background セッション（PID が無い）や、祖先に該当するものが無いセッションには何も付けません。
 `ps` が失敗しても一覧はそのまま表示します。
 
+### セッションの画面へ移動する（GUI・macOS）
+
+GUI では `Enter` か行のダブルクリックで、セッションを動かしている端末のタブやアプリを前面に出せます。
+`BLOCKED` を見つけたら、そのまま承認しに行けます。
+
+| 起動元 | 動作 |
+| --- | --- |
+| `iTerm2` / `Terminal` | セッションの tty（`ps -o tty= -p <PID>`）と一致するタブを AppleScript で探して選び、前面に出す |
+| それ以外のアプリ（`VS Code` など） | アプリを前面に出す（`open -a`）。統合ターミナルのタブまでは選べません |
+| `tmux`・起動元が分からない・background セッション | 移動できないので、これまでどおり開くコマンドをコピーする |
+
+- 初めて iTerm2 / Terminal のタブへ移動するとき、macOS が「cc-park が "iTerm" を制御しようとしています」と
+  オートメーションの許可を求めます。許可しないとタブは選べず、アプリを前面に出すだけになります
+  （あとから「システム設定 → プライバシーとセキュリティ → オートメーション」で変えられます）
+- タブが見つからない（閉じた・別の端末へ移した）ときも、アプリを前面に出すだけにします
+- cc-park のウィンドウを最前面に固定していると、移動した先の端末より手前に残ります
+- コピーだけしたいときは `c` を使います
+
 ## 最終プロンプトとコンテキスト利用率
 
 各セッションの**最後に与えたプロンプト**と**コンテキストの利用率**を表示します。
@@ -330,7 +348,8 @@ GUI では加えて次の操作ができます。
 | 操作 | CLI | GUI |
 | --- | --- | --- |
 | 選択移動 | `↑` `↓` `k` `j` | 同左 ＋ 行クリック |
-| セッションを開くコマンドをコピー | `c` | 同左 ＋ 行ダブルクリック |
+| セッションを開くコマンドをコピー | `c` | 同左 |
+| **セッションの画面へ移動**（macOS） | なし | `Enter` ＋ 行ダブルクリック（移動できなければコピー） |
 | stop（2 段階確認） | `s` → `y` | 同左 ＋ 確認ダイアログのボタン |
 | kill（2 段階確認） | `x` → `y` | 同左 ＋ 確認ダイアログのボタン |
 | 確認の取消 | 確認待ち中の `y` 以外のキー | 同左 ＋ `Esc` ＋ 取消ボタン |
