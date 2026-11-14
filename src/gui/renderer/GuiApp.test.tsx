@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FetchAgentsResult } from '../../core/fetchAgents.js';
 import type { ScheduleFiredEvent } from '../../core/scheduler.js';
+import {
+  DEFAULT_ATTENTION_SETTINGS,
+  type AttentionSettings,
+} from '../../shared/attention.js';
 import { DEFAULT_COMPACT_SETTINGS, type CompactSettings } from '../../shared/compactSettings.js';
 import type { Schedule } from '../../shared/schedule.js';
 import { DEFAULT_APPEARANCE, PALETTES, type Appearance } from '../../shared/themes.js';
@@ -34,6 +38,7 @@ const config: GuiConfig = {
   frame: null,
   appearance: DEFAULT_APPEARANCE,
   compact: DEFAULT_COMPACT_SETTINGS,
+  attention: DEFAULT_ATTENTION_SETTINGS,
 };
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
@@ -72,6 +77,8 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   setOpacity: vi.fn(async (value: number) => value),
   setCompact: vi.fn(async (compact: boolean) => compact),
   saveCompactSettings: vi.fn(async (settings: CompactSettings) => settings),
+  setAttention: vi.fn(),
+  saveAttentionSettings: vi.fn(async (settings: AttentionSettings) => settings),
   pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
@@ -416,6 +423,34 @@ describe('GuiApp', () => {
     expect(notify.mock.calls[0]?.[0]).toMatchObject({ message: 'a が入力待ちになりました' });
   });
 
+  it('操作待ちの件数を main へ知らせ、変わったときだけ送り直す', async () => {
+    const setAttention = vi.fn();
+    const responses: FetchAgentsResult[] = [
+      {
+        ok: true,
+        agents: [agent('a', { state: 'blocked' }), agent('b', { state: 'working' })],
+      },
+      {
+        ok: true,
+        agents: [agent('a', { state: 'blocked' }), agent('b', { state: 'waiting' })],
+      },
+    ];
+    const fetchAgents = vi.fn(async () => responses.shift() ?? { ok: true as const, agents: [] });
+    const { user } = await setup({ setAttention, fetchAgents });
+
+    await waitFor(() => {
+      expect(setAttention).toHaveBeenLastCalledWith({ blocked: 1, finished: 0 });
+    });
+    const callsBefore = setAttention.mock.calls.length;
+
+    // b が作業を終えると DONE! になり、件数が増える
+    await user.click(screen.getByRole('button', { name: '更新' }));
+    await waitFor(() => {
+      expect(setAttention).toHaveBeenLastCalledWith({ blocked: 1, finished: 1 });
+    });
+    expect(setAttention).toHaveBeenCalledTimes(callsBefore + 1);
+  });
+
   it('a キーで予約画面を開き、Escape で閉じる', async () => {
     await setup({ listSchedules: vi.fn(async () => [schedule()]) });
 
@@ -614,6 +649,30 @@ describe('GuiApp', () => {
 
     expect(setAppearance).toHaveBeenCalledWith({ theme: 'system', accent: null, frame: true });
     expect(document.documentElement.dataset['frame']).toBe('on');
+  });
+});
+
+describe('GuiApp の操作待ちの件数の設定', () => {
+  it('設定でバッジを消すと main へ伝えて保存させる', async () => {
+    const saveAttentionSettings = vi.fn(async (settings: AttentionSettings) => settings);
+    const { user } = await setup({ saveAttentionSettings });
+
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    const checkbox = screen.getByRole('checkbox', { name: 'Dock のアイコンにバッジで出す' });
+    expect((checkbox as HTMLInputElement).checked).toBe(true);
+    await user.click(checkbox);
+
+    expect(saveAttentionSettings).toHaveBeenCalledWith({ dockBadge: false, tray: true });
+    expect((checkbox as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('保存済みの設定から始める', async () => {
+    const { user } = await setup({}, { attention: { dockBadge: true, tray: false } });
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    expect(
+      (screen.getByRole('checkbox', { name: 'メニューバーにアイコンを出す' }) as HTMLInputElement)
+        .checked,
+    ).toBe(false);
   });
 });
 

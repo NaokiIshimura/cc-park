@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { AttentionSettings } from '../../../../shared/attention.js';
 import {
   PALETTES,
   resolvePalette,
@@ -15,6 +16,10 @@ interface SettingsPanelProps {
   readonly prefersDark: boolean;
   /** 選んだ時点で呼ぶ。保存も含めて呼び出し側に任せる */
   readonly onChange: (appearance: Appearance) => void;
+  /** 操作待ちの件数を Dock のバッジ・メニューバーに出すか */
+  readonly attention: AttentionSettings;
+  /** 選んだ時点で呼ぶ。保存も含めて呼び出し側に任せる */
+  readonly onAttentionChange: (attention: AttentionSettings) => void;
   readonly onClose: () => void;
 }
 
@@ -48,8 +53,15 @@ const ThemeSwatch = ({ theme }: { readonly theme: ThemeId }) =>
     <Swatch palette={PALETTES[theme]} />
   );
 
-/** 配色テーマと強調色を選ぶ画面。選んだ時点で反映・保存される。 */
-export const SettingsPanel = ({ appearance, prefersDark, onChange, onClose }: SettingsPanelProps) => {
+/** 配色テーマ・強調色・操作待ちの件数の出し方を選ぶ画面。選んだ時点で反映・保存される。 */
+export const SettingsPanel = ({
+  appearance,
+  prefersDark,
+  onChange,
+  attention,
+  onAttentionChange,
+  onClose,
+}: SettingsPanelProps) => {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -132,6 +144,30 @@ export const SettingsPanel = ({ appearance, prefersDark, onChange, onClose }: Se
                 }}
               />
               <span>ウィンドウの外周に枠線を描く</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="settings__group">
+            <legend className="field__label">操作待ち（承認待ち・作業完了）の件数</legend>
+            <label className="settings__option">
+              <input
+                type="checkbox"
+                checked={attention.dockBadge}
+                onChange={(event) => {
+                  onAttentionChange({ ...attention, dockBadge: event.target.checked });
+                }}
+              />
+              <span>Dock のアイコンにバッジで出す</span>
+            </label>
+            <label className="settings__option">
+              <input
+                type="checkbox"
+                checked={attention.tray}
+                onChange={(event) => {
+                  onAttentionChange({ ...attention, tray: event.target.checked });
+                }}
+              />
+              <span>メニューバーにアイコンを出す</span>
             </label>
           </fieldset>
         </div>

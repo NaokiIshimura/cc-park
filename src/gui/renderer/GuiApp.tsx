@@ -23,6 +23,7 @@ import { SchedulePanel } from './components/SchedulePanel/index.js';
 import { SettingsPanel } from './components/SettingsPanel/index.js';
 import { systemPrefersDark } from './appearance.js';
 import { useAppearance } from './hooks/useAppearance.js';
+import { useAttentionReport, useAttentionSettings } from './hooks/useAttention.js';
 import { useCompact } from './hooks/useCompact.js';
 import { useGuiSelection } from './hooks/useGuiSelection.js';
 import { useSchedules } from './hooks/useSchedules.js';
@@ -46,6 +47,10 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   const [compactSettings, setCompactSettings] = useState<CompactSettings>(config.compact);
 
   const { appearance, change: changeAppearance } = useAppearance(bridge, config.appearance);
+  const { settings: attentionSettings, change: changeAttentionSettings } = useAttentionSettings(
+    bridge,
+    config.attention,
+  );
 
   const frame = useAnimationTick(ANIMATION_INTERVAL_MS);
   // フレーム更新に合わせて経過時間の基準時刻も進める
@@ -66,6 +71,9 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   });
 
   useNotifications(transitions, { enabled: notifyEnabled, notifier: bridge.notify });
+
+  // 件数は絞り込み（--cwd など）を済ませた、画面に出ている一覧から数える
+  useAttentionReport(bridge, decorated);
 
   // 描画は cwd ごとのグループ、選択はフラットな添字。順序を必ず一致させる
   const groups = useMemo(() => groupAgents(decorated), [decorated]);
@@ -271,6 +279,10 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
           prefersDark={systemPrefersDark()}
           onChange={(next) => {
             void changeAppearance(next);
+          }}
+          attention={attentionSettings}
+          onAttentionChange={(next) => {
+            void changeAttentionSettings(next);
           }}
           onClose={toggleSettings}
         />

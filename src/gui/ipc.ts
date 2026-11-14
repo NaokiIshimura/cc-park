@@ -2,6 +2,7 @@ import type { FetchAgentsResult } from '../core/fetchAgents.js';
 import type { KillAgentResult } from '../core/killAgent.js';
 import type { StopAgentResult } from '../core/stopAgent.js';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
+import type { AttentionCounts, AttentionSettings } from '../shared/attention.js';
 import type { CompactSettings } from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
@@ -36,6 +37,10 @@ export const IPC_CHANNELS = {
   setCompact: 'window:compact',
   /** ミニ表示の設定の保存 */
   saveCompactSettings: 'compact:save',
+  /** 操作待ちの件数の通達（renderer → main）。Dock のバッジとメニューバーに出す */
+  setAttention: 'attention:set',
+  /** 操作待ちの件数の出し方の変更と保存 */
+  saveAttentionSettings: 'attention:save',
   /** ディレクトリ選択ダイアログの表示 */
   pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
@@ -88,6 +93,13 @@ export interface CcParkBridge {
    * OS 部品の明暗（`nativeTheme`）は main でしか変えられないため、変更のたびに呼ぶ。
    */
   readonly setAppearance: (appearance: Appearance) => Promise<Appearance>;
+  /**
+   * 操作待ちの件数を main へ知らせる。Dock のバッジとメニューバーに出す。
+   * `DONE!` は renderer の遷移検出で決まるため、件数は renderer が数えて渡す。
+   */
+  readonly setAttention: (counts: AttentionCounts) => void;
+  /** 件数を Dock のバッジ・メニューバーに出すかを変更して保存する。適用後の値を返す */
+  readonly saveAttentionSettings: (settings: AttentionSettings) => Promise<AttentionSettings>;
   /**
    * ディレクトリ選択ダイアログを開く。選ばれた絶対パスを返し、取り消したら null。
    * `defaultPath` は最初に開く場所（空文字なら OS に任せる）。

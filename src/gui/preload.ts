@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
+import type { AttentionCounts, AttentionSettings } from '../shared/attention.js';
 import type { CompactSettings } from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { Schedule } from '../shared/schedule.js';
@@ -27,6 +28,11 @@ const bridge: CcParkBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.setCompact, compact, size),
   saveCompactSettings: (settings: CompactSettings) =>
     ipcRenderer.invoke(IPC_CHANNELS.saveCompactSettings, settings),
+  setAttention: (counts: AttentionCounts) => {
+    ipcRenderer.send(IPC_CHANNELS.setAttention, counts);
+  },
+  saveAttentionSettings: (settings: AttentionSettings) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveAttentionSettings, settings),
   pickDirectory: (defaultPath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.pickDirectory, defaultPath),
   listSchedules: () => ipcRenderer.invoke(IPC_CHANNELS.listSchedules),
