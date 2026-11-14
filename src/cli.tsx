@@ -41,6 +41,8 @@ const cli = meow(
     --accent <#rrggbb>           GUI の強調色 (枠線・選択行など)
     --frame                      GUI のウィンドウ外周に枠線を描く (既定: OFF)
     --once                       1 回だけ取得して描画し終了する (CLI モード)
+    --debug                      受け取った claude agents --json の出力と、解釈できない値を
+                                 ~/.cc-park/debug/ に記録する
 
   例
     $ cc-park
@@ -67,6 +69,7 @@ const cli = meow(
       accent: { type: 'string' },
       frame: { type: 'boolean', default: false },
       once: { type: 'boolean', default: false },
+      debug: { type: 'boolean', default: false },
       cli: { type: 'boolean', default: false },
       gui: { type: 'boolean', default: false },
     },
@@ -122,6 +125,7 @@ const startGui = async (): Promise<void> => {
       theme: appearance.theme,
       accent: appearance.accent,
       frame: appearance.frame,
+      debug: cli.flags.debug,
       ...display,
     }),
     { stdio: 'inherit', env: buildGuiEnv(process.env) },
@@ -152,6 +156,7 @@ const startCli = async (): Promise<void> => {
       tokens={cli.flags.tokens}
       subagents={cli.flags.subagents}
       contextLimit={contextLimit}
+      debug={cli.flags.debug}
     />,
     {
       patchConsole: false,

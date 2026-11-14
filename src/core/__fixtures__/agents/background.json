@@ -1,0 +1,22 @@
+[
+  {
+    "id": "2160cf1c",
+    "cwd": "/Users/example",
+    "kind": "background",
+    "startedAt": 1789881096899,
+    "sessionId": "2160cf1c-0000-4000-8000-000000000002",
+    "name": "claude agents setup",
+    "status": "waiting",
+    "state": "blocked"
+  },
+  {
+    "id": "3a71b0de",
+    "cwd": "/Users/example/project",
+    "kind": "background",
+    "startedAt": 1789881196899,
+    "sessionId": "3a71b0de-0000-4000-8000-000000000003",
+    "name": "refactor",
+    "status": "busy",
+    "state": "working"
+  }
+]

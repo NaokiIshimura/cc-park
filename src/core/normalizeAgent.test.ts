@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { RawAgent } from '../types/agent.js';
-import { normalizeAgent, normalizeAgents, toCharacterState } from './normalizeAgent.js';
+import {
+  findUnknownInOutput,
+  findUnknownValues,
+  normalizeAgent,
+  normalizeAgents,
+  toCharacterState,
+} from './normalizeAgent.js';
 
 describe('toCharacterState', () => {
   it.each([
@@ -149,3 +155,57 @@ describe('normalizeAgents', () => {
     expect(normalizeAgents([])).toEqual([]);
   });
 });
+
+describe('findUnknownValues', () => {
+  const known = {
+    kind: 'interactive',
+    sessionId: 's',
+    name: 'n',
+    cwd: '/tmp',
+    startedAt: 0,
+    pid: 1,
+    status: 'busy',
+  };
+
+  it('解釈できる要素なら空', () => {
+    expect(findUnknownValues(known)).toEqual([]);
+    expect(findUnknownValues({ ...known, kind: 'background', id: 'x', state: 'blocked', status: 'waiting' })).toEqual([]);
+  });
+
+  it('知らないキーを記録する', () => {
+    expect(findUnknownValues({ ...known, tty: 'ttys003' })).toEqual(['key=tty']);
+  });
+
+  it('知らない kind を記録する', () => {
+    expect(findUnknownValues({ ...known, kind: 'remote' })).toEqual(['kind=remote']);
+  });
+
+  it('state と status のどちらかが分かれば記録しない', () => {
+    expect(findUnknownValues({ ...known, status: 'busy', state: 'hibernating' })).toEqual([]);
+  });
+
+  it('state も status も分からなければ両方を記録する', () => {
+    expect(findUnknownValues({ ...known, status: 'napping', state: 'hibernating' })).toEqual([
+      'state=hibernating status=napping',
+    ]);
+    expect(findUnknownValues({ ...known, status: 'napping' })).toEqual(['status=napping']);
+  });
+
+  it('オブジェクトでない要素は種類を記録する', () => {
+    expect(findUnknownValues('x')).toEqual(['element=string']);
+    expect(findUnknownValues(null)).toEqual(['element=null']);
+    expect(findUnknownValues([])).toEqual(['element=array']);
+  });
+});
+
+describe('findUnknownInOutput', () => {
+  it('出力全体から重複なく集める', () => {
+    expect(
+      findUnknownInOutput([
+        { sessionId: 'a', status: 'napping', tty: 'x' },
+        { sessionId: 'b', status: 'napping' },
+      ]),
+    ).toEqual(['key=tty', 'status=napping']);
+  });
+});
+

@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { Box } from 'ink';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -5,6 +6,7 @@ import {
   ROWS_PER_AGENT,
   ROWS_PER_GROUP_HEADER,
 } from './components/AgentList/index.js';
+import { buildDebugPath, createAgentsObserver } from './core/agentsDebug.js';
 import { createLaunchAppCache, fetchAgents } from './core/fetchAgents.js';
 // props の notify（有効フラグ）と名前が衝突するため別名で受ける
 import { notify as osNotify } from './core/notify.js';
@@ -82,6 +84,8 @@ export interface AppProps {
   readonly contextLimit?: number;
   /** セッション取得の実装。既定は `claude agents --json` の実行 */
   readonly fetcher?: typeof fetchAgents;
+  /** 受け取った出力と解釈できない値を `~/.cc-park/debug/` に記録する（`--debug`） */
+  readonly debug?: boolean;
 }
 
 export const App = ({
@@ -98,6 +102,7 @@ export const App = ({
   subagents = false,
   contextLimit = 0,
   fetcher = fetchAgents,
+  debug = false,
 }: AppProps) => {
   const notifySupported = platform === 'darwin';
   const [notifyEnabled, setNotifyEnabled] = useState(notify && notifySupported);
@@ -111,10 +116,14 @@ export const App = ({
   const now = useMemo(() => Date.now(), [frame]);
 
   // 起動元アプリの判定結果を取得をまたいで使い回し、`ps` を毎回実行しないようにする
+  // 出力仕様の変化の見張り。端末に出すと描画が崩れるので、記録は --debug のときのファイルだけ
   const cachedFetcher = useMemo<typeof fetchAgents>(() => {
     const launchAppCache = createLaunchAppCache();
-    return (options) => fetcher({ ...options, launchAppCache });
-  }, [fetcher]);
+    const observe = debug
+      ? createAgentsObserver({ debugDirectory: buildDebugPath(homedir()) })
+      : undefined;
+    return (options) => fetcher({ ...options, launchAppCache, observe });
+  }, [fetcher, debug]);
 
   const { agents, previousAgents, error, lastUpdatedAt, isFetching, refresh } = useAgents({
     intervalMs,

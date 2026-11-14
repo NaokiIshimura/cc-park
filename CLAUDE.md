@@ -135,6 +135,10 @@ AA を変えてテストが落ちたら、テストではなく AA の方を直�
 CLI と GUI は「取得・正規化・差分検出・並べ替え・選択状態の遷移」を共有する。
 新しいロジックを足すときは、まず `src/shared/` か `src/hooks/` に置けないか検討する。
 
+`claude agents --json` の出力仕様は非公開で変わりうる。実際に見た出力は匿名化して
+`src/core/__fixtures__/agents/` に置き、`src/core/fixtures.test.ts` で正規化できることを固定している。
+出力の形が変わったら、まずサンプルを足してテストを落とし、それから `src/core/normalizeAgent.ts` を直す。
+
 GUI の renderer は Node API を使えない。`node:*` に依存する処理は Electron の
 main プロセスへ IPC で委譲する（`tsconfig.gui.json` が型検査で混入を検出する）。
 
