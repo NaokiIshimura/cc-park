@@ -32,19 +32,23 @@ export const useAttentionReport = (
 };
 
 /**
- * 件数の出し方の設定を保持する。
+ * 保存する設定を保持する。
  * 変更はその場で画面に反映してから main へ送り、main が保存した値を正として持ち直す。
  */
-export const useAttentionSettings = (bridge: CcParkBridge, initial: AttentionSettings) => {
+export const useSavedSetting = <T,>(initial: T, save: (next: T) => Promise<T>) => {
   const [settings, setSettings] = useState(initial);
 
   const change = useCallback(
-    async (next: AttentionSettings) => {
+    async (next: T) => {
       setSettings(next);
-      setSettings(await bridge.saveAttentionSettings(next));
+      setSettings(await save(next));
     },
-    [bridge],
+    [save],
   );
 
   return { settings, change };
 };
+
+/** 件数の出し方の設定を保持する。 */
+export const useAttentionSettings = (bridge: CcParkBridge, initial: AttentionSettings) =>
+  useSavedSetting(initial, bridge.saveAttentionSettings);

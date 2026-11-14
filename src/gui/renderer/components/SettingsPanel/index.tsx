@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
 import type { AttentionSettings } from '../../../../shared/attention.js';
 import {
+  formatMinWork,
+  MIN_WORK_SECONDS_OPTIONS,
+  type NotificationSettings,
+} from '../../../../shared/notificationSettings.js';
+import {
   PALETTES,
   resolvePalette,
   THEME_IDS,
@@ -20,6 +25,10 @@ interface SettingsPanelProps {
   readonly attention: AttentionSettings;
   /** 選んだ時点で呼ぶ。保存も含めて呼び出し側に任せる */
   readonly onAttentionChange: (attention: AttentionSettings) => void;
+  /** どの遷移を OS 通知するか */
+  readonly notification: NotificationSettings;
+  /** 選んだ時点で呼ぶ。保存も含めて呼び出し側に任せる */
+  readonly onNotificationChange: (notification: NotificationSettings) => void;
   readonly onClose: () => void;
 }
 
@@ -53,13 +62,22 @@ const ThemeSwatch = ({ theme }: { readonly theme: ThemeId }) =>
     <Swatch palette={PALETTES[theme]} />
   );
 
-/** 配色テーマ・強調色・操作待ちの件数の出し方を選ぶ画面。選んだ時点で反映・保存される。 */
+/** 通知する遷移の選択肢。`NotificationSettings` の真偽値の項目と対応する。 */
+const NOTIFICATION_KINDS = [
+  ['blocked', '承認待ち（BLOCKED）'],
+  ['finished', '作業完了（BUSY → IDLE）'],
+  ['done', 'バックグラウンドの完了（DONE）'],
+] as const;
+
+/** 配色テーマ・強調色・操作待ちの件数の出し方・通知の条件を選ぶ画面。選んだ時点で反映・保存される。 */
 export const SettingsPanel = ({
   appearance,
   prefersDark,
   onChange,
   attention,
   onAttentionChange,
+  notification,
+  onNotificationChange,
   onClose,
 }: SettingsPanelProps) => {
   useEffect(() => {
@@ -168,6 +186,52 @@ export const SettingsPanel = ({
                 }}
               />
               <span>メニューバーにアイコンを出す</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="settings__group">
+            <legend className="field__label">OS 通知（ヘッダの notify が ON のとき）</legend>
+            {NOTIFICATION_KINDS.map(([key, label]) => (
+              <label key={key} className="settings__option">
+                <input
+                  type="checkbox"
+                  checked={notification[key]}
+                  onChange={(event) => {
+                    onNotificationChange({ ...notification, [key]: event.target.checked });
+                  }}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+            <label className="settings__option">
+              <span>作業完了を通知する作業時間</span>
+              <select
+                className="settings__select"
+                value={notification.minWorkSeconds}
+                disabled={!notification.finished}
+                onChange={(event) => {
+                  onNotificationChange({
+                    ...notification,
+                    minWorkSeconds: Number(event.target.value),
+                  });
+                }}
+              >
+                {MIN_WORK_SECONDS_OPTIONS.map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {formatMinWork(seconds)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="settings__option">
+              <input
+                type="checkbox"
+                checked={notification.sound}
+                onChange={(event) => {
+                  onNotificationChange({ ...notification, sound: event.target.checked });
+                }}
+              />
+              <span>通知音を鳴らす</span>
             </label>
           </fieldset>
         </div>

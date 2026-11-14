@@ -3,6 +3,10 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AttentionSettings } from '../../../../shared/attention.js';
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  type NotificationSettings,
+} from '../../../../shared/notificationSettings.js';
 import { PALETTES, THEME_IDS, THEME_LABELS, type Appearance } from '../../../../shared/themes.js';
 import { SettingsPanel } from './index.js';
 
@@ -12,9 +16,11 @@ const setup = (
   appearance: Appearance = { theme: 'system', accent: null, frame: true },
   prefersDark = false,
   attention: AttentionSettings = { dockBadge: true, tray: true },
+  notification: NotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
 ) => {
   const onChange = vi.fn();
   const onAttentionChange = vi.fn();
+  const onNotificationChange = vi.fn();
   const onClose = vi.fn();
   const result = render(
     <SettingsPanel
@@ -23,10 +29,19 @@ const setup = (
       onChange={onChange}
       attention={attention}
       onAttentionChange={onAttentionChange}
+      notification={notification}
+      onNotificationChange={onNotificationChange}
       onClose={onClose}
     />,
   );
-  return { ...result, onChange, onAttentionChange, onClose, user: userEvent.setup() };
+  return {
+    ...result,
+    onChange,
+    onAttentionChange,
+    onNotificationChange,
+    onClose,
+    user: userEvent.setup(),
+  };
 };
 
 const accentInput = (): HTMLInputElement => screen.getByLabelText('強調色');
@@ -117,6 +132,44 @@ describe('SettingsPanel', () => {
     await user.click(screen.getByRole('checkbox', { name: 'メニューバーにアイコンを出す' }));
     expect(onAttentionChange).toHaveBeenCalledWith({ dockBadge: false, tray: false });
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('通知する遷移の種類を切り替えると、他の項目はそのままに変更を伝える', async () => {
+    const { user, onNotificationChange } = setup();
+    await user.click(screen.getByRole('checkbox', { name: '承認待ち（BLOCKED）' }));
+    expect(onNotificationChange).toHaveBeenCalledWith({
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      blocked: false,
+    });
+  });
+
+  it('作業完了を通知する作業時間を選べる', async () => {
+    const { user, onNotificationChange } = setup();
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: '作業完了を通知する作業時間' }),
+      '5 分以上',
+    );
+    expect(onNotificationChange).toHaveBeenCalledWith({
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      minWorkSeconds: 300,
+    });
+  });
+
+  it('作業完了を通知しないなら作業時間は選べない', () => {
+    setup(undefined, false, undefined, { ...DEFAULT_NOTIFICATION_SETTINGS, finished: false });
+    expect(
+      (screen.getByRole('combobox', { name: '作業完了を通知する作業時間' }) as HTMLSelectElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  it('通知音を切り替えられる', async () => {
+    const { user, onNotificationChange } = setup();
+    await user.click(screen.getByRole('checkbox', { name: '通知音を鳴らす' }));
+    expect(onNotificationChange).toHaveBeenCalledWith({
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      sound: false,
+    });
   });
 
   it('閉じるボタンと Escape で閉じる', async () => {
