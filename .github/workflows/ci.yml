@@ -1,0 +1,44 @@
+name: ci
+
+# PR の時点で型チェック・テスト・ビルドを通し、壊れた変更を main へ入れない。
+# .app のパッケージ化は release.yml が担うので、ここでは行わない。
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同じブランチへ続けて push したら、古い実行は取り消す
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # テスト・型チェック・ビルドは macOS に依存しないため、速くて安い Linux で回す
+    runs-on: ubuntu-latest
+    env:
+      # テストとビルドは Electron 本体を使わないので、バイナリのダウンロードを省く
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: テスト
+        run: npm test
+
+      - name: ビルド
+        run: npm run build

@@ -21,6 +21,7 @@ node dist/cli.js --once --all   # TUI を 1 回だけ描画（実描画の確認
 ```
 
 変更後は **テスト・型チェック・ビルドの 3 つ**を通すこと。
+PR では `.github/workflows/ci.yml` が同じ 3 つを実行する。
 
 ## リリース
 
