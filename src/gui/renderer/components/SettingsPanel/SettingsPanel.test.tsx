@@ -2,23 +2,31 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { AttentionSettings } from '../../../../shared/attention.js';
 import { PALETTES, THEME_IDS, THEME_LABELS, type Appearance } from '../../../../shared/themes.js';
 import { SettingsPanel } from './index.js';
 
 afterEach(cleanup);
 
-const setup = (appearance: Appearance = { theme: 'system', accent: null, frame: true }, prefersDark = false) => {
+const setup = (
+  appearance: Appearance = { theme: 'system', accent: null, frame: true },
+  prefersDark = false,
+  attention: AttentionSettings = { dockBadge: true, tray: true },
+) => {
   const onChange = vi.fn();
+  const onAttentionChange = vi.fn();
   const onClose = vi.fn();
   const result = render(
     <SettingsPanel
       appearance={appearance}
       prefersDark={prefersDark}
       onChange={onChange}
+      attention={attention}
+      onAttentionChange={onAttentionChange}
       onClose={onClose}
     />,
   );
-  return { ...result, onChange, onClose, user: userEvent.setup() };
+  return { ...result, onChange, onAttentionChange, onClose, user: userEvent.setup() };
 };
 
 const accentInput = (): HTMLInputElement => screen.getByLabelText('強調色');
@@ -91,6 +99,24 @@ describe('SettingsPanel', () => {
       (screen.getByRole('checkbox', { name: 'ウィンドウの外周に枠線を描く' }) as HTMLInputElement)
         .checked,
     ).toBe(false);
+  });
+
+  it('操作待ちの件数の出し方を今の設定どおりに見せる', () => {
+    setup(undefined, false, { dockBadge: false, tray: true });
+    const badge = screen.getByRole('checkbox', { name: 'Dock のアイコンにバッジで出す' });
+    const tray = screen.getByRole('checkbox', { name: 'メニューバーにアイコンを出す' });
+    expect((badge as HTMLInputElement).checked).toBe(false);
+    expect((tray as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('メニューバーのチェックを外すと、バッジはそのままに変更を伝える', async () => {
+    const { user, onAttentionChange, onChange } = setup(undefined, false, {
+      dockBadge: false,
+      tray: true,
+    });
+    await user.click(screen.getByRole('checkbox', { name: 'メニューバーにアイコンを出す' }));
+    expect(onAttentionChange).toHaveBeenCalledWith({ dockBadge: false, tray: false });
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('閉じるボタンと Escape で閉じる', async () => {

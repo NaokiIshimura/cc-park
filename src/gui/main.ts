@@ -8,9 +8,12 @@ import {
   dialog,
   ipcMain,
   nativeTheme,
+  nativeImage,
   Notification,
   powerMonitor,
   screen,
+  Tray,
+  type NativeImage,
   type OpenDialogOptions,
 } from 'electron';
 import { fetchAgents } from '../core/fetchAgents.js';
@@ -26,6 +29,19 @@ import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
 import { loadSettings, saveSettings } from '../core/settingsStore.js';
 import { resolveShellPath } from '../core/shellPath.js';
 import { stopAgent } from '../core/stopAgent.js';
+import { renderFrameBitmap } from '../shared/aaBitmap.js';
+import {
+  attentionTitle,
+  attentionTooltip,
+  attentionTotal,
+  DEFAULT_ATTENTION_SETTINGS,
+  NO_ATTENTION,
+  toAttentionCounts,
+  toAttentionSettings,
+  type AttentionCounts,
+  type AttentionSettings,
+} from '../shared/attention.js';
+import { getFrame } from '../shared/characters.js';
 import {
   DEFAULT_COMPACT_SETTINGS,
   startupCompactSettings,
@@ -102,6 +118,7 @@ const config: GuiConfig = {
   appearance: DEFAULT_APPEARANCE,
   opacity: DEFAULT_OPACITY,
   compact: DEFAULT_COMPACT_SETTINGS,
+  attention: DEFAULT_ATTENTION_SETTINGS,
 };
 
 /** 現在の見た目。起動時に保存済みの設定から解決し、renderer からの変更で差し替える。 */
@@ -115,6 +132,12 @@ let storedAppearance: Appearance = DEFAULT_APPEARANCE;
 
 /** 現在のミニ表示の設定。起動時に保存済みの設定から読み、renderer からの変更で差し替える。 */
 let compactSettings: CompactSettings = DEFAULT_COMPACT_SETTINGS;
+
+/** 操作待ちの件数の出し方。起動時に保存済みの設定から読み、renderer からの変更で差し替える。 */
+let attentionSettings: AttentionSettings = DEFAULT_ATTENTION_SETTINGS;
+
+/** renderer が数えた操作待ちの件数。 */
+let attentionCounts: AttentionCounts = NO_ATTENTION;
 
 /**
  * 見た目を main 側に反映する。
@@ -145,11 +168,15 @@ const prepareSettings = async (): Promise<void> => {
   );
   storedAppearance = saved.appearance;
   compactSettings = startupCompactSettings(saved.compact);
+  attentionSettings = saved.attention;
 };
 
 /** 設定をまとめて保存する。1 つのファイルに書くため、どれを変えたときも全体を書く。 */
 const persistSettings = (): Promise<boolean> =>
-  saveSettings({ appearance: storedAppearance, compact: compactSettings }, { home: config.home });
+  saveSettings(
+    { appearance: storedAppearance, compact: compactSettings, attention: attentionSettings },
+    { home: config.home },
+  );
 
 /** vite の dev サーバ経由で起動する場合の URL。未設定ならビルド済み HTML を読む。 */
 const devServerUrl = process.env['CC_PARK_DEV_SERVER'];
@@ -187,6 +214,75 @@ const createWindow = async (): Promise<void> => {
     return;
   }
   await window.loadFile(join(HERE, 'renderer', 'index.html'));
+};
+
+/** ウィンドウを前面に出す。閉じていれば作り直す。メニューバーのアイコンから使う。 */
+const showWindow = (): void => {
+  const [window] = BrowserWindow.getAllWindows();
+  if (window === undefined) {
+    void createWindow();
+    return;
+  }
+  if (window.isMinimized()) {
+    window.restore();
+  }
+  window.show();
+  window.focus();
+  app.focus({ steal: true });
+};
+
+/**
+ * メニューバーのアイコンに使う小片 1 つの横幅（px）。
+ * Retina 用の 2 倍で描く。塗った範囲だけを切り出すので、静止と両手を上げたフレームの
+ * どちらも 25 x 15pt になり、メニューバー（22pt）に収まる。
+ */
+const TRAY_UNIT = 3;
+const TRAY_SCALE_FACTOR = 2;
+
+/** AA から起こしたメニューバーのアイコン。操作待ちが無ければ静止、あれば両手を上げたフレーム。 */
+const trayImages = new Map<boolean, NativeImage>();
+const trayImage = (raised: boolean): NativeImage => {
+  const cached = trayImages.get(raised);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const frame = raised ? getFrame('justFinished', 1) : getFrame('waiting', 0);
+  const { width, height, data } = renderFrameBitmap(frame, { unit: TRAY_UNIT });
+  const image = nativeImage.createFromBitmap(Buffer.from(data), {
+    width,
+    height,
+    scaleFactor: TRAY_SCALE_FACTOR,
+  });
+  // 黒と透明だけで描いてあるので、OS がメニューバーの明暗に合わせて塗り直せる
+  image.setTemplateImage(true);
+  trayImages.set(raised, image);
+  return image;
+};
+
+let tray: Tray | null = null;
+
+/**
+ * 操作待ちの件数を Dock のバッジとメニューバーに反映する。
+ *
+ * メニューバーのアイコンは黒のテンプレート画像で、macOS 以外では暗いタスクバーに溶けて
+ * 見えなくなるため macOS だけに出す。
+ */
+const applyAttention = (): void => {
+  const total = attentionTotal(attentionCounts);
+  app.setBadgeCount(attentionSettings.dockBadge ? total : 0);
+
+  if (!attentionSettings.tray || process.platform !== 'darwin') {
+    tray?.destroy();
+    tray = null;
+    return;
+  }
+  if (tray === null) {
+    tray = new Tray(trayImage(false));
+    tray.on('click', showWindow);
+  }
+  tray.setImage(trayImage(total > 0));
+  tray.setTitle(attentionTitle(attentionCounts), { fontType: 'monospacedDigit' });
+  tray.setToolTip(attentionTooltip(attentionCounts));
 };
 
 /** OS 通知を出す。renderer からの依頼と、予約の発火の双方から使う。 */
@@ -246,6 +342,7 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
     appearance,
     opacity: window?.getOpacity() ?? DEFAULT_OPACITY,
     compact: compactSettings,
+    attention: attentionSettings,
   };
 });
 
@@ -288,6 +385,19 @@ ipcMain.handle(IPC_CHANNELS.setAppearance, async (event, value: unknown) => {
   storedAppearance = appearance;
   await persistSettings();
   return appearance;
+});
+
+ipcMain.on(IPC_CHANNELS.setAttention, (_event, value: unknown) => {
+  // renderer から来た値なので、件数として解釈できない項目は 0 に倒してから使う
+  attentionCounts = toAttentionCounts(value);
+  applyAttention();
+});
+
+ipcMain.handle(IPC_CHANNELS.saveAttentionSettings, async (_event, value: unknown) => {
+  attentionSettings = toAttentionSettings(value);
+  applyAttention();
+  await persistSettings();
+  return attentionSettings;
 });
 
 ipcMain.handle(IPC_CHANNELS.saveCompactSettings, async (_event, value: unknown) => {
@@ -422,6 +532,7 @@ app
   .then(preparePath)
   .then(prepareSettings)
   .then(createWindow)
+  .then(applyAttention)
   .then(startScheduler)
   .catch((error: unknown) => {
     console.error('ウィンドウの起動に失敗しました:', error);

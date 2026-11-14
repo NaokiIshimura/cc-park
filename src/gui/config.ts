@@ -1,3 +1,4 @@
+import type { AttentionSettings } from '../shared/attention.js';
 import type { CompactSettings } from '../shared/compactSettings.js';
 import { isAccentColor, isThemeId, type Appearance, type ThemeId } from '../shared/themes.js';
 
@@ -73,6 +74,8 @@ export interface GuiConfig extends GuiOptions {
   readonly opacity: number;
   /** 起動時のミニ表示の設定。前回の終了時の状態を保存済みの設定から読んだ値 */
   readonly compact: CompactSettings;
+  /** 操作待ちの件数を Dock のバッジ・メニューバーに出すか。保存済みの設定から読んだ値 */
+  readonly attention: AttentionSettings;
 }
 
 /**

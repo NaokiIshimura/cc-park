@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toQuadrantCells } from '../src/shared/aaBitmap.ts';
 import { getFrame } from '../src/shared/characters.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,52 +37,16 @@ const FRAME = getFrame('justFinished', 1);
 const CELL_WIDTH = 72;
 const CELL_HEIGHT = 144;
 
-/**
- * Block Elements を 2x2 の小片へ分解する表。
- * 値は [左上, 右上, 左下, 右下] の塗り。
- */
-const QUADRANTS: Readonly<Record<string, readonly [boolean, boolean, boolean, boolean]>> = {
-  ' ': [false, false, false, false],
-  '█': [true, true, true, true],
-  '▀': [true, true, false, false],
-  '▄': [false, false, true, true],
-  '▌': [true, false, true, false],
-  '▐': [false, true, false, true],
-  '▘': [true, false, false, false],
-  '▝': [false, true, false, false],
-  '▖': [false, false, true, false],
-  '▗': [false, false, false, true],
-  '▛': [true, true, true, false],
-  '▜': [true, true, false, true],
-  '▙': [true, false, true, true],
-  '▟': [false, true, true, true],
-};
-
 /** AA 1 フレームを矩形の集合へ変換する。 */
 const toRects = (frame: string): string[] => {
-  const rows = frame.split('\n');
   const halfWidth = CELL_WIDTH / 2;
   const halfHeight = CELL_HEIGHT / 2;
 
   /** 塗る小片の左上。AA の左上を原点とした座標で持つ。 */
-  const cells: { readonly x: number; readonly y: number }[] = [];
-  rows.forEach((row, rowIndex) => {
-    [...row].forEach((char, columnIndex) => {
-      const quadrants = QUADRANTS[char];
-      if (quadrants === undefined) {
-        throw new Error(`アイコンに変換できない文字です: ${JSON.stringify(char)}`);
-      }
-      quadrants.forEach((filled, quadrantIndex) => {
-        if (!filled) {
-          return;
-        }
-        cells.push({
-          x: columnIndex * CELL_WIDTH + (quadrantIndex % 2) * halfWidth,
-          y: rowIndex * CELL_HEIGHT + Math.floor(quadrantIndex / 2) * halfHeight,
-        });
-      });
-    });
-  });
+  const cells = toQuadrantCells(frame).map((cell) => ({
+    x: cell.column * halfWidth,
+    y: cell.row * halfHeight,
+  }));
 
   if (cells.length === 0) {
     throw new Error('アイコンにする AA が空です');

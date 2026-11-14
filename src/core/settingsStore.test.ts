@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { DEFAULT_ATTENTION_SETTINGS } from '../shared/attention.js';
 import { DEFAULT_COMPACT_SETTINGS } from '../shared/compactSettings.js';
 import type { ScheduleFileSystem } from './scheduleStore.js';
 import {
@@ -17,6 +18,7 @@ import {
 const settings: Settings = {
   appearance: { theme: 'navy', accent: '#f59e0b', frame: false },
   compact: { mode: 'on', layout: 'horizontal' },
+  attention: { dockBadge: false, tray: true },
 };
 
 /** 書き込みが必ず失敗するファイルシステム。 */
@@ -60,17 +62,29 @@ describe('parseSettings', () => {
     expect(parseSettings(text)).toEqual({
       appearance: settings.appearance,
       compact: DEFAULT_COMPACT_SETTINGS,
+      attention: DEFAULT_ATTENTION_SETTINGS,
     });
+  });
+
+  it('件数の出し方を持たない古いファイルは、件数の出し方だけ既定にする', () => {
+    const text = JSON.stringify({
+      version: 1,
+      appearance: settings.appearance,
+      compact: settings.compact,
+    });
+    expect(parseSettings(text)).toEqual({ ...settings, attention: DEFAULT_ATTENTION_SETTINGS });
   });
 
   it('解釈できない項目だけ既定値で埋める', () => {
     const text = JSON.stringify({
       appearance: { theme: 'rainbow', accent: '#123456' },
       compact: { mode: 'on', layout: 'grid' },
+      attention: { dockBadge: 'yes', tray: false },
     });
     expect(parseSettings(text)).toEqual({
       appearance: { theme: 'system', accent: '#123456', frame: false },
       compact: { mode: 'on', layout: 'vertical' },
+      attention: { dockBadge: true, tray: false },
     });
   });
 });

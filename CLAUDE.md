@@ -85,6 +85,7 @@ GUI のスクリーンショット `docs/gui.png` と、README 冒頭のアニ�
 アプリアイコン `assets/icon.*` も `src/shared/characters.ts` から生成している
 （`justFinished` の両手を上げたフレーム）。AA を変えたら `npm run icon:build` で作り直し、
 生成物をコミットする。生成には `rsvg-convert`（`brew install librsvg`）が要る。
+メニューバーのアイコンは起動時に AA から組み立てる（`src/shared/aaBitmap.ts`）ので、生成物は無い。
 
 ### AA の制約
 
