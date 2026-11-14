@@ -5,7 +5,7 @@ import {
   ROWS_PER_AGENT,
   ROWS_PER_GROUP_HEADER,
 } from './components/AgentList/index.js';
-import { fetchAgents } from './core/fetchAgents.js';
+import { createLaunchAppCache, fetchAgents } from './core/fetchAgents.js';
 // props の notify（有効フラグ）と名前が衝突するため別名で受ける
 import { notify as osNotify } from './core/notify.js';
 import { ErrorView } from './components/ErrorView/index.js';
@@ -109,12 +109,18 @@ export const App = ({
   // フレーム更新に合わせて経過時間の基準時刻も進める
   const now = useMemo(() => Date.now(), [frame]);
 
+  // 起動元アプリの判定結果を取得をまたいで使い回し、`ps` を毎回実行しないようにする
+  const cachedFetcher = useMemo<typeof fetchAgents>(() => {
+    const launchAppCache = createLaunchAppCache();
+    return (options) => fetcher({ ...options, launchAppCache });
+  }, [fetcher]);
+
   const { agents, previousAgents, error, lastUpdatedAt, isFetching, refresh } = useAgents({
     intervalMs,
     all,
     cwd,
     poll: interactive,
-    fetcher,
+    fetcher: cachedFetcher,
     meta: prompt || tokens || subagents,
     launchApp: true,
     contextLimit: contextLimit === 0 ? undefined : contextLimit,

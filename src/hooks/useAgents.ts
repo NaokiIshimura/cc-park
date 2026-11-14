@@ -4,6 +4,7 @@ import type {
   FetchAgentsResult,
   FetchError,
 } from '../core/fetchAgents.js';
+import { isQuiet, QUIET_POLL_FACTOR } from '../shared/pollSchedule.js';
 import type { Agent } from '../types/agent.js';
 
 /** ポーリング間隔の下限。外部コマンドの実行コストを踏まえて 500ms でクランプする。 */
@@ -44,6 +45,8 @@ export interface UseAgentsResult {
  * `fetcher` を一定間隔で実行し、結果を保持する。
  *
  * - 前回の取得が終わっていなければ今回をスキップする（多重実行ガード）
+ * - すべてのセッションが静か（{@link isQuiet}）なら、{@link QUIET_POLL_FACTOR} 回に 1 回だけ取得する。
+ *   取得に失敗している間は間引かず、復旧にすぐ気づけるようにする
  * - アンマウント時に interval をクリアし、実行中のプロセスも abort する
  */
 export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
@@ -68,6 +71,8 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
   const mountedRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
   const snapshotRef = useRef<readonly Agent[] | null>(null);
+  /** 直近の取得が成功し、すべてのセッションが静かだったか。間引きの判断に使う */
+  const quietRef = useRef(false);
 
   const load = useCallback(async () => {
     // 多重実行ガード: 前回が終わるまで新しい取得を始めない
@@ -114,12 +119,14 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
     if (result.ok) {
       setPreviousAgents(snapshotRef.current);
       snapshotRef.current = result.agents;
+      quietRef.current = isQuiet(result.agents);
       setAgents(result.agents);
       setError(null);
       setLastUpdatedAt(Date.now());
       return;
     }
 
+    quietRef.current = false;
     // 中断は利用者起因なのでエラー表示しない
     if (result.error.kind !== 'aborted') {
       setError(result.error);
@@ -137,7 +144,14 @@ export const useAgents = (options: UseAgentsOptions): UseAgentsResult => {
       };
     }
 
+    // 静かな間に飛ばした回数。静かでなくなったら次の回から毎回取得する
+    let skipped = 0;
     const timer = setInterval(() => {
+      if (quietRef.current && skipped < QUIET_POLL_FACTOR - 1) {
+        skipped += 1;
+        return;
+      }
+      skipped = 0;
       void load();
     }, Math.max(intervalMs, MIN_INTERVAL_MS));
 

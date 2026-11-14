@@ -3,18 +3,18 @@ import { useEffect } from 'react';
 import { render } from 'ink-testing-library';
 import { describe, expect, it, vi } from 'vitest';
 import type { FetchAgentsOptions, FetchAgentsResult } from '../core/fetchAgents.js';
-import type { Agent } from '../types/agent.js';
+import type { Agent, CharacterState } from '../types/agent.js';
 import { MIN_INTERVAL_MS, useAgents, type UseAgentsOptions } from './useAgents.js';
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const agent = (sessionId: string): Agent => ({
+const agent = (sessionId: string, state: CharacterState = 'working'): Agent => ({
   sessionId,
   name: sessionId,
   cwd: '/tmp',
   kind: 'interactive',
   startedAt: 0,
-  state: 'working',
+  state,
   rawState: 'busy',
   pid: undefined,
   id: undefined,
@@ -210,5 +210,64 @@ describe('useAgents', () => {
     // アンマウント済みで setState が呼ばれると警告・例外になるため、
     // 何も起きないことを確認する
     await expect(wait(200)).resolves.toBeUndefined();
+  });
+
+  describe('静かなときの間引き', () => {
+    // MIN_INTERVAL_MS（500ms）間隔のとき、静かなら 1500ms ごとに取得する
+
+    it('すべてのセッションが入力待ちなら 3 回に 1 回だけ取得する', async () => {
+      const fetcher = vi.fn(
+        async (): Promise<FetchAgentsResult> => ({ ok: true, agents: [agent('a', 'waiting')] }),
+      );
+      const { unmount } = render(<Harness intervalMs={MIN_INTERVAL_MS} fetcher={fetcher} />);
+
+      await wait(1300);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      await wait(400);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      unmount();
+    });
+
+    it('作業中のセッションがあれば毎回取得する', async () => {
+      const fetcher = vi.fn(
+        async (): Promise<FetchAgentsResult> => ({
+          ok: true,
+          agents: [agent('a', 'waiting'), agent('b', 'working')],
+        }),
+      );
+      const { unmount } = render(<Harness intervalMs={MIN_INTERVAL_MS} fetcher={fetcher} />);
+
+      await wait(1300);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      unmount();
+    });
+
+    it('作業中に戻ったら次の回から毎回取得する', async () => {
+      let call = 0;
+      const fetcher = vi.fn(async (): Promise<FetchAgentsResult> => {
+        call += 1;
+        return { ok: true, agents: [agent('a', call === 1 ? 'waiting' : 'working')] };
+      });
+      const { unmount } = render(<Harness intervalMs={MIN_INTERVAL_MS} fetcher={fetcher} />);
+
+      // 0ms（静か）→ 1500ms（作業中）→ 2000ms → 2500ms
+      await wait(2700);
+      expect(fetcher).toHaveBeenCalledTimes(4);
+      unmount();
+    });
+
+    it('取得に失敗している間は間引かない', async () => {
+      const fetcher = vi.fn(
+        async (): Promise<FetchAgentsResult> => ({
+          ok: false,
+          error: { kind: 'exit', message: 'boom' },
+        }),
+      );
+      const { unmount } = render(<Harness intervalMs={MIN_INTERVAL_MS} fetcher={fetcher} />);
+
+      await wait(1300);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      unmount();
+    });
   });
 });

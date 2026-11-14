@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Agent } from '../types/agent.js';
 import type { ReadSessionMetaOptions } from './readSessionMeta.js';
-import { buildArgs, fetchAgents, type CommandRunner } from './fetchAgents.js';
+import {
+  buildArgs,
+  createLaunchAppCache,
+  fetchAgents,
+  type CommandRunner,
+} from './fetchAgents.js';
 
 const jsonFixture = JSON.stringify([
   {
@@ -273,5 +278,70 @@ describe('起動元アプリ', () => {
 
     expect(metaReader).toHaveBeenCalledTimes(2);
     expect(result.ok && result.agents[0]?.launchApp).toBe('iTerm2');
+  });
+
+  describe('控え（launchAppCache）', () => {
+    it('判定済みのセッションだけなら ps を実行し直さない', async () => {
+      const runner = runnerWith(async () => psOutput);
+      const launchAppCache = createLaunchAppCache();
+
+      await fetchAgents({ runner, launchApp: true, launchAppCache });
+      const second = await fetchAgents({ runner, launchApp: true, launchAppCache });
+
+      const psCalls = vi.mocked(runner).mock.calls.filter(([command]) => command === 'ps');
+      expect(psCalls).toHaveLength(1);
+      expect(second.ok && second.agents[0]?.launchApp).toBe('iTerm2');
+    });
+
+    it('知らないセッションが現れたら ps を実行し、消えたセッションの控えは捨てる', async () => {
+      let listed: readonly object[] = raw;
+      const runner: CommandRunner = vi.fn(async (command: string) =>
+        command === 'ps'
+          ? [psOutput, '301 200 claude'].join('\n')
+          : JSON.stringify(listed),
+      );
+      const launchAppCache = createLaunchAppCache();
+
+      await fetchAgents({ runner, launchApp: true, launchAppCache });
+      listed = [{ kind: 'interactive', sessionId: 'c', name: 'gamma', pid: 301, status: 'busy' }];
+      const result = await fetchAgents({ runner, launchApp: true, launchAppCache });
+
+      const psCalls = vi.mocked(runner).mock.calls.filter(([command]) => command === 'ps');
+      expect(psCalls).toHaveLength(2);
+      expect(result.ok && result.agents[0]?.launchApp).toBe('iTerm2');
+      expect([...launchAppCache.keys()]).toEqual(['301:c']);
+    });
+
+    it('pid が同じでも別のセッションなら判定し直す', async () => {
+      let listed: readonly object[] = [raw[0] as object];
+      const runner = vi.fn(async (command: string) =>
+        command === 'ps' ? psOutput : JSON.stringify(listed),
+      );
+      const launchAppCache = createLaunchAppCache();
+
+      await fetchAgents({ runner, launchApp: true, launchAppCache });
+      listed = [{ kind: 'interactive', sessionId: 'other', name: 'other', pid: 300, status: 'busy' }];
+      await fetchAgents({ runner, launchApp: true, launchAppCache });
+
+      expect(runner.mock.calls.filter(([command]) => command === 'ps')).toHaveLength(2);
+    });
+
+    it('ps が失敗したら控えに残さず、次回に判定し直す', async () => {
+      let fail = true;
+      const runner = runnerWith(async () => {
+        if (fail) {
+          throw new Error('ps failed');
+        }
+        return psOutput;
+      });
+      const launchAppCache = createLaunchAppCache();
+
+      await fetchAgents({ runner, launchApp: true, launchAppCache });
+      expect(launchAppCache.size).toBe(0);
+      fail = false;
+      const result = await fetchAgents({ runner, launchApp: true, launchAppCache });
+
+      expect(result.ok && result.agents[0]?.launchApp).toBe('iTerm2');
+    });
   });
 });
