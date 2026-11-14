@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import type { Agent, Subagent } from '../../../../types/agent.js';
-import { CHARACTERS, getAppearance, getMiniFrame } from '../../../../shared/characters.js';
+import { CHARACTERS, getMiniFrame } from '../../../../shared/characters.js';
 import {
   describeScheduledLaunch,
   type ScheduledLaunch,
@@ -12,6 +12,7 @@ import {
   tokenUsageColor,
   TOKEN_BAR_SEGMENTS,
 } from '../../../../shared/formatTokenUsage.js';
+import { blockedReason, statusDetail } from '../../../../shared/statusDetail.js';
 import { visibleSubagents } from '../../../../shared/subagents.js';
 import { formatDuration } from '../../../../utils/formatDuration.js';
 import { inkColor } from '../../colors.js';
@@ -79,12 +80,9 @@ const AgentRowComponent = ({
   onSelect,
   onOpen,
 }: AgentRowProps) => {
-  const appearance = getAppearance(agent.state);
   const elapsed = agent.startedAt > 0 ? formatDuration(now - agent.startedAt) : '-';
-  const detail =
-    agent.state === 'unknown' && agent.rawState !== ''
-      ? `${appearance.description} (${agent.rawState})`
-      : appearance.description;
+  const detail = statusDetail(agent);
+  const reason = blockedReason(agent);
 
   const tokens = showTokens ? agent.meta?.tokens : undefined;
   const lastPrompt = showPrompt ? agent.meta?.lastPrompt : undefined;
@@ -147,7 +145,14 @@ const AgentRowComponent = ({
 
           <div className="agent-row__line">
             <StatusBadge state={agent.state} />
-            <span className="agent-row__detail">{`${detail} ${elapsed}`}</span>
+            {/* 承認待ちのコマンドのように長い説明は切り詰め、全文はツールチップで見せる */}
+            <span
+              className="agent-row__detail"
+              title={reason === undefined ? undefined : `承認待ち: ${reason}`}
+            >
+              {detail}
+            </span>
+            <span className="agent-row__elapsed">{elapsed}</span>
           </div>
 
           {showPrompt ? (

@@ -76,6 +76,16 @@ export interface Subagent {
 }
 
 /**
+ * 結果がまだ返っていないツール呼び出し。`BLOCKED` のとき、何の承認を待っているかを示す。
+ */
+export interface PendingTool {
+  /** ツール名（`Bash` / `Edit` / MCP のツール名など） */
+  readonly name: string;
+  /** 主な引数（コマンド・ファイルパス・URL など）。1 行に潰して切り詰めてある。取れなければ空文字 */
+  readonly detail: string;
+}
+
+/**
  * transcript から補完したセッションの付加情報。
  *
  * `claude agents --json` には含まれないため、取得できないことを前提に
@@ -87,6 +97,8 @@ export interface SessionMeta {
   readonly tokens: TokenUsage | undefined;
   /** まだ結果が返っていないサブエージェント。いなければ空配列 */
   readonly subagents: readonly Subagent[];
+  /** 結果がまだ返っていないツール呼び出し（承認待ちの対象の候補）。無ければ undefined */
+  readonly pendingTool?: PendingTool | undefined;
 }
 
 /** 正規化後のセッション情報 */
@@ -117,4 +129,6 @@ export interface TransitionEvent {
   readonly from: CharacterState | null;
   readonly to: CharacterState;
   readonly at: number;
+  /** `BLOCKED` へ遷移したとき、承認待ちの対象（`Bash: npm test` など）。分からなければ省く */
+  readonly reason?: string | undefined;
 }

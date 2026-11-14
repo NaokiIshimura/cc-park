@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.13.0/cc-park-0.13.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.14.0/cc-park-0.14.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.13.0/cc-park-0.13.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.14.0/cc-park-0.14.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -306,6 +306,32 @@ cc-park --cli --prompt --tokens
 | --- | --- |
 | `> ...` | そのセッションに最後に与えたプロンプト（約 200 文字で切り詰め）。まだ無い場合は `>` だけ |
 | `███░░░░░ ctx  36%` | コンテキストの利用率。`〜69%` は控えめ、`70〜89%` は黄、`90%〜` は赤 |
+
+### 承認待ちの対象
+
+transcript を読んでいるとき（GUI は既定、CLI は `--prompt` / `--tokens` / `--subagents` のいずれかを付けたとき）は、
+`BLOCKED` のセッションの状態行に、**何の承認を待っているか**を `needs your approval` の代わりに出します。
+承認しに行く前に、急ぐものかどうかを判断できます。
+
+```
+ > ▗▐▛███▛█  claude agents setup [bg]                                     ███████░ ctx  92%
+   ▝▜██████▀ BLOCKED                              Bash: rm -rf dist && npm run build 10h39m
+     ▝▝ ▝▝   > MCP サーバの設定を見直して
+```
+
+| ツール | 出す内容 |
+| --- | --- |
+| `Bash` | コマンド |
+| `Edit` / `MultiEdit` / `Write` / `NotebookEdit` | ファイルのパス |
+| `WebFetch` / `WebSearch` | URL / 検索語 |
+| `AskUserQuestion` | 最初の質問 |
+| それ以外（MCP のツールなど） | 引数のうち最初の文字列 |
+
+- transcript のうち、結果（`tool_result`）がまだ返っていないツール呼び出し（`tool_use`）から選びます。
+  並列で呼んだときは、承認の要らない読み取り（`Read` / `Grep` / `Glob` など）より承認の要るものを、その中では最後に呼んだものを選びます
+- 長いコマンドは切り詰め、経過時間は必ず残します。GUI では説明にマウスを載せると全文が出ます
+- 対象が分からないとき（transcript を読んでいない・読めない）は、これまでどおり `needs your approval` と出します
+- [承認待ちの OS 通知](#os-通知) にも同じ内容を添えます
 
 ### 取得元
 
@@ -889,7 +915,7 @@ CLI モードは `osascript`（macOS のみ）、GUI モードは Electron の N
 | 遷移 | 通知内容 |
 | --- | --- |
 | `BUSY` → `IDLE` | 作業完了・入力待ちになった |
-| `*` → `BLOCKED` | 承認を待っている |
+| `*` → `BLOCKED` | 承認を待っている。[承認待ちの対象](#承認待ちの対象) が分かれば添える（例: `cc-park が承認を待っています: Bash: npm test`） |
 | `*` → `DONE` | バックグラウンドが完了した |
 
 ## 開発

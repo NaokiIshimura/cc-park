@@ -13,9 +13,10 @@ import {
   tokenUsageColor,
   TOKEN_TEXT_WIDTH,
 } from '../../shared/formatTokenUsage.js';
+import { statusDetail } from '../../shared/statusDetail.js';
 import { visibleSubagentCount } from '../../shared/subagents.js';
 import { formatDuration } from '../../utils/index.js';
-import { Character, CHARACTERS, getAppearance } from '../Character/index.js';
+import { Character, CHARACTERS } from '../Character/index.js';
 import { StatusBadge } from '../StatusBadge/index.js';
 
 /** プロンプト行の先頭に置く目印。選択カーソルとは列が離れるので同じ `>` を使う。 */
@@ -78,12 +79,8 @@ const AgentRowComponent = ({
   showTokens,
   showSubagents,
 }: AgentRowProps) => {
-  const appearance = getAppearance(agent.state);
   const elapsed = agent.startedAt > 0 ? formatDuration(now - agent.startedAt) : '-';
-  const detail =
-    agent.state === 'unknown' && agent.rawState !== ''
-      ? `${appearance.description} (${agent.rawState})`
-      : appearance.description;
+  const detail = statusDetail(agent);
 
   const tokens = showTokens ? agent.meta?.tokens : undefined;
   const lastPrompt = showPrompt ? agent.meta?.lastPrompt : undefined;
@@ -142,13 +139,19 @@ const AgentRowComponent = ({
           {/*
             状態ラベルは左端に固定し、説明と経過時間は右端へ寄せる。
             1 行目のトークン表示と右端が揃い、行ごとの読み取りがしやすくなる。
+            承認待ちのコマンドのように長い説明は切り詰め、経過時間は必ず残す。
           */}
           <Box flexDirection="row">
             <Box flexShrink={0}>
               <StatusBadge state={agent.state} />
             </Box>
-            <Box flexGrow={1} justifyContent="flex-end">
-              <Text wrap="truncate-end" dimColor>{`${detail} ${elapsed}`}</Text>
+            <Box flexGrow={1} flexShrink={1} justifyContent="flex-end" marginLeft={1}>
+              <Text wrap="truncate-end" dimColor>
+                {detail}
+              </Text>
+            </Box>
+            <Box flexShrink={0}>
+              <Text dimColor>{` ${elapsed}`}</Text>
             </Box>
           </Box>
 

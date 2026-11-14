@@ -1,4 +1,4 @@
-import type { SessionMeta, Subagent } from '../types/agent.js';
+import type { PendingTool, SessionMeta, Subagent } from '../types/agent.js';
 import { toTokenUsage, type RawUsage } from './tokenUsage.js';
 
 /**
@@ -59,7 +59,7 @@ interface ContentBlock {
   /** tool_use のとき */
   readonly id?: unknown;
   readonly name?: unknown;
-  readonly input?: { readonly subagent_type?: unknown; readonly description?: unknown };
+  readonly input?: unknown;
   /** tool_result のとき */
   readonly tool_use_id?: unknown;
   readonly content?: unknown;
@@ -131,6 +131,93 @@ const HANDBACK_AGENT_ID = /<agent-message from="([^"]+)">/g;
 /** 表示が崩れないよう、改行・タブを空白へ潰して 1 行にする。 */
 export const toSingleLine = (text: string): string => text.replace(/\s+/g, ' ').trim();
 
+/** ツール呼び出しの引数として残す最大文字数。長いコマンドやプランを抱え込まない。 */
+export const PENDING_DETAIL_MAX_LENGTH = 200;
+
+/** 追跡する未完了のツール呼び出しの上限。結果の行を取りこぼしても増え続けないようにする。 */
+const MAX_PENDING_TOOLS = 32;
+
+/**
+ * 承認なしで実行されるツール。
+ *
+ * 並列で呼んだときは承認の要るものと要らないものが同時に未完了になるため、
+ * 承認待ちの対象を選ぶときはこれらを後回しにする。
+ */
+const AUTO_APPROVED_TOOLS: ReadonlySet<string> = new Set([
+  'Read',
+  'Glob',
+  'Grep',
+  'LS',
+  'TodoWrite',
+  'TodoRead',
+  'TaskCreate',
+  'TaskGet',
+  'TaskList',
+  'TaskUpdate',
+  'ToolSearch',
+]);
+
+/** ツールごとに、表示する主な引数の名前。並べた順に探し、最初に見つかったものを使う。 */
+const DETAIL_KEYS: Readonly<Record<string, readonly string[]>> = {
+  Bash: ['command'],
+  Edit: ['file_path'],
+  MultiEdit: ['file_path'],
+  Write: ['file_path'],
+  Read: ['file_path'],
+  NotebookEdit: ['notebook_path'],
+  WebFetch: ['url'],
+  WebSearch: ['query'],
+  Grep: ['pattern'],
+  Glob: ['pattern'],
+};
+
+/** 引数のうち表示に使う値を選ぶ。ツール固有の名前が無ければ、最初の文字列の値を使う。 */
+const pickDetail = (name: string, input: unknown): string => {
+  if (input === null || typeof input !== 'object') {
+    return '';
+  }
+  const record = input as Readonly<Record<string, unknown>>;
+
+  for (const key of DETAIL_KEYS[name] ?? []) {
+    const value = record[key];
+    if (typeof value === 'string') {
+      return value;
+    }
+  }
+
+  // AskUserQuestion は質問の配列を持つ
+  const questions = record['questions'];
+  if (Array.isArray(questions)) {
+    const question = (questions[0] as { readonly question?: unknown } | undefined)?.question;
+    if (typeof question === 'string') {
+      return question;
+    }
+  }
+
+  return Object.values(record).find((value): value is string => typeof value === 'string') ?? '';
+};
+
+/** ツール呼び出しを表示用に要約する。 */
+export const describeToolUse = (name: string, input: unknown): PendingTool => {
+  const detail = toSingleLine(pickDetail(name, input));
+  return {
+    name,
+    detail:
+      detail.length > PENDING_DETAIL_MAX_LENGTH
+        ? `${detail.slice(0, PENDING_DETAIL_MAX_LENGTH - 1)}…`
+        : detail,
+  };
+};
+
+/**
+ * 未完了のツール呼び出しから、承認待ちの対象らしいものを選ぶ。
+ * 承認の要るものを優先し、その中では最後に呼んだものを採る。
+ */
+const pickPendingTool = (pending: ReadonlyMap<string, PendingTool>): PendingTool | undefined => {
+  const tools = [...pending.values()].reverse();
+  return tools.find((tool) => !AUTO_APPROVED_TOOLS.has(tool.name)) ?? tools[0];
+};
+
 /**
  * 走査の累積結果。呼び出し側が保持して次の増分へ引き渡す。
  *
@@ -145,6 +232,8 @@ export interface TranscriptScan {
   readonly started: ReadonlyMap<string, Subagent>;
   /** 実行中のものの `agentId` から `tool_use` ID への対応。完了通知の照合に使う */
   readonly agentIds: ReadonlyMap<string, string>;
+  /** 結果がまだ返っていないツール呼び出し（サブエージェントを除く）。`tool_use` ID をキーに、呼んだ順で並ぶ */
+  readonly pending: ReadonlyMap<string, PendingTool>;
 }
 
 /** 走査中の書き換え用。`TranscriptScan` と同じ項目を可変で持つ。 */
@@ -154,6 +243,7 @@ interface MutableScan {
   modelId: string | undefined;
   readonly started: Map<string, Subagent>;
   readonly agentIds: Map<string, string>;
+  readonly pending: Map<string, PendingTool>;
 }
 
 /** 何も読んでいない状態の走査結果。 */
@@ -163,6 +253,7 @@ export const emptyScan = (): TranscriptScan => ({
   modelId: undefined,
   started: new Map(),
   agentIds: new Map(),
+  pending: new Map(),
 });
 
 /** ISO 文字列を epoch ms へ変換する。解釈できなければ undefined。 */
@@ -255,6 +346,7 @@ const scanContent = (content: unknown, startedAt: number | undefined, scan: Muta
     }
 
     if (block.type === 'tool_result' && typeof block.tool_use_id === 'string') {
+      scan.pending.delete(block.tool_use_id);
       const text = toResultText(block.content);
       // 非同期起動の受理は完了ではない。同期実行だった旧版の結果だけを完了として扱う
       if (text === undefined || !text.includes(ASYNC_LAUNCH_MARKER)) {
@@ -272,10 +364,30 @@ const scanContent = (content: unknown, startedAt: number | undefined, scan: Muta
     if (
       block.type === 'tool_use' &&
       typeof block.name === 'string' &&
+      !SUBAGENT_TOOL_NAMES.has(block.name) &&
+      typeof block.id === 'string'
+    ) {
+      scan.pending.set(block.id, describeToolUse(block.name, block.input));
+      // 結果の行を取りこぼしたものが残り続けないよう、古いものから捨てる
+      for (const id of scan.pending.keys()) {
+        if (scan.pending.size <= MAX_PENDING_TOOLS) {
+          break;
+        }
+        scan.pending.delete(id);
+      }
+      continue;
+    }
+
+    if (
+      block.type === 'tool_use' &&
+      typeof block.name === 'string' &&
       SUBAGENT_TOOL_NAMES.has(block.name) &&
       typeof block.id === 'string'
     ) {
-      const { subagent_type: type, description } = block.input ?? {};
+      const { subagent_type: type, description } = (block.input ?? {}) as {
+        readonly subagent_type?: unknown;
+        readonly description?: unknown;
+      };
       scan.started.set(block.id, {
         toolUseId: block.id,
         type: typeof type === 'string' ? type : '',
@@ -362,6 +474,7 @@ export const extendScan = (previous: TranscriptScan, chunk: string): TranscriptS
     modelId: previous.modelId,
     started: new Map(previous.started),
     agentIds: new Map(previous.agentIds),
+    pending: new Map(previous.pending),
   };
 
   for (const line of chunk.split('\n')) {
@@ -402,5 +515,6 @@ export const toSessionMeta = (
         ? undefined
         : toTokenUsage(scan.usage, options.contextLimit, modelId),
     subagents: [...scan.started.values()],
+    pendingTool: pickPendingTool(scan.pending),
   };
 };

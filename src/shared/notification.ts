@@ -23,7 +23,11 @@ export const toNotification = (event: TransitionEvent): NotificationPayload | nu
   if (event.to === 'blocked') {
     return {
       title: '[承認待ち] Claude Code',
-      message: `${event.name} が承認を待っています`,
+      // 何の承認かが分かれば添え、通知だけで急ぐかどうかを判断できるようにする
+      message:
+        event.reason === undefined
+          ? `${event.name} が承認を待っています`
+          : `${event.name} が承認を待っています: ${event.reason}`,
     };
   }
   if (event.to === 'done') {
