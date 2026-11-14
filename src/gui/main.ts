@@ -16,7 +16,7 @@ import {
   type NativeImage,
   type OpenDialogOptions,
 } from 'electron';
-import { fetchAgents } from '../core/fetchAgents.js';
+import { createLaunchAppCache, fetchAgents } from '../core/fetchAgents.js';
 import { focusSession } from '../core/focusSession.js';
 import { killAgent } from '../core/killAgent.js';
 import { launchAgent } from '../core/launchAgent.js';
@@ -347,6 +347,9 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
   };
 });
 
+/** 起動元アプリの判定結果。知らないセッションが現れたときだけ `ps` を実行させる。 */
+const launchAppCache = createLaunchAppCache();
+
 ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequest) =>
   // transcript の読み取りは node 側でしかできないため、ここで合成して renderer へ返す
   fetchAgents({
@@ -354,6 +357,7 @@ ipcMain.handle(IPC_CHANNELS.fetchAgents, async (_event, request: FetchAgentsRequ
     cwd: request.cwd,
     meta: config.prompt || config.tokens || config.subagents,
     launchApp: true,
+    launchAppCache,
     home: config.home,
     contextLimit: config.contextLimit === 0 ? undefined : config.contextLimit,
   }),

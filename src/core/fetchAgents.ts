@@ -24,6 +24,17 @@ export type FetchAgentsResult =
   | { readonly ok: true; readonly agents: Agent[] }
   | { readonly ok: false; readonly error: FetchError };
 
+/**
+ * 起動元アプリの判定結果の控え。
+ *
+ * 起動元はセッションの途中で変わらないので、一度判定したセッションは `ps` を実行し直さない。
+ * キーは `pid:sessionId`。pid は再利用されうるため、sessionId も合わせて同じセッションか確かめる。
+ * 取得をまたいで使い回すため、呼び出し側が {@link createLaunchAppCache} で作って渡す。
+ */
+export type LaunchAppCache = Map<string, string | undefined>;
+
+export const createLaunchAppCache = (): LaunchAppCache => new Map();
+
 export interface FetchAgentsOptions {
   /** 完了済みバックグラウンドセッションも含める */
   readonly all?: boolean;
@@ -44,6 +55,11 @@ export interface FetchAgentsOptions {
    * 既定は false。`ps` の実行を表示する側だけに限るためのオプトイン。
    */
   readonly launchApp?: boolean;
+  /**
+   * 起動元アプリの判定結果の控え。渡すと、知らないセッションが現れたときだけ `ps` を実行する。
+   * 渡さなければ取得のたびに `ps` を実行する。
+   */
+  readonly launchAppCache?: LaunchAppCache;
   /** `~/.claude/projects` を探す起点 */
   readonly home?: string;
   /** コンテキスト上限の明示指定 */
@@ -125,18 +141,36 @@ export const fetchAgents = async (
   return { ok: true, agents: await attachMeta(agents, options) };
 };
 
+/** 控えのキー。 */
+const launchAppKey = (agent: Agent): string => `${agent.pid}:${agent.sessionId}`;
+
 /**
  * 起動元アプリを合成する。
  *
- * `ps` はセッション数によらず 1 回だけ実行する。
- * 失敗しても一覧は出したいので、起動元を出さないだけにとどめる。
+ * `ps` はセッション数によらず 1 回だけ実行し、控えがあれば知らないセッションがいるときに限る。
+ * 失敗しても一覧は出したいので、起動元を出さないだけにとどめる（控えにも残さず、次回に判定し直す）。
  */
 const attachLaunchApp = async (
   agents: Agent[],
   options: FetchAgentsOptions,
 ): Promise<Agent[]> => {
   if (agents.every((agent) => agent.pid === undefined)) {
+    options.launchAppCache?.clear();
     return agents;
+  }
+
+  const cache = options.launchAppCache;
+  const withCached = (source: LaunchAppCache): Agent[] =>
+    agents.map((agent) => ({
+      ...agent,
+      launchApp: agent.pid === undefined ? undefined : source.get(launchAppKey(agent)),
+    }));
+
+  const known = agents.every(
+    (agent) => agent.pid === undefined || cache?.has(launchAppKey(agent)) === true,
+  );
+  if (cache !== undefined && known) {
+    return withCached(cache);
   }
 
   const runner = options.runner ?? execFileRunner;
@@ -151,10 +185,21 @@ const attachLaunchApp = async (
   }
 
   const table = parseProcessTable(stdout);
-  return agents.map((agent) => ({
-    ...agent,
-    launchApp: agent.pid === undefined ? undefined : resolveLaunchApp(agent.pid, table),
-  }));
+  const resolved: LaunchAppCache = new Map();
+  for (const agent of agents) {
+    if (agent.pid !== undefined) {
+      resolved.set(launchAppKey(agent), resolveLaunchApp(agent.pid, table));
+    }
+  }
+
+  // 一覧から消えたセッションの控えは捨て、今いるセッションの判定だけを残す
+  if (cache !== undefined) {
+    cache.clear();
+    for (const [key, app] of resolved) {
+      cache.set(key, app);
+    }
+  }
+  return withCached(resolved);
 };
 
 /**

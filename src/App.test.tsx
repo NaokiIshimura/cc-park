@@ -5,7 +5,10 @@ import type { Agent } from './types/agent.js';
 
 const fetchAgentsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('./core/fetchAgents.js', () => ({ fetchAgents: fetchAgentsMock }));
+vi.mock('./core/fetchAgents.js', () => ({
+  fetchAgents: fetchAgentsMock,
+  createLaunchAppCache: () => new Map(),
+}));
 
 import type { AppProps } from './App.js';
 
@@ -208,6 +211,12 @@ describe('App', () => {
   it('起動元アプリを補完させる', async () => {
     const { unmount } = await renderApp();
     expect(fetchAgentsMock.mock.calls[0]?.[0]).toMatchObject({ launchApp: true });
+    unmount();
+  });
+
+  it('起動元アプリの判定結果の控えを取得処理へ渡す', async () => {
+    const { unmount } = await renderApp();
+    expect(fetchAgentsMock.mock.calls[0]?.[0]?.launchAppCache).toBeInstanceOf(Map);
     unmount();
   });
 
