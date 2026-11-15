@@ -375,6 +375,9 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
           onToggle={(schedule) => {
             void schedules.setEnabled(schedule.id, !schedule.enabled);
           }}
+          onRun={(id) => {
+            void schedules.run(id);
+          }}
           onClose={toggleSchedules}
         />
       )}

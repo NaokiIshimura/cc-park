@@ -352,6 +352,8 @@ ipcMain.handle(IPC_CHANNELS.setScheduleEnabled, (_event, id: string, enabled: bo
   scheduler.setEnabled(id, enabled),
 );
 
+ipcMain.handle(IPC_CHANNELS.runSchedule, (_event, id: string) => scheduler.runNow(id));
+
 ipcMain.handle(IPC_CHANNELS.listScheduledLaunches, () => scheduler.listLaunches());
 
 ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {

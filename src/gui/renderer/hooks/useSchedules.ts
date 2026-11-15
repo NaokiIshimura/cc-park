@@ -18,6 +18,7 @@ export type ScheduleBridge = Pick<
   | 'saveSchedule'
   | 'deleteSchedule'
   | 'setScheduleEnabled'
+  | 'runSchedule'
   | 'listScheduledLaunches'
   | 'onScheduleFired'
 >;
@@ -27,6 +28,11 @@ export interface UseSchedulesResult {
   readonly save: (schedule: Schedule) => Promise<void>;
   readonly remove: (id: string) => Promise<void>;
   readonly setEnabled: (id: string, enabled: boolean) => Promise<void>;
+  /**
+   * 予約を今すぐ実行する。結果のメッセージと一覧の取り直しは、
+   * 時刻による発火と同じく `onScheduleFired` の通達で行う
+   */
+  readonly run: (id: string) => Promise<void>;
   /** 予約から起動したセッションの記録。一覧の行に印を付けるのに使う */
   readonly launches: readonly ScheduledLaunch[];
   /** 直近の発火。フッタのメッセージに使う */
@@ -93,5 +99,12 @@ export const useSchedules = (bridge: ScheduleBridge): UseSchedulesResult => {
     [bridge, apply],
   );
 
-  return { schedules, save, remove, setEnabled, launches, firedEvent };
+  const run = useCallback(
+    async (id: string) => {
+      await bridge.runSchedule(id);
+    },
+    [bridge],
+  );
+
+  return { schedules, save, remove, setEnabled, run, launches, firedEvent };
 };

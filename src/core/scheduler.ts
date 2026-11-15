@@ -31,6 +31,8 @@ export interface ScheduleFiredEvent {
   readonly scheduleId: string;
   /** 発火した「予定時刻」。実際に起動した時刻ではない */
   readonly firedAt: number;
+  /** 予約画面の `実行` から今すぐ起動したものか。時刻による発火なら false */
+  readonly manual: boolean;
   readonly ok: boolean;
   readonly message: string;
 }
@@ -62,6 +64,12 @@ export interface Scheduler {
   readonly save: (schedule: Schedule) => Promise<Schedule[]>;
   readonly remove: (id: string) => Promise<Schedule[]>;
   readonly setEnabled: (id: string, enabled: boolean) => Promise<Schedule[]>;
+  /**
+   * 予約を今すぐ実行する（予約画面の `実行`）。結果は時刻による発火と同じく通知・画面へ知らせ、返り値でも返す。
+   * 時刻による発火の記録（`lastFiredAt`）は変えないので、その日の予定時刻にはいつもどおり起動する。
+   * 無効（`off`）の予約も実行できる。知らない ID か、同じ予約を実行している途中なら null
+   */
+  readonly runNow: (id: string) => Promise<ScheduleFiredEvent | null>;
   /** 予約から起動したセッションの記録 */
   readonly listLaunches: () => Promise<ScheduledLaunch[]>;
 }
@@ -70,10 +78,22 @@ export interface Scheduler {
 export const describeLaunch = (
   schedule: Schedule,
   result: LaunchAgentResult,
-): { ok: boolean; message: string } =>
-  result.ok
-    ? { ok: true, message: `${schedule.time} の予約を ${schedule.cwd} で起動しました` }
-    : { ok: false, message: `${schedule.time} の予約を起動できません: ${result.error.message}` };
+  manual = false,
+): { ok: boolean; message: string } => {
+  if (!result.ok) {
+    const action = manual ? '実行' : '起動';
+    return {
+      ok: false,
+      message: `${schedule.time} の予約を${action}できません: ${result.error.message}`,
+    };
+  }
+  return {
+    ok: true,
+    message: manual
+      ? `${schedule.time} の予約を今すぐ実行し、${schedule.cwd} で起動しました`
+      : `${schedule.time} の予約を ${schedule.cwd} で起動しました`,
+  };
+};
 
 /** 発火結果から OS 通知を組み立てる。 */
 export const toScheduleNotification = (event: ScheduleFiredEvent): NotificationPayload => ({
@@ -90,6 +110,8 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
   let loading: Promise<void> | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
   let running = false;
+  /** 今すぐ実行している途中の予約。連打で同じ予約を重ねて起動しないようにする */
+  const runningNow = new Set<string>();
 
   /**
    * 発火判定の起点。
@@ -114,7 +136,11 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
     return schedules;
   };
 
-  const fire = async (schedule: Schedule, at: number): Promise<void> => {
+  const fire = async (
+    schedule: Schedule,
+    at: number,
+    manual = false,
+  ): Promise<ScheduleFiredEvent> => {
     const result = await deps.launch(schedule);
 
     // ID が読み取れなかったときは突き合わせようがないので記録しない
@@ -129,11 +155,18 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
       await deps.saveLaunches?.(launches);
     }
 
-    const { ok, message } = describeLaunch(schedule, result);
-    const event: ScheduleFiredEvent = { scheduleId: schedule.id, firedAt: at, ok, message };
+    const { ok, message } = describeLaunch(schedule, result, manual);
+    const event: ScheduleFiredEvent = {
+      scheduleId: schedule.id,
+      firedAt: at,
+      manual,
+      ok,
+      message,
+    };
 
     deps.notify?.(toScheduleNotification(event));
     deps.onFired?.(event);
+    return event;
   };
 
   const tick = async (): Promise<void> => {
@@ -223,10 +256,24 @@ export const createScheduler = (deps: SchedulerDeps): Scheduler => {
     return persist();
   };
 
+  const runNow = async (id: string): Promise<ScheduleFiredEvent | null> => {
+    await ensureLoaded();
+    const target = schedules.find((current) => current.id === id);
+    if (target === undefined || runningNow.has(id)) {
+      return null;
+    }
+    runningNow.add(id);
+    try {
+      return await fire(target, now(), true);
+    } finally {
+      runningNow.delete(id);
+    }
+  };
+
   const listLaunches = async (): Promise<ScheduledLaunch[]> => {
     await ensureLoaded();
     return launches;
   };
 
-  return { start, stop, tick, list, save, remove, setEnabled, listLaunches };
+  return { start, stop, tick, list, save, remove, setEnabled, runNow, listLaunches };
 };

@@ -57,6 +57,8 @@ export const IPC_CHANNELS = {
   deleteSchedule: 'schedule:delete',
   /** 予約の有効 / 無効の切り替え */
   setScheduleEnabled: 'schedule:setEnabled',
+  /** 予約を今すぐ実行する */
+  runSchedule: 'schedule:run',
   /** 予約から起動したセッションの記録の取得 */
   listScheduledLaunches: 'schedule:listLaunches',
   /** 予約が発火したことの通達（main → renderer） */
@@ -122,6 +124,11 @@ export interface CcParkBridge {
   readonly saveSchedule: (schedule: Schedule) => Promise<Schedule[]>;
   readonly deleteSchedule: (id: string) => Promise<Schedule[]>;
   readonly setScheduleEnabled: (id: string, enabled: boolean) => Promise<Schedule[]>;
+  /**
+   * 予約を今すぐ実行する。結果は {@link onScheduleFired} にも届く。
+   * 知らない ID か、同じ予約を実行している途中なら null
+   */
+  readonly runSchedule: (id: string) => Promise<ScheduleFiredEvent | null>;
   /** 予約から起動したセッションの記録。一覧で見分けるために使う */
   readonly listScheduledLaunches: () => Promise<ScheduledLaunch[]>;
   /**

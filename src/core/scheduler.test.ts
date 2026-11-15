@@ -84,12 +84,23 @@ describe('describeLaunch', () => {
     expect(described.ok).toBe(false);
     expect(described.message).toContain('claude コマンドが見つかりません。');
   });
+
+  it('今すぐ実行したものは、そうと分かる文言にする', () => {
+    expect(describeLaunch(schedule(), succeeded, true)).toEqual({
+      ok: true,
+      message: '09:00 の予約を今すぐ実行し、/Users/naoki/GitHub/cc-park で起動しました',
+    });
+    expect(describeLaunch(schedule(), failed, true).message).toBe(
+      '09:00 の予約を実行できません: claude コマンドが見つかりません。',
+    );
+  });
 });
 
 describe('toScheduleNotification', () => {
   const event = (ok: boolean): ScheduleFiredEvent => ({
     scheduleId: 'a1',
     firedAt: at(23, 9, 0),
+    manual: false,
     ok,
     message: 'メッセージ',
   });
@@ -183,6 +194,7 @@ describe('tick', () => {
     expect(onFired).toHaveBeenCalledWith({
       scheduleId: 'a1',
       firedAt: at(23, 9, 0),
+      manual: false,
       ok: true,
       message: '09:00 の予約を /Users/naoki/GitHub/cc-park で起動しました',
     });
@@ -274,6 +286,78 @@ describe('start / stop', () => {
     expect(() => {
       scheduler.stop();
     }).not.toThrow();
+  });
+});
+
+describe('runNow', () => {
+  it('予定時刻を待たずに起動し、通知・画面へ知らせて結果を返す', async () => {
+    const { scheduler, launch, notify, onFired } = harness([schedule()], at(23, 15, 30));
+    const event = await scheduler.runNow('a1');
+    const expected: ScheduleFiredEvent = {
+      scheduleId: 'a1',
+      firedAt: at(23, 15, 30),
+      manual: true,
+      ok: true,
+      message: '09:00 の予約を今すぐ実行し、/Users/naoki/GitHub/cc-park で起動しました',
+    };
+    expect(event).toEqual(expected);
+    expect(launch).toHaveBeenCalledWith(schedule());
+    expect(onFired).toHaveBeenCalledWith(expected);
+    expect(notify).toHaveBeenCalledWith({ title: '[予約] Claude Code', message: expected.message });
+  });
+
+  it('発火済みの記録を変えないので、その日の予定時刻にはいつもどおり起動する', async () => {
+    const { scheduler, launch, save, setNow } = harness([schedule()], at(23, 8, 30));
+    await scheduler.runNow('a1');
+    expect(save).not.toHaveBeenCalled();
+    expect((await scheduler.list())[0]?.lastFiredAt).toBeNull();
+
+    setNow(at(23, 9, 0));
+    await scheduler.tick();
+    expect(launch).toHaveBeenCalledTimes(2);
+  });
+
+  it('無効（off）の予約も実行できる', async () => {
+    const { scheduler, launch } = harness([schedule({ enabled: false })]);
+    expect(await scheduler.runNow('a1')).toMatchObject({ ok: true, manual: true });
+    expect(launch).toHaveBeenCalledTimes(1);
+  });
+
+  it('起動に失敗したら理由を返し、予約失敗として通知する', async () => {
+    const { scheduler, launch, notify } = harness([schedule()]);
+    launch.mockResolvedValueOnce(failed);
+    expect(await scheduler.runNow('a1')).toMatchObject({
+      ok: false,
+      message: '09:00 の予約を実行できません: claude コマンドが見つかりません。',
+    });
+    expect(notify.mock.calls[0]?.[0]).toMatchObject({ title: '[予約失敗] Claude Code' });
+  });
+
+  it('知らない ID なら何もせず null を返す', async () => {
+    const { scheduler, launch, onFired } = harness([schedule()]);
+    expect(await scheduler.runNow('none')).toBeNull();
+    expect(launch).not.toHaveBeenCalled();
+    expect(onFired).not.toHaveBeenCalled();
+  });
+
+  it('同じ予約を実行している途中に重ねて呼ばれても、二重に起動しない', async () => {
+    const { scheduler, launch } = harness([schedule()]);
+    let release: (value: LaunchAgentResult) => void = () => undefined;
+    launch.mockReturnValueOnce(
+      new Promise<LaunchAgentResult>((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    const first = scheduler.runNow('a1');
+    expect(await scheduler.runNow('a1')).toBeNull();
+    release(succeeded);
+    expect(await first).toMatchObject({ ok: true });
+    expect(launch).toHaveBeenCalledTimes(1);
+
+    // 終わったあとはまた実行できる
+    await scheduler.runNow('a1');
+    expect(launch).toHaveBeenCalledTimes(2);
   });
 });
 

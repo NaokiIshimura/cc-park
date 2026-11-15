@@ -12,6 +12,8 @@ interface ScheduleListProps {
   readonly onEdit: (schedule: Schedule) => void;
   readonly onDelete: (schedule: Schedule) => void;
   readonly onToggle: (schedule: Schedule) => void;
+  /** 今すぐ実行する */
+  readonly onRun: (schedule: Schedule) => void;
 }
 
 /** 登録済みの予約を並べる。操作は呼び出し側へ渡すだけにする。 */
@@ -22,6 +24,7 @@ export const ScheduleList = ({
   onEdit,
   onDelete,
   onToggle,
+  onRun,
 }: ScheduleListProps) => {
   if (schedules.length === 0) {
     return <p className="schedule-list__empty">予約はまだありません</p>;
@@ -47,6 +50,16 @@ export const ScheduleList = ({
               }}
             >
               {schedule.enabled ? 'on' : 'off'}
+            </button>
+            <button
+              type="button"
+              className="button"
+              title="予約の時刻を待たずに今すぐ起動する"
+              onClick={() => {
+                onRun(schedule);
+              }}
+            >
+              実行
             </button>
             <button
               type="button"

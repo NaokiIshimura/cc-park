@@ -44,6 +44,7 @@ const bridge: CcParkBridge = {
   deleteSchedule: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.deleteSchedule, id),
   setScheduleEnabled: (id: string, enabled: boolean) =>
     ipcRenderer.invoke(IPC_CHANNELS.setScheduleEnabled, id, enabled),
+  runSchedule: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.runSchedule, id),
   listScheduledLaunches: () => ipcRenderer.invoke(IPC_CHANNELS.listScheduledLaunches),
   onScheduleFired: (listener: (event: ScheduleFiredEvent) => void) => {
     const handler = (_event: IpcRendererEvent, payload: ScheduleFiredEvent) => {

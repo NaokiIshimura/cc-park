@@ -13,6 +13,8 @@ interface SchedulePanelProps {
   readonly onSave: (schedule: Schedule) => void;
   readonly onDelete: (id: string) => void;
   readonly onToggle: (schedule: Schedule) => void;
+  /** 予約を今すぐ実行する */
+  readonly onRun: (id: string) => void;
   readonly onClose: () => void;
 }
 
@@ -21,7 +23,7 @@ interface Editing {
   readonly schedule: Schedule | null;
 }
 
-/** 予約の一覧と、追加・編集・削除の入口をまとめた画面。 */
+/** 予約の一覧と、追加・編集・削除・今すぐ実行の入口をまとめた画面。 */
 export const SchedulePanel = ({
   schedules,
   now,
@@ -30,12 +32,14 @@ export const SchedulePanel = ({
   onSave,
   onDelete,
   onToggle,
+  onRun,
   onClose,
 }: SchedulePanelProps) => {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [deleting, setDeleting] = useState<Schedule | null>(null);
+  const [running, setRunning] = useState<Schedule | null>(null);
 
-  const dialogOpen = editing !== null || deleting !== null;
+  const dialogOpen = editing !== null || deleting !== null || running !== null;
 
   // ダイアログが開いている間は、そちらの取消を優先する
   useEffect(() => {
@@ -84,6 +88,7 @@ export const SchedulePanel = ({
             }}
             onDelete={setDeleting}
             onToggle={onToggle}
+            onRun={setRunning}
           />
         </div>
 
@@ -101,6 +106,21 @@ export const SchedulePanel = ({
           }}
           onCancel={() => {
             setEditing(null);
+          }}
+        />
+      )}
+
+      {/* セッションを起動してしまうので、押し間違えても走らないよう確認を挟む */}
+      {running === null ? null : (
+        <ConfirmDialog
+          action="実行"
+          name={`${running.time} の予約`}
+          onConfirm={() => {
+            onRun(running.id);
+            setRunning(null);
+          }}
+          onCancel={() => {
+            setRunning(null);
           }}
         />
       )}

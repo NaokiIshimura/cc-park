@@ -26,6 +26,7 @@ const launch: ScheduledLaunch = {
 const fired: ScheduleFiredEvent = {
   scheduleId: 'a1',
   firedAt: 1789881096899,
+  manual: false,
   ok: true,
   message: '09:00 の予約を /Users/naoki で起動しました',
 };
@@ -39,6 +40,7 @@ const createBridge = (overrides: Partial<ScheduleBridge> = {}) => {
     saveSchedule: vi.fn(async () => [schedule()]),
     deleteSchedule: vi.fn(async () => []),
     setScheduleEnabled: vi.fn(async () => [schedule({ enabled: false })]),
+    runSchedule: vi.fn(async () => ({ ...fired, manual: true })),
     listScheduledLaunches: vi.fn(async () => []),
     onScheduleFired: vi.fn((next: (event: ScheduleFiredEvent) => void) => {
       listener = next;
@@ -122,6 +124,16 @@ describe('useSchedules', () => {
     });
     expect(bridge.setScheduleEnabled).toHaveBeenCalledWith('a1', false);
     expect(result.current.schedules[0]?.enabled).toBe(false);
+  });
+
+  it('今すぐ実行を main へ伝える', async () => {
+    const { bridge } = createBridge();
+    const { result } = renderHook(() => useSchedules(bridge));
+
+    await act(async () => {
+      await result.current.run('a1');
+    });
+    expect(bridge.runSchedule).toHaveBeenCalledWith('a1');
   });
 
   it('発火を受け取り、一覧も取り直す', async () => {
