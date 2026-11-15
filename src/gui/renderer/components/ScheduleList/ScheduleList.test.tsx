@@ -24,6 +24,7 @@ const setup = (schedules: readonly Schedule[] = [schedule()]) => {
   const onEdit = vi.fn();
   const onDelete = vi.fn();
   const onToggle = vi.fn();
+  const onRun = vi.fn();
   const result = render(
     <ScheduleList
       schedules={schedules}
@@ -32,9 +33,10 @@ const setup = (schedules: readonly Schedule[] = [schedule()]) => {
       onEdit={onEdit}
       onDelete={onDelete}
       onToggle={onToggle}
+      onRun={onRun}
     />,
   );
-  return { ...result, onEdit, onDelete, onToggle, user: userEvent.setup() };
+  return { ...result, onEdit, onDelete, onToggle, onRun, user: userEvent.setup() };
 };
 
 afterEach(cleanup);
@@ -77,6 +79,18 @@ describe('ScheduleList', () => {
     const { user, onDelete } = setup();
     await user.click(screen.getByRole('button', { name: '削除' }));
     expect(onDelete).toHaveBeenCalledWith(schedule());
+  });
+
+  it('今すぐ実行を伝える', async () => {
+    const { user, onRun } = setup();
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    expect(onRun).toHaveBeenCalledWith(schedule());
+  });
+
+  it('無効（off）の予約も実行できる', async () => {
+    const { user, onRun } = setup([schedule({ enabled: false })]);
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    expect(onRun).toHaveBeenCalledWith(schedule({ enabled: false }));
   });
 
   it('有効・無効の切り替えを伝える', async () => {

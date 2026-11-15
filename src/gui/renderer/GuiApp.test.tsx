@@ -92,6 +92,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   saveSchedule: vi.fn(async () => []),
   deleteSchedule: vi.fn(async () => []),
   setScheduleEnabled: vi.fn(async () => []),
+  runSchedule: vi.fn(async () => null),
   listScheduledLaunches: vi.fn(async () => []),
   onScheduleFired: vi.fn(() => () => undefined),
   notify: vi.fn(),
@@ -561,6 +562,20 @@ describe('GuiApp', () => {
     expect(setScheduleEnabled).toHaveBeenCalledWith('s1', false);
   });
 
+  it('予約を今すぐ実行すると、確認してから main へ伝える', async () => {
+    const runSchedule = vi.fn(async () => null);
+    const { user } = await setup({
+      listSchedules: vi.fn(async () => [schedule()]),
+      runSchedule,
+    });
+
+    await user.click(screen.getByRole('button', { name: '予約' }));
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    expect(runSchedule).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: '実行 する' }));
+    expect(runSchedule).toHaveBeenCalledWith('s1');
+  });
+
   it('予約を追加すると main へ伝える', async () => {
     const saveSchedule = vi.fn(async (_schedule: Schedule) => []);
     const { user } = await setup({ saveSchedule });
@@ -587,6 +602,7 @@ describe('GuiApp', () => {
       fire?.({
         scheduleId: 's1',
         firedAt: 0,
+        manual: false,
         ok: true,
         message: '09:00 の予約を /Users/naoki で起動しました',
       });

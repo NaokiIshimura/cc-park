@@ -197,6 +197,13 @@ body {
   font-weight: 700;
 }
 
+/* 何かを始める確定ボタン（予約の実行）。`on` のトグルと同じ緑にする */
+.button--positive {
+  border-color: var(--ink-green);
+  color: var(--ink-green);
+  font-weight: 700;
+}
+
 .button--danger {
   border-color: var(--ink-red);
   color: var(--ink-red);
@@ -629,7 +636,13 @@ body {
 .schedule__head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+}
+
+/* on / 実行 / 編集 / 削除 の 4 つを並べても、次回発火（今日 09:00）が既定幅で 1 行に収まるよう詰める */
+.schedule__head .button,
+.schedule__head .toggle {
+  padding: 3px 6px;
 }
 
 .schedule__time {
@@ -640,8 +653,12 @@ body {
 
 .schedule__next {
   flex: 1;
+  min-width: 0;
   color: var(--fg-muted);
   font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .schedule__cwd,

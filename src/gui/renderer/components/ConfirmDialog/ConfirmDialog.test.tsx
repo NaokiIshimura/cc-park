@@ -60,6 +60,18 @@ describe('ConfirmDialog', () => {
     expect(screen.getByRole('button', { name: 'kill する' })).toBeDefined();
   });
 
+  it('確定ボタンは既定で赤（danger）', () => {
+    setup();
+    expect(screen.getByRole('button', { name: 'stop する' }).className).toContain('button--danger');
+  });
+
+  it('positive では確定ボタンを緑（on と同じ色）にする', () => {
+    setup({ action: '実行', tone: 'positive' });
+    const button = screen.getByRole('button', { name: '実行 する' });
+    expect(button.className).toContain('button--positive');
+    expect(button.className).not.toContain('button--danger');
+  });
+
   it('取消ボタンで取り消す', async () => {
     const { onConfirm, onCancel, user } = setup();
     await user.click(screen.getByRole('button', { name: '取消' }));

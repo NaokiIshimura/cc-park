@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.18.0/cc-park-0.18.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.19.0/cc-park-0.19.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.18.0/cc-park-0.18.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.19.0/cc-park-0.19.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -563,6 +563,7 @@ cc-park --frame
 | 追加 | 予約画面の `追加` |
 | 編集 | 各予約の `編集` |
 | 一時停止 / 再開 | 各予約の `on` / `off` トグル（消さずに止められる） |
+| 今すぐ実行 | 各予約の `実行` → 確認ダイアログ（時刻を待たずに起動する。`off` の予約も実行できる） |
 | 削除 | 各予約の `削除` → 確認ダイアログ |
 | 閉じる | `Esc` ＋ `閉じる` ボタン |
 
@@ -579,6 +580,7 @@ cc-park --frame
 | 判定の間隔 | 30 秒ごと。前回の判定から予定時刻を跨いだかで判断するため、負荷やスリープでずれても取りこぼしません |
 | スリープ復帰 | 復帰した時点で即座に判定し直します |
 | 二重起動 | 同じ予定時刻では一度しか起動しません（起動の直前に「発火済み」を記録します） |
+| 今すぐ実行 | 「発火済み」の記録は変えないので、その日の予定時刻にもいつもどおり起動します。起動したセッションには `[sched]` が付き、結果は時刻による起動と同じく通知とフッタに出ます。実行の途中に同じ予約を重ねて実行しても、二重には起動しません |
 | 起動できなかったとき | 通知とフッタに理由を出します（ディレクトリが無い / `claude` が見つからない など）。予約自体は残ります |
 | 権限の確認 | `--dangerously-skip-permissions` は付けません。承認待ちで止まった場合は `BLOCKED` として一覧に出ます |
 | 通知 | 起動時に `--no-notify` を付けていると、予約の通知も出しません |

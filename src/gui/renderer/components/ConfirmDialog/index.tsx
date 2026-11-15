@@ -5,6 +5,11 @@ interface ConfirmDialogProps {
   readonly name: string;
   /** 後戻りできない操作として強調するか */
   readonly danger?: boolean;
+  /**
+   * 確定ボタンの色。既定の `danger` は赤（stop / kill / 削除）。
+   * `positive` は `on` のトグルと同じ緑で、何かを始める操作（予約の実行）に使う
+   */
+  readonly tone?: 'danger' | 'positive';
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
 }
@@ -14,6 +19,7 @@ export const ConfirmDialog = ({
   action,
   name,
   danger = false,
+  tone = 'danger',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) => (
@@ -29,7 +35,11 @@ export const ConfirmDialog = ({
         <button type="button" className="button" onClick={onCancel}>
           取消
         </button>
-        <button type="button" className="button button--danger" onClick={onConfirm}>
+        <button
+          type="button"
+          className={tone === 'positive' ? 'button button--positive' : 'button button--danger'}
+          onClick={onConfirm}
+        >
           {`${action} する`}
         </button>
       </div>

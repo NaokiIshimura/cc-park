@@ -23,6 +23,7 @@ const setup = (schedules: readonly Schedule[] = [schedule()]) => {
   const onSave = vi.fn();
   const onDelete = vi.fn();
   const onToggle = vi.fn();
+  const onRun = vi.fn();
   const onClose = vi.fn();
   const onPickDirectory = vi.fn(async () => '/Users/naoki/GitHub/other');
   const result = render(
@@ -34,6 +35,7 @@ const setup = (schedules: readonly Schedule[] = [schedule()]) => {
       onSave={onSave}
       onDelete={onDelete}
       onToggle={onToggle}
+      onRun={onRun}
       onClose={onClose}
     />,
   );
@@ -42,6 +44,7 @@ const setup = (schedules: readonly Schedule[] = [schedule()]) => {
     onSave,
     onDelete,
     onToggle,
+    onRun,
     onClose,
     onPickDirectory,
     user: userEvent.setup(),
@@ -116,6 +119,33 @@ describe('SchedulePanel', () => {
     await user.type(screen.getByLabelText('プロンプト'), 'おはよう');
     await user.click(screen.getByRole('button', { name: '保存' }));
     expect(onSave.mock.calls[0]?.[0]).toMatchObject({ cwd: '/Users/naoki/GitHub/other' });
+  });
+
+  it('実行は確認してから伝える', async () => {
+    const { user, onRun } = setup();
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    expect(screen.getByText('「09:00 の予約」を 実行 しますか?')).toBeDefined();
+    expect(onRun).not.toHaveBeenCalled();
+
+    // セッションを始める操作なので、削除のような赤ではなく on と同じ緑にする
+    expect(screen.getByRole('button', { name: '実行 する' }).className).toContain(
+      'button--positive',
+    );
+
+    await user.click(screen.getByRole('button', { name: '実行 する' }));
+    expect(onRun).toHaveBeenCalledWith('a1');
+    expect(screen.queryByRole('button', { name: '実行 する' })).toBeNull();
+  });
+
+  it('実行の確認を取り消せる', async () => {
+    const { user, onRun, onClose } = setup();
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    pressEscape();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '取消' }));
+    expect(onRun).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '実行 する' })).toBeNull();
   });
 
   it('削除は確認してから伝える', async () => {
