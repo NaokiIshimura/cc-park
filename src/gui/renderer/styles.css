@@ -869,8 +869,29 @@ body {
   gap: 2px;
   /* 選択できないので枠やホバーの強調は付けない（ダブルクリックでセッションの画面へ移動はできる） */
   padding: 4px 6px;
+  border-radius: 4px;
   cursor: default;
   user-select: none;
+}
+
+/*
+ * ダブルクリックしたタイルを少しの間光らせる（ミニ表示にはフッタが無いため）。
+ * 枠は box-shadow で描き、タイルの大きさ（＝ミニ表示のウィンドウの大きさ）を変えない。
+ * 長さは MiniView の TILE_FLASH_MS と揃える。
+ */
+.mini-tile--flash {
+  animation: mini-tile-flash 500ms ease-out;
+}
+
+@keyframes mini-tile-flash {
+  from {
+    background: var(--surface-selected);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  to {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px transparent;
+  }
 }
 
 .mini-tile__name {

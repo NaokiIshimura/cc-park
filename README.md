@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.1/cc-park-0.22.1-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.2/cc-park-0.22.2-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.1/cc-park-0.22.1-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.2/cc-park-0.22.2-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -535,7 +535,7 @@ cc-park --frame
 - 縦 1 列は幅を AA 1 体ぶんに保って件数が増えたら縦に、横 1 列は高さを AA 1 体ぶんに保って横に伸ばします（折り返しはしません）
 - 長い名前は省略し、ツールチップで名前と状態を確かめられます
 - 見出しはディレクトリ名（パスの末尾）だけを出し、ツールチップで `~` 短縮したパスを確かめられます
-- タイルをダブルクリックすると、通常表示の行と同じく[セッションの画面へ移動](#セッションの画面へ移動するguimacos)します（別の Space にあればその Space へ切り替えます）。ミニ表示のままで、通常表示には戻りません
+- タイルをダブルクリックすると、通常表示の行と同じく[セッションの画面へ移動](#セッションの画面へ移動するguimacos)します（別の Space にあればその Space へ切り替えます）。ミニ表示のままで、通常表示には戻りません。ミニ表示にはフッタが無いので、押したタイルを少しの間（0.5 秒）光らせて、押したことを伝えます
 - 移動できないセッション（`tmux` など）は、通常表示と同じく開くコマンドをクリップボードへコピーします
 - タイルは選択できません（クリックしても何も起きません）。コピーや stop などは `開く` で通常表示へ戻してから行います
 - 縮める・広げるときは、ウィンドウを置いた側の画面の端（右半分なら右端、下半分なら下端）を基準にします。通常表示へ戻すと畳む前の大きさに戻ります

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Agent } from '../../../../types/agent.js';
 import { getAppearance } from '../../../../shared/characters.js';
 import { nextCompactLayout, type CompactLayout } from '../../../../shared/compactSettings.js';
@@ -6,6 +6,12 @@ import { formatCwd } from '../../../../shared/formatCwd.js';
 import type { AgentGroup } from '../../../../shared/groupAgents.js';
 import { directoryName, type Size } from '../../../compact.js';
 import { Character } from '../Character/index.js';
+
+/**
+ * ダブルクリックしたタイルを光らせておく時間（ミリ秒）。CSS の `mini-tile-flash` の長さと揃える。
+ * ミニ表示にはフッタが無く、移動の結果を文字で出せないので、押したことだけでも伝える。
+ */
+export const TILE_FLASH_MS = 500;
 
 /** 見出しのツールチップに出す cwd の最大文字数。一覧の見出しと揃える。 */
 const CWD_MAX_WIDTH = 60;
@@ -46,7 +52,7 @@ const tileTitle = (agent: Agent): string => {
  * 縦 1 列は幅を AA 1 体ぶんに保って件数が増えたら縦に伸ばし、
  * 横 1 列は高さを AA 1 体ぶんに保って横に伸ばす。
  * 状態を眺めるための表示なので、タイルは選択できない。ダブルクリックでセッションの画面へ移動だけはでき、
- * それ以外の操作は `開く` で通常表示へ戻してから行う。
+ * そのタイルを少しの間光らせて押したことを伝える。それ以外の操作は `開く` で通常表示へ戻してから行う。
  * 内容の大きさは AA のフォントで決まるため、描画のたびに実測して通知する。
  */
 export const MiniView = ({
@@ -60,6 +66,30 @@ export const MiniView = ({
   onResize,
 }: MiniViewProps) => {
   const ref = useRef<HTMLDivElement>(null);
+  /** 光らせているタイルのセッション ID */
+  const [flashing, setFlashing] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 光らせている途中で閉じても、タイマーが残って状態を書き換えないようにする
+  useEffect(
+    () => () => {
+      if (flashTimer.current !== null) {
+        clearTimeout(flashTimer.current);
+      }
+    },
+    [],
+  );
+
+  const flash = (sessionId: string) => {
+    if (flashTimer.current !== null) {
+      clearTimeout(flashTimer.current);
+    }
+    setFlashing(sessionId);
+    flashTimer.current = setTimeout(() => {
+      flashTimer.current = null;
+      setFlashing(null);
+    }, TILE_FLASH_MS);
+  };
   // 同じ大きさを送り直すと、ウィンドウの変更と実測が往復し続けるため差分だけ送る
   const lastSize = useRef<Size | null>(null);
 
@@ -115,9 +145,12 @@ export const MiniView = ({
                 {group.agents.map((agent) => (
                   <li
                     key={agent.sessionId}
-                    className="mini-tile"
+                    className={
+                      flashing === agent.sessionId ? 'mini-tile mini-tile--flash' : 'mini-tile'
+                    }
                     title={tileTitle(agent)}
                     onDoubleClick={() => {
+                      flash(agent.sessionId);
                       onOpen(agent);
                     }}
                   >
