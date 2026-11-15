@@ -7,6 +7,7 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  Menu,
   nativeTheme,
   nativeImage,
   Notification,
@@ -32,6 +33,7 @@ import {
   toOpenSettings,
   type OpenSettings,
 } from '../shared/openSettings.js';
+import { agentMenuItems, toAgentMenuRequest } from './agentMenu.js';
 import { nextWindowPosition, positionedBounds, toWindowStep } from './windowPosition.js';
 import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
 import { loadSettings, saveSettings } from '../core/settingsStore.js';
@@ -432,6 +434,34 @@ ipcMain.handle(IPC_CHANNELS.setAlwaysOnTop, (event, value: boolean) => {
   window.setAlwaysOnTop(value);
   // 適用できたかは OS 側の都合もあるため、実際の状態を返す
   return window.isAlwaysOnTop();
+});
+
+ipcMain.on(IPC_CHANNELS.showAgentMenu, (event, value: unknown) => {
+  const request = toAgentMenuRequest(value);
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (request === null || window === null) {
+    return;
+  }
+  const template: Electron.MenuItemConstructorOptions[] = agentMenuItems(request).flatMap(
+    (item): Electron.MenuItemConstructorOptions[] => [
+      ...(item.separatorBefore ? [{ type: 'separator' as const }] : []),
+      {
+        label: item.label,
+        accelerator: item.accelerator,
+        // 表示するだけ。キー操作は renderer が受けている
+        registerAccelerator: false,
+        enabled: item.enabled,
+        click: () => {
+          // 選ばれた操作は renderer で実行する（選択状態・確認ダイアログ・フッタは renderer が持つ）
+          event.sender.send(IPC_CHANNELS.agentMenuAction, {
+            sessionId: request.sessionId,
+            action: item.action,
+          });
+        },
+      },
+    ],
+  );
+  Menu.buildFromTemplate(template).popup({ window });
 });
 
 ipcMain.handle(IPC_CHANNELS.moveWindow, (event, step: unknown) => {

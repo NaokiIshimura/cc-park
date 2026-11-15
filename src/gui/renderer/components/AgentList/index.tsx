@@ -29,6 +29,8 @@ interface AgentListProps {
   readonly showSubagents: boolean;
   readonly onSelect: (index: number) => void;
   readonly onOpen: (index: number) => void;
+  /** 行の右クリック。その行の操作メニューを出す */
+  readonly onContextMenu?: (index: number) => void;
   /** 見出しのクリックで、そのディレクトリを畳む / 開く */
   readonly onToggleGroup: (cwd: string) => void;
   /** 絞り込みが効いているか。0 件のときの案内を変える */
@@ -56,6 +58,7 @@ export const AgentList = ({
   showSubagents,
   onSelect,
   onOpen,
+  onContextMenu,
   onToggleGroup,
   filtered = false,
 }: AgentListProps) => {
@@ -113,6 +116,13 @@ export const AgentList = ({
                   onOpen={() => {
                     onOpen(index);
                   }}
+                  {...(onContextMenu === undefined
+                    ? {}
+                    : {
+                        onContextMenu: () => {
+                          onContextMenu(index);
+                        },
+                      })}
                 />
               );
             })}

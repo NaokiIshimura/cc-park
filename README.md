@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.2/cc-park-0.22.2-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.23.0/cc-park-0.23.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.2/cc-park-0.22.2-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.23.0/cc-park-0.23.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -430,14 +430,15 @@ GUI では加えて次の操作ができます。
 | 操作 | CLI | GUI |
 | --- | --- | --- |
 | 選択移動 | `↑` `↓` `k` `j` | 同左 ＋ 行クリック |
-| セッションを開くコマンドをコピー | `c` | 同左 |
+| セッションを開くコマンドをコピー | `c` | 同左 ＋ 行の右クリックメニュー |
 | **セッションの画面へ移動**（macOS） | なし | `Enter` ＋ 行ダブルクリック・ミニ表示のタイルのダブルクリック（background セッションは Terminal で開く。移動できなければコピー） |
-| stop（2 段階確認） | `s` → `y` | 同左 ＋ 確認ダイアログのボタン |
-| kill（2 段階確認） | `x` → `y` | 同左 ＋ 確認ダイアログのボタン |
+| stop（2 段階確認） | `s` → `y` | 同左 ＋ 行の右クリックメニュー ＋ 確認ダイアログのボタン |
+| kill（2 段階確認） | `x` → `y` | 同左 ＋ 行の右クリックメニュー ＋ 確認ダイアログのボタン |
 | 確認の取消 | 確認待ち中の `y` 以外のキー | 同左 ＋ `Esc` ＋ 取消ボタン |
 | 即時更新 | `r` | 同左 ＋ 更新ボタン |
 | 通知 ON / OFF | `n` | 同左 ＋ ヘッダのトグル |
 | 操作待ちだけ表示 / 検索 | `f` / `/` | 同左 ＋ 絞り込み中に出る `操作待ちだけ` ボタン・検索欄 |
+| **行の右クリックメニュー** | なし | 行を右クリック（開く / 開くコマンドをコピー / stop… / kill…。対象にできない stop / kill は灰色で選べない） |
 | **ディレクトリを畳む** | なし | 見出しをクリック |
 | **最前面に固定** | なし | `t` ＋ ヘッダの `top` トグル（既定 ON） |
 | **ウィンドウの透過** | なし | `o` ＋ ヘッダの `opacity` トグル（既定 100%） |
@@ -448,6 +449,7 @@ GUI では加えて次の操作ができます。
 | **操作待ちの件数（Dock・メニューバー）** | なし | 常時表示（`設定` で個別に消せる） |
 | 終了 | `q` `Ctrl+C` | `q` `Cmd+W` `Cmd+Q` |
 
+- 行を右クリックすると、その行を選んでから OS のメニューを出します。項目は `Enter` / `c` / `s` / `x` と同じことをします（stop / kill は確認ダイアログを経ます）。ミニ表示のタイルでは出しません
 - ウィンドウは初期 360x640・最小 360x400 でリサイズできます。件数が増えたら一覧側がスクロールします（[ミニ表示](#ミニ表示) の間を除く）
 - ヘッダは幅が足りなければタイトルと操作ボタンが上下 2 段に分かれます（1 段に収まるのは幅 640px 前後から）
 - 既定では OS の外観設定に追従してライト / ダークが切り替わります（[配色テーマ](#配色テーマ) で固定・変更できます）
