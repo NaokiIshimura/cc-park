@@ -51,10 +51,14 @@ const setup = (schedules: readonly Schedule[] = [schedule()]) => {
   };
 };
 
-const pressEscape = () => {
+const pressKey = (key: string) => {
   act(() => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key }));
   });
+};
+
+const pressEscape = () => {
+  pressKey('Escape');
 };
 
 afterEach(cleanup);
@@ -138,14 +142,41 @@ describe('SchedulePanel', () => {
   });
 
   it('実行の確認を取り消せる', async () => {
-    const { user, onRun, onClose } = setup();
+    const { user, onRun } = setup();
     await user.click(screen.getByRole('button', { name: '実行' }));
-    pressEscape();
-    expect(onClose).not.toHaveBeenCalled();
-
     await user.click(screen.getByRole('button', { name: '取消' }));
     expect(onRun).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: '実行 する' })).toBeNull();
+  });
+
+  it('実行の確認は y で確定できる', async () => {
+    const { user, onRun } = setup();
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    pressKey('y');
+    expect(onRun).toHaveBeenCalledWith('a1');
+    expect(screen.queryByRole('button', { name: '実行 する' })).toBeNull();
+  });
+
+  it('実行の確認は他のキーで取り消せる', async () => {
+    const { user, onRun } = setup();
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    pressKey('n');
+    expect(onRun).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '実行 する' })).toBeNull();
+  });
+
+  it('確認中の Escape は確認だけを取り消し、予約画面は閉じない', async () => {
+    const { user, onRun, onClose } = setup();
+    await user.click(screen.getByRole('button', { name: '実行' }));
+    pressEscape();
+    expect(onRun).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '実行 する' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: '予約' })).toBeDefined();
+
+    // 確認を閉じたあとの Escape は、これまでどおり予約画面を閉じる
+    pressEscape();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('削除は確認してから伝える', async () => {
@@ -154,6 +185,13 @@ describe('SchedulePanel', () => {
     expect(screen.getByText('「09:00 の予約」を 削除 しますか?')).toBeDefined();
 
     await user.click(screen.getByRole('button', { name: '削除 する' }));
+    expect(onDelete).toHaveBeenCalledWith('a1');
+  });
+
+  it('削除の確認は y で確定できる', async () => {
+    const { user, onDelete } = setup();
+    await user.click(screen.getByRole('button', { name: '削除' }));
+    pressKey('y');
     expect(onDelete).toHaveBeenCalledWith('a1');
   });
 
