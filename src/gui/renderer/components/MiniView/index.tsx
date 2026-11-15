@@ -27,6 +27,8 @@ interface MiniViewProps {
   readonly onToggleLayout: () => void;
   /** ミニ表示をやめて通常表示へ戻す */
   readonly onExpand: () => void;
+  /** タイルのダブルクリックで、セッションの画面へ移動する（通常表示の行のダブルクリックと同じ） */
+  readonly onOpen: (agent: Agent) => void;
   /** 描画した内容の大きさ。ウィンドウをこの大きさに合わせる */
   readonly onResize: (size: Size) => void;
 }
@@ -43,7 +45,8 @@ const tileTitle = (agent: Agent): string => {
  * 手・足の動きだけで作業中か操作待ちかは分かるので、情報を削っても目的は保てる。
  * 縦 1 列は幅を AA 1 体ぶんに保って件数が増えたら縦に伸ばし、
  * 横 1 列は高さを AA 1 体ぶんに保って横に伸ばす。
- * 状態を眺めるための表示なので、タイルは選択できない（操作は `開く` で通常表示へ戻してから行う）。
+ * 状態を眺めるための表示なので、タイルは選択できない。ダブルクリックでセッションの画面へ移動だけはでき、
+ * それ以外の操作は `開く` で通常表示へ戻してから行う。
  * 内容の大きさは AA のフォントで決まるため、描画のたびに実測して通知する。
  */
 export const MiniView = ({
@@ -53,6 +56,7 @@ export const MiniView = ({
   layout,
   onToggleLayout,
   onExpand,
+  onOpen,
   onResize,
 }: MiniViewProps) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -109,7 +113,14 @@ export const MiniView = ({
 
               <ul className="mini-group__tiles">
                 {group.agents.map((agent) => (
-                  <li key={agent.sessionId} className="mini-tile" title={tileTitle(agent)}>
+                  <li
+                    key={agent.sessionId}
+                    className="mini-tile"
+                    title={tileTitle(agent)}
+                    onDoubleClick={() => {
+                      onOpen(agent);
+                    }}
+                  >
                     <Character state={agent.state} frame={frame} />
                     <span className="mini-tile__name">{agent.name}</span>
                   </li>

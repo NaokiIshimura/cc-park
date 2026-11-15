@@ -147,6 +147,11 @@ export interface UseGuiSelectionResult extends UseSelectionCoreResult {
    * 起動元アプリのタブへ移動し、移動できなければセッションを開くコマンドをコピーする。
    */
   readonly openAt: (index: number) => void;
+  /**
+   * セッションを指定して開く（ミニ表示のタイルのダブルクリック）。動きは {@link openAt} と同じ。
+   * ミニ表示は畳んだグループのセッションも出すため、一覧の位置ではなくセッションそのものを受け取る。
+   */
+  readonly openAgent: (agent: Agent) => void;
 }
 
 /**
@@ -188,12 +193,8 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
 
   const { run, setMessage, pendingAction, selectedIndex } = core;
 
-  const openAt = useCallback(
-    (index: number) => {
-      const agent = agents[index];
-      if (agent === undefined) {
-        return;
-      }
+  const openAgent = useCallback(
+    (agent: Agent) => {
       void focus(agent).then(async (result) => {
         if (result.ok) {
           setMessage(
@@ -213,7 +214,17 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
         );
       });
     },
-    [agents, focus, copy, setMessage],
+    [focus, copy, setMessage],
+  );
+
+  const openAt = useCallback(
+    (index: number) => {
+      const agent = agents[index];
+      if (agent !== undefined) {
+        openAgent(agent);
+      }
+    },
+    [agents, openAgent],
   );
 
   const toggleAlwaysOnTop = useCallback(() => {
@@ -304,5 +315,5 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     onEscape,
   ]);
 
-  return { ...core, toggleAlwaysOnTop, cycleOpacity, toggleCompact, openAt };
+  return { ...core, toggleAlwaysOnTop, cycleOpacity, toggleCompact, openAt, openAgent };
 };

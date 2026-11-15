@@ -196,6 +196,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     run,
     select,
     openAt,
+    openAgent,
     setMessage,
     toggleAlwaysOnTop,
     cycleOpacity,
@@ -265,6 +266,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
           layout={compactSettings.layout}
           onToggleLayout={toggleCompactLayout}
           onExpand={toggleCompact}
+          onOpen={openAgent}
           onResize={reportSize}
         />
       </div>
