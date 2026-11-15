@@ -139,6 +139,33 @@ describe('parseSchedules', () => {
     const text = JSON.stringify({ schedules: [schedule({ lastFiredAt: 1789881096899 })] });
     expect(parseSchedules(text)[0]?.lastFiredAt).toBe(1789881096899);
   });
+
+  it('曜日を読み戻せる（重複は除き、日曜始まりに揃える）', () => {
+    const text = JSON.stringify({ schedules: [{ ...schedule(), days: [5, 1, 3, 3] }] });
+    expect(parseSchedules(text)[0]?.days).toEqual([1, 3, 5]);
+  });
+
+  it('曜日が無い予約（曜日を選べる前の予約）は毎日として扱う', () => {
+    const text = JSON.stringify({ schedules: [schedule()] });
+    expect(parseSchedules(text)[0]).not.toHaveProperty('days');
+  });
+
+  it('曜日として使えない値は捨て、何も残らなければ毎日として扱う', () => {
+    const text = JSON.stringify({
+      schedules: [
+        { ...schedule({ id: 'a' }), days: [1, 7, -1, 'mon', 2.5, 5] },
+        { ...schedule({ id: 'b' }), days: ['mon'] },
+        { ...schedule({ id: 'c' }), days: 'weekdays' },
+        { ...schedule({ id: 'd' }), days: [0, 1, 2, 3, 4, 5, 6] },
+      ],
+    });
+    expect(parseSchedules(text).map((item) => item.days)).toEqual([
+      [1, 5],
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
 });
 
 describe('serializeSchedules', () => {

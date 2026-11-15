@@ -2,10 +2,19 @@ import { useEffect, useId, useState } from 'react';
 import {
   createSchedule,
   createScheduleId,
+  daysForRepeatMode,
   normalizeCwd,
+  REPEAT_MODE_LABELS,
+  REPEAT_MODES,
+  repeatModeOf,
+  scheduleDays,
   validateSchedule,
+  WEEKDAY_LABELS,
+  WEEKDAY_ORDER,
+  type RepeatMode,
   type Schedule,
   type ScheduleFieldErrors,
+  type Weekday,
 } from '../../../../shared/schedule.js';
 
 interface ScheduleDialogProps {
@@ -35,6 +44,10 @@ export const ScheduleDialog = ({
   onCancel,
 }: ScheduleDialogProps) => {
   const [time, setTime] = useState(schedule?.time ?? '09:00');
+  const initialDays = schedule === null ? WEEKDAY_ORDER : scheduleDays(schedule);
+  const [repeat, setRepeat] = useState<RepeatMode>(repeatModeOf(initialDays));
+  /** 曜日指定で選んでいる曜日。毎日・平日へ切り替えても覚えておき、戻したときに使う */
+  const [customDays, setCustomDays] = useState<readonly Weekday[]>(initialDays);
   const [cwd, setCwd] = useState(schedule?.cwd ?? home);
   const [prompt, setPrompt] = useState(schedule?.prompt ?? '');
   const [errors, setErrors] = useState<ScheduleFieldErrors>({});
@@ -71,7 +84,8 @@ export const ScheduleDialog = ({
   };
 
   const submit = () => {
-    const input = { time, cwd: normalizeCwd(cwd, home), prompt };
+    const days = daysForRepeatMode(repeat, customDays);
+    const input = { time, days, cwd: normalizeCwd(cwd, home), prompt };
     const validated = validateSchedule(input);
     if (!validated.ok) {
       setErrors(validated.errors);
@@ -109,6 +123,58 @@ export const ScheduleDialog = ({
           />
         </label>
         {errors.time === undefined ? null : <p className="field__error">{errors.time}</p>}
+
+        <fieldset className="field field--plain">
+          <legend className="field__label">繰り返し</legend>
+          <div className="choices" role="radiogroup" aria-label="繰り返し">
+            {REPEAT_MODES.map((mode) => (
+              <label key={mode} className={repeat === mode ? 'choice choice--on' : 'choice'}>
+                <input
+                  type="radio"
+                  className="choice__input"
+                  name="repeat"
+                  value={mode}
+                  checked={repeat === mode}
+                  onChange={() => {
+                    // 曜日指定へ移るときは、それまでの曜日（平日なら月〜金）から選び始める
+                    if (mode === 'custom') {
+                      setCustomDays(daysForRepeatMode(repeat, customDays));
+                    }
+                    setRepeat(mode);
+                  }}
+                />
+                {REPEAT_MODE_LABELS[mode]}
+              </label>
+            ))}
+          </div>
+
+          {repeat !== 'custom' ? null : (
+            <div className="choices choices--weekdays">
+              {WEEKDAY_ORDER.map((day) => {
+                const checked = customDays.includes(day);
+                return (
+                  <label key={day} className={checked ? 'choice choice--on' : 'choice'}>
+                    <input
+                      type="checkbox"
+                      className="choice__input"
+                      aria-label={`${WEEKDAY_LABELS[day]}曜日`}
+                      checked={checked}
+                      onChange={() => {
+                        setCustomDays((current) =>
+                          current.includes(day)
+                            ? current.filter((value) => value !== day)
+                            : [...current, day],
+                        );
+                      }}
+                    />
+                    {WEEKDAY_LABELS[day]}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </fieldset>
+        {errors.days === undefined ? null : <p className="field__error">{errors.days}</p>}
 
         {/* 選択ボタンを横に置くため、label で囲まず htmlFor で結び付ける */}
         <div className="field">
@@ -155,7 +221,7 @@ export const ScheduleDialog = ({
         </label>
         {errors.prompt === undefined ? null : <p className="field__error">{errors.prompt}</p>}
 
-        <p className="dialog__hint">毎日この時刻に claude --bg で起動します</p>
+        <p className="dialog__hint">選んだ曜日のこの時刻に claude --bg で起動します</p>
 
         <div className="dialog__actions">
           <button type="button" className="button" onClick={onCancel}>

@@ -183,6 +183,83 @@ describe('ScheduleDialog', () => {
     expect(pickButton()).toHaveProperty('disabled', false);
   });
 
+  describe('繰り返し', () => {
+    const repeat = (name: string): HTMLInputElement =>
+      screen.getByRole('radio', { name }) as HTMLInputElement;
+    const weekday = (name: string): HTMLInputElement =>
+      screen.getByRole('checkbox', { name: `${name}曜日` }) as HTMLInputElement;
+    const fill = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(field('プロンプト'), 'おはよう');
+    };
+
+    it('新規追加は毎日で開き、曜日の選択は出さない', () => {
+      setup();
+      expect(repeat('毎日').checked).toBe(true);
+      expect(screen.queryByRole('checkbox', { name: '月曜日' })).toBeNull();
+    });
+
+    it('毎日を選んで保存すると、曜日を持たない（毎日）', async () => {
+      const { user, onSubmit } = setup();
+      await fill(user);
+      await user.click(screen.getByRole('button', { name: '保存' }));
+      expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('days');
+    });
+
+    it('平日を選んで保存すると、月〜金にする', async () => {
+      const { user, onSubmit } = setup();
+      await user.click(repeat('平日'));
+      await fill(user);
+      await user.click(screen.getByRole('button', { name: '保存' }));
+      expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ days: [1, 2, 3, 4, 5] });
+    });
+
+    it('曜日指定では曜日を複数選べる', async () => {
+      const { user, onSubmit } = setup();
+      await user.click(repeat('曜日指定'));
+      // 毎日から移ったので全曜日が選ばれた状態から始まる。月・水・金だけ残す
+      for (const name of ['火', '木', '土', '日']) {
+        await user.click(weekday(name));
+      }
+      expect(['月', '水', '金'].map((name) => weekday(name).checked)).toEqual([true, true, true]);
+      await fill(user);
+      await user.click(screen.getByRole('button', { name: '保存' }));
+      expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ days: [1, 3, 5] });
+    });
+
+    it('平日から曜日指定へ移ると、月〜金を選んだ状態から始める', async () => {
+      const { user } = setup();
+      await user.click(repeat('平日'));
+      await user.click(repeat('曜日指定'));
+      expect(
+        ['月', '火', '水', '木', '金', '土', '日'].map((name) => weekday(name).checked),
+      ).toEqual([true, true, true, true, true, false, false]);
+    });
+
+    it('曜日指定で 1 つも選ばなければ保存せずエラーを出す', async () => {
+      const { user, onSubmit } = setup();
+      await user.click(repeat('曜日指定'));
+      for (const name of ['月', '火', '水', '木', '金', '土', '日']) {
+        await user.click(weekday(name));
+      }
+      await fill(user);
+      await user.click(screen.getByRole('button', { name: '保存' }));
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByText('曜日を 1 つ以上選んでください。')).toBeDefined();
+    });
+
+    it('編集では保存済みの曜日から選び方を決めて開く', () => {
+      setup({ ...existing, days: [1, 3, 5] });
+      expect(repeat('曜日指定').checked).toBe(true);
+      expect(weekday('水').checked).toBe(true);
+      expect(weekday('火').checked).toBe(false);
+    });
+
+    it('編集で平日の予約は平日で開く', () => {
+      setup({ ...existing, days: [1, 2, 3, 4, 5] });
+      expect(repeat('平日').checked).toBe(true);
+    });
+  });
+
   it('取消で閉じる', async () => {
     const { user, onCancel } = setup();
     await user.click(screen.getByRole('button', { name: '取消' }));

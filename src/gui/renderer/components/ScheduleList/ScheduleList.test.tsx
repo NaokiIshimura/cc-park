@@ -58,6 +58,17 @@ describe('ScheduleList', () => {
     expect(screen.getByText('~/GitHub/cc-park')).toBeDefined();
   });
 
+  it('繰り返す曜日を表示する（曜日が無い予約は毎日）', () => {
+    setup([
+      schedule({ id: 'a' }),
+      schedule({ id: 'b', days: [1, 2, 3, 4, 5] }),
+      schedule({ id: 'c', days: [1, 3, 5] }),
+    ]);
+    expect(screen.getByText('毎日')).toBeDefined();
+    expect(screen.getByText('平日')).toBeDefined();
+    expect(screen.getByText('月・水・金')).toBeDefined();
+  });
+
   it('プロンプトを表示する', () => {
     setup();
     expect(screen.getByText('今日の TODO を整理して')).toBeDefined();

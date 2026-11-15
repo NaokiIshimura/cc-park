@@ -1,5 +1,5 @@
 import { formatCwd } from '../../../../shared/formatCwd.js';
-import { formatNextFire, type Schedule } from '../../../../shared/schedule.js';
+import { formatNextFire, formatWeekdays, type Schedule } from '../../../../shared/schedule.js';
 
 /** ディレクトリ表示の上限桁数。ウィンドウ幅に収まる範囲にする。 */
 const CWD_MAX_WIDTH = 28;
@@ -80,6 +80,7 @@ export const ScheduleList = ({
               削除
             </button>
           </div>
+          <p className="schedule__days">{formatWeekdays(schedule)}</p>
           <p className="schedule__cwd">{formatCwd(schedule.cwd, CWD_MAX_WIDTH, home)}</p>
           <p className="schedule__prompt">{schedule.prompt}</p>
         </li>

@@ -661,6 +661,12 @@ body {
   text-overflow: ellipsis;
 }
 
+.schedule__days {
+  margin: 2px 0 0;
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
 .schedule__cwd,
 .schedule__prompt {
   margin: 4px 0 0;
@@ -676,6 +682,55 @@ body {
 
 .schedule__prompt {
   color: var(--fg-muted);
+}
+
+/* 繰り返し（毎日 / 平日 / 曜日指定）と曜日の選択。ラジオ・チェックボックスは隠し、文字をトグルのように見せる */
+.field--plain {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.choices {
+  display: flex;
+  gap: 4px;
+}
+
+.choices--weekdays {
+  margin-top: 6px;
+}
+
+.choice {
+  position: relative;
+  flex: 1;
+  padding: 3px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.choice--on {
+  border-color: var(--ink-green);
+  color: var(--ink-green);
+  font-weight: 700;
+}
+
+/* キーボードで選べるよう、見えなくしても操作はできる形で残す */
+.choice__input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.choice:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .dialog--form {
