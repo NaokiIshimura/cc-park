@@ -38,6 +38,7 @@ const setup = (overrides: Partial<Parameters<typeof MiniView>[0]> = {}) => {
   const onExpand = vi.fn();
   const onToggleLayout = vi.fn();
   const onResize = vi.fn();
+  const onOpen = vi.fn();
   const result = render(
     <MiniView
       groups={twoGroups}
@@ -46,11 +47,12 @@ const setup = (overrides: Partial<Parameters<typeof MiniView>[0]> = {}) => {
       layout="vertical"
       onToggleLayout={onToggleLayout}
       onExpand={onExpand}
+      onOpen={onOpen}
       onResize={onResize}
       {...overrides}
     />,
   );
-  return { ...result, onExpand, onToggleLayout, onResize, user: userEvent.setup() };
+  return { ...result, onExpand, onToggleLayout, onResize, onOpen, user: userEvent.setup() };
 };
 
 describe('MiniView', () => {
@@ -78,6 +80,19 @@ describe('MiniView', () => {
     expect(screen.queryByRole('option')).toBeNull();
     await user.click(container.querySelector('.mini-tile') as HTMLElement);
     expect(container.querySelector('[aria-selected]')).toBeNull();
+  });
+
+  it('タイルのダブルクリックで、そのセッションの画面へ移動する操作を通知する', async () => {
+    const { container, onOpen, user } = setup();
+    await user.dblClick(container.querySelectorAll('.mini-tile')[2] as HTMLElement);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'c' }));
+  });
+
+  it('シングルクリックでは移動しない', async () => {
+    const { container, onOpen, user } = setup();
+    await user.click(container.querySelector('.mini-tile') as HTMLElement);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 
   it('名前と状態をツールチップに出す', () => {

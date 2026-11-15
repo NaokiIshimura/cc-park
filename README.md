@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.17.1/cc-park-0.17.1-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.18.0/cc-park-0.18.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.17.1/cc-park-0.17.1-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.18.0/cc-park-0.18.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -275,7 +275,7 @@ background セッション（PID が無い）や、祖先に該当するもの�
 
 ### セッションの画面へ移動する（GUI・macOS）
 
-GUI では `Enter` か行のダブルクリックで、セッションを動かしている端末のタブやアプリを前面に出せます。
+GUI では `Enter` か行のダブルクリック（[ミニ表示](#ミニ表示) ではタイルのダブルクリック）で、セッションを動かしている端末のタブやアプリを前面に出せます。
 `BLOCKED` を見つけたら、そのまま承認しに行けます。
 
 | 起動元 | 動作 |
@@ -416,7 +416,7 @@ GUI では加えて次の操作ができます。
 | --- | --- | --- |
 | 選択移動 | `↑` `↓` `k` `j` | 同左 ＋ 行クリック |
 | セッションを開くコマンドをコピー | `c` | 同左 |
-| **セッションの画面へ移動**（macOS） | なし | `Enter` ＋ 行ダブルクリック（移動できなければコピー） |
+| **セッションの画面へ移動**（macOS） | なし | `Enter` ＋ 行ダブルクリック・ミニ表示のタイルのダブルクリック（移動できなければコピー） |
 | stop（2 段階確認） | `s` → `y` | 同左 ＋ 確認ダイアログのボタン |
 | kill（2 段階確認） | `x` → `y` | 同左 ＋ 確認ダイアログのボタン |
 | 確認の取消 | 確認待ち中の `y` 以外のキー | 同左 ＋ `Esc` ＋ 取消ボタン |
@@ -509,7 +509,9 @@ cc-park --frame
 - 縦 1 列は幅を AA 1 体ぶんに保って件数が増えたら縦に、横 1 列は高さを AA 1 体ぶんに保って横に伸ばします（折り返しはしません）
 - 長い名前は省略し、ツールチップで名前と状態を確かめられます
 - 見出しはディレクトリ名（パスの末尾）だけを出し、ツールチップで `~` 短縮したパスを確かめられます
-- ミニ表示は状態を眺めるための表示で、タイルは選択できません（クリック・ダブルクリックしても何も起きません）。コピーや stop などは `開く` で通常表示へ戻してから行います
+- タイルをダブルクリックすると、通常表示の行と同じく[セッションの画面へ移動](#セッションの画面へ移動するguimacos)します（別の Space にあればその Space へ切り替えます）。ミニ表示のままで、通常表示には戻りません
+- 移動できないセッション（`tmux` など）は、通常表示と同じく開くコマンドをクリップボードへコピーします
+- タイルは選択できません（クリックしても何も起きません）。コピーや stop などは `開く` で通常表示へ戻してから行います
 - 縮める・広げるときは、ウィンドウを置いた側の画面の端（右半分なら右端、下半分なら下端）を基準にします。通常表示へ戻すと畳む前の大きさに戻ります
 - ミニ表示の間はウィンドウを手でリサイズできません。OS のタイトルバーは残ります
 - ミニ表示のまま終了しても、次回の起動は通常表示から始まります。並び（縦 1 列 / 横 1 列）は `~/.cc-park/settings.json` に保存され、次回も引き継ぎます。通常表示へ戻しても並びは覚えています

@@ -980,8 +980,29 @@ describe('GuiApp のミニ表示', () => {
     const { container, user } = await setup({ fetchAgents: working(), writeClipboard });
     pressKey('m');
 
-    await user.dblClick(container.querySelector('.mini-tile') as HTMLElement);
+    await user.click(container.querySelector('.mini-tile') as HTMLElement);
     expect(screen.queryByRole('option')).toBeNull();
     expect(writeClipboard).not.toHaveBeenCalled();
+  });
+
+  it('ミニ表示のタイルをダブルクリックすると、ミニ表示のままセッションの画面へ移動する', async () => {
+    const focusSession = vi.fn(async () => ({
+      ok: true as const,
+      target: 'tab' as const,
+      app: 'iTerm2',
+    }));
+    const { container, user } = await setup({
+      focusSession,
+      fetchAgents: vi.fn(async () => ({
+        ok: true as const,
+        agents: [agent('a', { state: 'working' }), agent('b', { state: 'working' })],
+      })),
+    });
+    pressKey('m');
+
+    await user.dblClick(container.querySelectorAll('.mini-tile')[1] as HTMLElement);
+    expect(focusSession).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'b' }));
+    expect(screen.getByRole('button', { name: '開く' })).toBeDefined();
+    expect(screen.queryByRole('option')).toBeNull();
   });
 });

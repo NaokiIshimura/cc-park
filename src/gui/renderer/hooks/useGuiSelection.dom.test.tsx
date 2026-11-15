@@ -35,12 +35,14 @@ interface Snapshot {
 
 let snapshot: Snapshot;
 let select: (index: number) => void;
+let openAgent: (agent: Agent) => void;
 
 const Harness = (props: UseGuiSelectionOptions) => {
   const core = useGuiSelection(props);
   const { selectedIndex, selectedSessionId, message, pendingAction } = core;
   snapshot = { selectedIndex, selectedSessionId, message, pendingAction };
   select = core.select;
+  openAgent = core.openAgent;
   return <button type="button">ボタン</button>;
 };
 
@@ -162,6 +164,18 @@ describe('useGuiSelection', () => {
     expect(snapshot.message).toBe(
       'tmux のセッションへは移動できません。コマンドをコピーしました: cd /tmp && claude --resume a',
     );
+  });
+
+  it('一覧に無い（畳んだグループの）セッションも、指定して画面へ移動できる', async () => {
+    const { focus } = setup();
+    const hidden = agent('z');
+    act(() => {
+      openAgent(hidden);
+    });
+    await act(async () => undefined);
+    expect(focus).toHaveBeenCalledWith(hidden);
+    expect(snapshot.selectedIndex).toBe(0);
+    expect(snapshot.message).toBe('iTerm2 のタブへ移動しました: z');
   });
 
   it('stop の確認待ち中の Enter は取消として扱う', async () => {
