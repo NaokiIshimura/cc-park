@@ -49,16 +49,18 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 
 | ファイル | 対象 |
 | --- | --- |
-| `cc-park-<version>-darwin-arm64.zip` | Apple シリコン（M1 以降） |
-| `cc-park-<version>-darwin-x64.zip` | Intel Mac |
+| `cc-park-<version>-darwin-arm64.zip` / `cc-park-darwin-arm64.zip` | Apple シリコン（M1 以降） |
+| `cc-park-<version>-darwin-x64.zip` / `cc-park-darwin-x64.zip` | Intel Mac |
+
+バージョンを含まない方は中身が同じ複製で、下記の手順はこちらを使って常に最新版を取得します。
 
 配布用の証明書で署名・公証をしていないため、ブラウザでダウンロードすると初回は Gatekeeper に止められます。
-ターミナルで次のコマンドを実行すると、ダウンロードして `/Applications` に置けます（古い `cc-park.app` は置き換えます）。
+ターミナルで次のコマンドを実行すると、最新版をダウンロードして `/Applications` に置けます（古い `cc-park.app` は置き換えます）。
 
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.23.0/cc-park-0.23.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/latest/download/cc-park-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +69,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.23.0/cc-park-0.23.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/latest/download/cc-park-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip

@@ -68,6 +68,8 @@ jobs:
             ditto -c -k --sequesterRsrc --keepParent \
               "release/cc-park-darwin-${arch}/cc-park.app" \
               "artifacts/cc-park-${VERSION}-darwin-${arch}.zip"
+            # README の手順は releases/latest/download/ から取るので、名前にバージョンを含まない複製も添える
+            cp "artifacts/cc-park-${VERSION}-darwin-${arch}.zip" "artifacts/cc-park-darwin-${arch}.zip"
           done
 
       # リリースを作らない場合でも、ビルド結果は実行ログから取れるようにしておく
@@ -87,8 +89,8 @@ jobs:
 
           | ファイル | 対象 |
           | --- | --- |
-          | `cc-park-VERSION-darwin-arm64.zip` | Apple シリコン（M1 以降） |
-          | `cc-park-VERSION-darwin-x64.zip` | Intel Mac |
+          | `cc-park-VERSION-darwin-arm64.zip` / `cc-park-darwin-arm64.zip` | Apple シリコン（M1 以降） |
+          | `cc-park-VERSION-darwin-x64.zip` / `cc-park-darwin-x64.zip` | Intel Mac |
 
           ## 使い方
 
