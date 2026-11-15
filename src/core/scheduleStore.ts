@@ -1,7 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { Schedule } from '../shared/schedule.js';
+import {
+  ALL_WEEKDAYS,
+  isWeekday,
+  normalizeWeekdays,
+  type Schedule,
+  type Weekday,
+} from '../shared/schedule.js';
 import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
 
 /**
@@ -60,6 +66,15 @@ export interface ScheduleStoreOptions {
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value !== '';
 
+/** 保存された曜日を取り出す。使えない値は捨て、何も残らなければ持たない（毎日）。 */
+const toDays = (value: unknown): { days?: Weekday[] } => {
+  if (!Array.isArray(value)) {
+    return {};
+  }
+  const days = normalizeWeekdays(value.filter(isWeekday));
+  return days.length === 0 || days.length === ALL_WEEKDAYS.length ? {} : { days };
+};
+
 /** 1 件ぶんを検査する。必須項目が欠けていれば null にして捨てる。 */
 const toSchedule = (value: unknown): Schedule | null => {
   if (typeof value !== 'object' || value === null) {
@@ -81,6 +96,8 @@ const toSchedule = (value: unknown): Schedule | null => {
     time: source.time,
     cwd: source.cwd,
     prompt: source.prompt,
+    // 曜日が無い（曜日を選べる前の予約）・解釈できないときは毎日として扱う
+    ...toDays(source.days),
     // 壊れていたら「動く」側へ倒す。黙って止まっているより気づきやすい
     enabled: typeof source.enabled === 'boolean' ? source.enabled : true,
     lastFiredAt:

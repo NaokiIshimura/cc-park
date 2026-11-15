@@ -2,14 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createSchedule,
   createScheduleId,
+  daysForRepeatMode,
   dueFireAt,
   formatNextFire,
+  formatWeekdays,
   nextFireAt,
   normalizeCwd,
   normalizeTime,
   parseTime,
   previousFireAt,
   removeSchedule,
+  repeatModeOf,
   sortSchedules,
   upsertSchedule,
   validateSchedule,
@@ -293,5 +296,82 @@ describe('removeSchedule', () => {
   it('ID で 1 件取り除く', () => {
     const result = removeSchedule([schedule({ id: 'a' }), schedule({ id: 'b' })], 'a');
     expect(result.map((item) => item.id)).toEqual(['b']);
+  });
+});
+
+/*
+ * 曜日の指定。2026-09-21 が月曜（21 月 / 22 火 / 23 水 / 24 木 / 25 金 / 26 土 / 27 日 / 28 月）。
+ */
+describe('曜日の指定', () => {
+  const weekdays = schedule({ days: [1, 2, 3, 4, 5] });
+  const mwf = schedule({ days: [1, 3, 5] });
+
+  it('平日の予約は、金曜の後は土日を飛ばして月曜に起動する', () => {
+    expect(nextFireAt(weekdays, at(2026, 9, 25, 10, 0))).toBe(at(2026, 9, 28, 9, 0));
+    expect(nextFireAt(weekdays, at(2026, 9, 26, 8, 0))).toBe(at(2026, 9, 28, 9, 0));
+  });
+
+  it('当日が起動する曜日で、時刻がまだなら今日を返す', () => {
+    expect(nextFireAt(mwf, at(2026, 9, 23, 8, 0))).toBe(at(2026, 9, 23, 9, 0));
+  });
+
+  it('1 曜日だけでも、来週の同じ曜日まで探す', () => {
+    const monday = schedule({ days: [1] });
+    expect(nextFireAt(monday, at(2026, 9, 21, 10, 0))).toBe(at(2026, 9, 28, 9, 0));
+  });
+
+  it('直近に過ぎた発火も、起動する曜日だけを数える', () => {
+    expect(previousFireAt(weekdays, at(2026, 9, 27, 12, 0))).toBe(at(2026, 9, 25, 9, 0));
+    expect(previousFireAt(mwf, at(2026, 9, 24, 12, 0))).toBe(at(2026, 9, 23, 9, 0));
+  });
+
+  it('起動しない曜日には発火しない', () => {
+    const saturday = at(2026, 9, 26, 9, 0);
+    expect(dueFireAt(weekdays, saturday, at(2026, 9, 26, 8, 59))).toBeNull();
+    const friday = at(2026, 9, 25, 9, 0);
+    expect(dueFireAt(weekdays, friday, at(2026, 9, 25, 8, 59))).toBe(friday);
+  });
+
+  it('次回が明後日以降なら曜日で示す', () => {
+    expect(formatNextFire(weekdays, at(2026, 9, 25, 10, 0))).toBe('月曜 09:00');
+    expect(formatNextFire(mwf, at(2026, 9, 23, 10, 0))).toBe('金曜 09:00');
+    expect(formatNextFire(weekdays, at(2026, 9, 27, 10, 0))).toBe('明日 09:00');
+  });
+
+  it('曜日を表示する（毎日・平日・土日はまとめて呼ぶ）', () => {
+    expect(formatWeekdays(schedule())).toBe('毎日');
+    expect(formatWeekdays(schedule({ days: [0, 1, 2, 3, 4, 5, 6] }))).toBe('毎日');
+    expect(formatWeekdays(weekdays)).toBe('平日');
+    expect(formatWeekdays(schedule({ days: [6, 0] }))).toBe('土日');
+    expect(formatWeekdays(schedule({ days: [5, 1, 3] }))).toBe('月・水・金');
+    expect(formatWeekdays(schedule({ days: [0, 2] }))).toBe('火・日');
+  });
+
+  it('曜日から繰り返しの選び方を決める', () => {
+    expect(repeatModeOf([0, 1, 2, 3, 4, 5, 6])).toBe('daily');
+    expect(repeatModeOf([5, 4, 3, 2, 1])).toBe('weekdays');
+    expect(repeatModeOf([1, 3, 5])).toBe('custom');
+    expect(repeatModeOf([0, 6])).toBe('custom');
+  });
+
+  it('選び方から曜日を決める（曜日指定は選んだ曜日をそのまま使う）', () => {
+    expect(daysForRepeatMode('daily', [1])).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(daysForRepeatMode('weekdays', [1])).toEqual([1, 2, 3, 4, 5]);
+    expect(daysForRepeatMode('custom', [1, 3])).toEqual([1, 3]);
+  });
+
+  it('曜日を 1 つも選ばなければエラーにする', () => {
+    expect(validateSchedule({ time: '09:00', days: [], cwd: '/tmp', prompt: 'x' })).toEqual({
+      ok: false,
+      errors: { days: '曜日を 1 つ以上選んでください。' },
+    });
+  });
+
+  it('予約を組み立てるとき、毎日なら曜日を持たず、それ以外は日曜始まりに揃えて持つ', () => {
+    const base = { time: '09:00', cwd: '/tmp', prompt: 'x' };
+    expect(createSchedule({ ...base, days: [1, 2, 3, 4, 5, 6, 0] }, 'a')).not.toHaveProperty(
+      'days',
+    );
+    expect(createSchedule({ ...base, days: [5, 1, 3, 1] }, 'a').days).toEqual([1, 3, 5]);
   });
 });
