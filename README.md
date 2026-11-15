@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.0/cc-park-0.22.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.1/cc-park-0.22.1-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.0/cc-park-0.22.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.1/cc-park-0.22.1-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -511,7 +511,7 @@ cc-park --frame
 ### ウィンドウを四隅・中央へ動かす
 
 `→` キーを押すたびに、ウィンドウが 右下 → 右上 → 左下 → 左上 → 中央 → 右下 … の順に移ります。`←` キーは逆順です。
-フッタに移した先（`ウィンドウを右上へ移動しました` など）を出します。
+フッタに移した先（`ウィンドウを右上へ移動しました` など）を出します。フッタのキー一覧には `←/→ 位置` と出ます。
 
 - ウィンドウが今いる画面の、メニューバーと Dock を除いた範囲の端にぴったり付けます。大きさは変えません
 - 位置は覚えておかず、今のウィンドウの位置から次を決めます。手で動かしたあとは、`→` なら右下、`←` なら中央から始めます

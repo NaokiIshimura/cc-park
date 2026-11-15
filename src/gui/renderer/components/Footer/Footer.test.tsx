@@ -16,6 +16,12 @@ describe('Footer', () => {
     expect(screen.getByText(/Enter 開く/)).toBeDefined();
   });
 
+  it('ウィンドウの位置を動かすキーを、選択の次に案内する', () => {
+    const { container } = render(<Footer message={null} />);
+    const keys = [...container.querySelectorAll('.footer__key')].map((key) => key.textContent);
+    expect(keys.slice(0, 2)).toEqual(['↑/↓ 選択', '←/→ 位置']);
+  });
+
   it('最前面固定のキーを案内する', () => {
     render(<Footer message={null} />);
     expect(screen.getByText(/t 最前面/)).toBeDefined();

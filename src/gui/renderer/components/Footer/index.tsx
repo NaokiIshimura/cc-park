@@ -5,6 +5,7 @@ interface FooterProps {
 /** キーと操作名の組。組の途中では折り返さない（`通` と `知` が別の行に割れないようにする）。 */
 const KEY_HELP: readonly (readonly [key: string, label: string])[] = [
   ['↑/↓', '選択'],
+  ['←/→', '位置'],
   ['Enter', '開く'],
   ['c', 'コピー'],
   ['s', 'stop'],
