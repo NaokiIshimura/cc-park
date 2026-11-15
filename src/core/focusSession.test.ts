@@ -108,7 +108,7 @@ describe('focusSession', () => {
   });
 
   it('起動元の分からない background セッションは Terminal で claude attach して開く', async () => {
-    const runner = fakeRunner({ osascript: '' });
+    const runner = fakeRunner({ ps: '', osascript: '' });
     await expect(
       focusSession(
         agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
@@ -118,9 +118,9 @@ describe('focusSession', () => {
         },
       ),
     ).resolves.toEqual({ ok: true, target: 'terminal', app: 'Terminal' });
-    expect(runner).toHaveBeenCalledTimes(1);
-    expect(runner.mock.calls[0]?.[0]).toBe('osascript');
-    expect(runner.mock.calls[0]?.[1]?.[1]).toContain(
+    // まだどこでも attach していないことを確かめてから開く
+    expect(runner.mock.calls.map(([command]) => command)).toEqual(['ps', 'osascript']);
+    expect(runner.mock.calls[1]?.[1]?.[1]).toContain(
       'do script "cd /Users/naoki/app && claude attach 5c2d4962"',
     );
   });
@@ -139,14 +139,14 @@ describe('focusSession', () => {
   });
 
   it('設定で選んだ iTerm2 で開く', async () => {
-    const runner = fakeRunner({ osascript: '' });
+    const runner = fakeRunner({ ps: '', osascript: '' });
     await expect(
       focusSession(
         agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
         { platform: 'darwin', runner, fallbackApp: 'iTerm2' },
       ),
     ).resolves.toEqual({ ok: true, target: 'terminal', app: 'iTerm2' });
-    expect(runner.mock.calls[0]?.[1]?.[1]).toContain('tell application "iTerm"');
+    expect(runner.mock.calls[1]?.[1]?.[1]).toContain('tell application "iTerm"');
   });
 
   it('iTerm2 で開けなければ、iTerm2 で開けなかったと返す', async () => {
@@ -210,5 +210,101 @@ describe('focusSession', () => {
       focusSession(agent({ launchApp: 'tmux' }), { platform: 'darwin', runner }),
     ).resolves.toEqual({ ok: false, reason: 'tmux のセッションへは移動できません' });
     expect(runner).not.toHaveBeenCalled();
+  });
+
+  describe('既に attach しているウィンドウがあるとき', () => {
+    const bg = () =>
+      agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined });
+
+    /** `ps` を引数で出し分けるランナー。attach の一覧とプロセスの親子を返す。 */
+    const attachedRunner = (clients: string, table: string, osascript: string | Error = '') =>
+      vi.fn<CommandRunner>(async (command, args) => {
+        if (command === 'ps') {
+          return args.includes('pid=,tty=,args=') ? clients : table;
+        }
+        if (command === 'osascript') {
+          if (osascript instanceof Error) {
+            throw osascript;
+          }
+          return osascript;
+        }
+        if (command === 'open') {
+          return '';
+        }
+        throw new Error(`unexpected: ${command}`);
+      });
+
+    const commands = (runner: ReturnType<typeof attachedRunner>) =>
+      runner.mock.calls.map(([command]) => command);
+
+    it('iTerm2 で attach していれば、新しく開かずにそのタブへ移る', async () => {
+      const runner = attachedRunner(
+        '  901 ttys003  claude attach 5c2d4962\n  902 ??  /usr/bin/other',
+        [
+          '  901   900 /Users/naoki/.local/bin/claude',
+          '  900   800 -zsh',
+          '  800     1 /Applications/iTerm.app/Contents/MacOS/iTerm2',
+        ].join('\n'),
+        'found',
+      );
+      await expect(
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'iTerm2' }),
+      ).resolves.toEqual({ ok: true, target: 'tab', app: 'iTerm2' });
+      expect(runner.mock.calls[2]?.[1]?.[1]).toContain('if tty of s is "/dev/ttys003" then');
+      expect(commands(runner)).toEqual(['ps', 'ps', 'osascript']);
+    });
+
+    it('Ghostty で attach していれば、そのウィンドウを持つプロセスを前面に出す', async () => {
+      const runner = attachedRunner(
+        '  950 ttys007  /bin/zsh -l -c cd /Users/naoki/app && claude attach 5c2d4962; exec /bin/zsh -l',
+        [
+          '  950   720 /bin/zsh',
+          '  720   700 /usr/bin/login',
+          '  700     1 /Applications/Ghostty.app/Contents/MacOS/ghostty',
+        ].join('\n'),
+      );
+      await expect(
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'Ghostty' }),
+      ).resolves.toEqual({ ok: true, target: 'app', app: 'Ghostty' });
+      expect(runner.mock.calls[2]?.[1]?.[1]).toContain('first process whose unix id is 700');
+      expect(commands(runner)).not.toContain('open');
+    });
+
+    it('プロセスを前面に出せなければ（System Events の許可が無いなど）、アプリを前面に出す', async () => {
+      const runner = attachedRunner(
+        '  950 ttys007  claude attach 5c2d4962',
+        ['  950   700 /bin/zsh', '  700     1 /Applications/kitty.app/Contents/MacOS/kitty'].join(
+          '\n',
+        ),
+        new Error('-1743'),
+      );
+      await expect(
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'kitty' }),
+      ).resolves.toEqual({ ok: true, target: 'app', app: 'kitty' });
+      expect(runner).toHaveBeenLastCalledWith('open', ['-a', 'kitty'], expect.anything());
+    });
+
+    it('別のセッションへの attach や、端末を持たないプロセスは数えず、新しく開く', async () => {
+      const runner = attachedRunner(
+        ['  901 ttys003  claude attach 5c2d4962aa', '  902 ??  claude attach 5c2d4962'].join('\n'),
+        '',
+      );
+      await expect(
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'Ghostty' }),
+      ).resolves.toEqual({ ok: true, target: 'terminal', app: 'Ghostty' });
+      expect(commands(runner)).toEqual(['ps', 'open']);
+    });
+
+    it('tmux の中で attach しているときは、辿れないので新しく開く', async () => {
+      const runner = attachedRunner(
+        '  901 ttys003  claude attach 5c2d4962',
+        ['  901   600 -zsh', '  600     1 /opt/homebrew/bin/tmux'].join('\n'),
+      );
+      await expect(focusSession(bg(), { platform: 'darwin', runner })).resolves.toEqual({
+        ok: true,
+        target: 'terminal',
+        app: 'Terminal',
+      });
+    });
   });
 });

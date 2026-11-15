@@ -4,6 +4,7 @@ import {
   appNameFromCommand,
   parseProcessTable,
   resolveLaunchApp,
+  resolveLaunchAppProcess,
 } from './launchApp.js';
 
 const VSCODE = '/Applications/Visual Studio Code.app/Contents/MacOS/Code';
@@ -74,6 +75,17 @@ describe('resolveLaunchApp', () => {
       ['200 100 claude', '100 50 /bin/zsh', '50 1 /opt/homebrew/bin/tmux'].join('\n'),
     );
     expect(resolveLaunchApp(200, table)).toBe('tmux');
+  });
+
+  it('起動元と判定した祖先プロセスの pid も返す', () => {
+    const table = parseProcessTable(
+      [
+        '950 720 /bin/zsh',
+        '720 700 /usr/bin/login',
+        '700 1 /Applications/Ghostty.app/Contents/MacOS/ghostty',
+      ].join('\n'),
+    );
+    expect(resolveLaunchAppProcess(950, table)).toEqual({ app: 'Ghostty', pid: 700 });
   });
 
   it('launchd まで辿っても見つからなければ undefined', () => {

@@ -1,13 +1,22 @@
 import {
+  ATTACH_CLIENT_ARGS,
+  buildActivateProcessScript,
   buildFocusScript,
   buildTerminalOpenArgs,
   buildTerminalScript,
+  findAttachClient,
   isScriptTerminal,
+  isTabApp,
   FOCUS_SCRIPT_FOUND,
   planFocus,
   toTtyPath,
 } from '../shared/focusPlan.js';
-import { appBundleName } from '../shared/launchApp.js';
+import {
+  appBundleName,
+  parseProcessTable,
+  PROCESS_TABLE_ARGS,
+  resolveLaunchAppProcess,
+} from '../shared/launchApp.js';
 import { DEFAULT_OPEN_SETTINGS, type FallbackApp } from '../shared/openSettings.js';
 import type { Agent } from '../types/agent.js';
 import { execFileRunner, type CommandRunner } from './runCommand.js';
@@ -18,6 +27,10 @@ import { execFileRunner, type CommandRunner } from './runCommand.js';
  * iTerm2 / Terminal はセッションの tty でタブを探して選ぶ。それ以外のアプリと、
  * タブが見つからない・AppleScript を実行できない（オートメーションの許可が無いなど）場合は、
  * アプリを前面に出すだけにとどめる。失敗は例外ではなく Result 型で返し、UI を落とさない。
+ *
+ * 起動元の分からない background セッションは、設定で選んだ端末アプリの新しいウィンドウで
+ * `claude attach` して開く。既にどこかの端末で attach していれば、新しく開かずにその端末へ移る
+ * （開くたびにウィンドウが増えないように）。
  */
 
 export type FocusSessionResult =
@@ -66,7 +79,58 @@ export const focusSession = async (
     }
   };
 
+  /**
+   * 既にどこかの端末で `claude attach <id>` していれば、その端末を前面に出す。
+   * 見つからない・前面に出せなければ undefined（呼び出し側が新しく開く）。
+   */
+  const focusAttachClient = async (id: string): Promise<FocusSessionResult | undefined> => {
+    try {
+      const client = findAttachClient(await run('ps', ATTACH_CLIENT_ARGS), id);
+      if (client === undefined) {
+        return undefined;
+      }
+      const owner = resolveLaunchAppProcess(
+        client.pid,
+        parseProcessTable(await run('ps', PROCESS_TABLE_ARGS)),
+      );
+      // tmux の先にある端末は辿れない。新しく開く
+      if (owner === undefined || owner.app === 'tmux') {
+        return undefined;
+      }
+
+      // iTerm2 / Terminal は、1 つのアプリに複数のウィンドウ・タブがあるので tty で選ぶ
+      const ttyPath = toTtyPath(client.tty);
+      if (isTabApp(owner.app) && ttyPath !== undefined) {
+        try {
+          const found = await run('osascript', ['-e', buildFocusScript(owner.app, ttyPath)]);
+          if (found.trim() === FOCUS_SCRIPT_FOUND) {
+            return { ok: true, target: 'tab', app: owner.app };
+          }
+        } catch {
+          // オートメーションの許可が無いなど。アプリを前面に出すだけにする
+        }
+      }
+
+      // Ghostty などは開くたびに新しく起動しているので、そのウィンドウを持つプロセスを前面に出す
+      try {
+        await run('osascript', ['-e', buildActivateProcessScript(owner.pid)]);
+        return { ok: true, target: 'app', app: owner.app };
+      } catch {
+        // System Events の操作を許可していないなど。アプリを前面に出すだけにする
+      }
+      const activated = await activate(owner.app, appBundleName(owner.app));
+      return activated.ok ? activated : undefined;
+    } catch {
+      // ps が失敗したなど。新しく開く
+      return undefined;
+    }
+  };
+
   if (plan.kind === 'terminal') {
+    const existing = await focusAttachClient(plan.id);
+    if (existing !== undefined) {
+      return existing;
+    }
     try {
       if (isScriptTerminal(plan.app)) {
         await run('osascript', ['-e', buildTerminalScript(plan.app, plan.command)]);
