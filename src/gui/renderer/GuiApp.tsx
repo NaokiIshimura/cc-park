@@ -214,6 +214,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     onCycleOpacity: applyOpacity,
     onToggleCompact: toggleCompactMode,
     onToggleSchedules: toggleSchedules,
+    onMoveWindow: bridge.moveWindow,
     copy: bridge.writeClipboard,
     stop: bridge.stopAgent,
     kill: bridge.killAgent,

@@ -24,6 +24,7 @@ const bridge: CcParkBridge = {
   focusSession: (agent: Agent) => ipcRenderer.invoke(IPC_CHANNELS.focusSession, agent),
   writeClipboard: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.writeClipboard, text),
   setAlwaysOnTop: (value: boolean) => ipcRenderer.invoke(IPC_CHANNELS.setAlwaysOnTop, value),
+  moveWindow: (step: 1 | -1) => ipcRenderer.invoke(IPC_CHANNELS.moveWindow, step),
   setAppearance: (appearance: Appearance) =>
     ipcRenderer.invoke(IPC_CHANNELS.setAppearance, appearance),
   setOpacity: (value: number) => ipcRenderer.invoke(IPC_CHANNELS.setOpacity, value),

@@ -32,6 +32,7 @@ import {
   toOpenSettings,
   type OpenSettings,
 } from '../shared/openSettings.js';
+import { nextWindowPosition, positionedBounds, toWindowStep } from './windowPosition.js';
 import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
 import { loadSettings, saveSettings } from '../core/settingsStore.js';
 import { resolveShellPath } from '../core/shellPath.js';
@@ -431,6 +432,19 @@ ipcMain.handle(IPC_CHANNELS.setAlwaysOnTop, (event, value: boolean) => {
   window.setAlwaysOnTop(value);
   // 適用できたかは OS 側の都合もあるため、実際の状態を返す
   return window.isAlwaysOnTop();
+});
+
+ipcMain.handle(IPC_CHANNELS.moveWindow, (event, step: unknown) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window === null) {
+    return null;
+  }
+  // ウィンドウが今いる画面の作業領域（メニューバーと Dock を除いた範囲）の中で動かす
+  const bounds = window.getBounds();
+  const { workArea } = screen.getDisplayMatching(bounds);
+  const position = nextWindowPosition(bounds, workArea, toWindowStep(step));
+  window.setBounds(positionedBounds(position, bounds, workArea));
+  return position;
 });
 
 ipcMain.handle(IPC_CHANNELS.setAppearance, async (event, value: unknown) => {

@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.3/cc-park-0.21.3-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.0/cc-park-0.22.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.3/cc-park-0.21.3-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.22.0/cc-park-0.22.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -441,6 +441,7 @@ GUI では加えて次の操作ができます。
 | **ディレクトリを畳む** | なし | 見出しをクリック |
 | **最前面に固定** | なし | `t` ＋ ヘッダの `top` トグル（既定 ON） |
 | **ウィンドウの透過** | なし | `o` ＋ ヘッダの `opacity` トグル（既定 100%） |
+| **ウィンドウを四隅・中央へ移動** | なし | `→` / `←`（右下 → 右上 → 左下 → 左上 → 中央 の順） |
 | **ミニ表示** | なし | `m` ＋ ヘッダの `mini` トグル（既定 OFF・起動時は常に通常表示） |
 | **予約（定期起動）** | なし | `a` ＋ ヘッダの `予約` ボタン |
 | **配色テーマ・通知の条件** | なし | ヘッダの `設定` ボタン |
@@ -506,6 +507,16 @@ cc-park --frame
 - 切り替えた状態は保存されません。次回は不透明（`100%`）から始まります
 - 文字や AA も含めたウィンドウ全体が薄くなります。状態の色を見分けられるよう、下限は `60%` にしています
 - Electron の `setOpacity` を使うため macOS / Windows で効きます（Linux では変わりません）
+
+### ウィンドウを四隅・中央へ動かす
+
+`→` キーを押すたびに、ウィンドウが 右下 → 右上 → 左下 → 左上 → 中央 → 右下 … の順に移ります。`←` キーは逆順です。
+フッタに移した先（`ウィンドウを右上へ移動しました` など）を出します。
+
+- ウィンドウが今いる画面の、メニューバーと Dock を除いた範囲の端にぴったり付けます。大きさは変えません
+- 位置は覚えておかず、今のウィンドウの位置から次を決めます。手で動かしたあとは、`→` なら右下、`←` なら中央から始めます
+- [ミニ表示](#ミニ表示)の間も使えます。ミニ表示は置いた側の端を基準に縮む・広がるので、四隅に置いておくとその角に収まったままになります
+- 検索欄に入力している間や、予約 / 設定画面を開いている間は効きません（`←` / `→` は入力欄のカーソル移動に使うため）
 
 ### ミニ表示
 
