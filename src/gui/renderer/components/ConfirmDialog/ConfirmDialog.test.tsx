@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmDialog } from './index.js';
@@ -70,6 +70,61 @@ describe('ConfirmDialog', () => {
     const button = screen.getByRole('button', { name: '実行 する' });
     expect(button.className).toContain('button--positive');
     expect(button.className).not.toContain('button--danger');
+  });
+
+  describe('handleKeys', () => {
+    const press = (key: string, init: KeyboardEventInit = {}) => {
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key, ...init }));
+      });
+    };
+
+    it('付けなければキー操作を受けない（一覧の確認は一覧のキー操作が受ける）', () => {
+      const { onConfirm, onCancel } = setup();
+      press('y');
+      press('Escape');
+      expect(onConfirm).not.toHaveBeenCalled();
+      expect(onCancel).not.toHaveBeenCalled();
+    });
+
+    it('y で確定する', () => {
+      const { onConfirm, onCancel } = setup({ handleKeys: true });
+      press('y');
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+      expect(onCancel).not.toHaveBeenCalled();
+    });
+
+    it.each(['n', 'a', 'Escape', 'ArrowDown'])('%s で取り消す', (key) => {
+      const { onConfirm, onCancel } = setup({ handleKeys: true });
+      press(key);
+      expect(onCancel).toHaveBeenCalledTimes(1);
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it('装飾キーやショートカットは無視する', () => {
+      const { onConfirm, onCancel } = setup({ handleKeys: true });
+      press('Shift');
+      press('Tab');
+      press('y', { metaKey: true });
+      expect(onConfirm).not.toHaveBeenCalled();
+      expect(onCancel).not.toHaveBeenCalled();
+    });
+
+    it('閉じたあとはキー操作を受けない', () => {
+      const onConfirm = vi.fn();
+      const { unmount } = render(
+        <ConfirmDialog
+          action="削除"
+          name="09:00 の予約"
+          handleKeys
+          onConfirm={onConfirm}
+          onCancel={vi.fn()}
+        />,
+      );
+      unmount();
+      press('y');
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
   });
 
   it('取消ボタンで取り消す', async () => {

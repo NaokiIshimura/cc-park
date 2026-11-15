@@ -116,6 +116,7 @@ export const SchedulePanel = ({
           action="実行"
           name={`${running.time} の予約`}
           tone="positive"
+          handleKeys
           onConfirm={() => {
             onRun(running.id);
             setRunning(null);
@@ -129,6 +130,7 @@ export const SchedulePanel = ({
       {deleting === null ? null : (
         <ConfirmDialog
           action="削除"
+          handleKeys
           name={`${deleting.time} の予約`}
           onConfirm={() => {
             onDelete(deleting.id);

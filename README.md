@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.19.0/cc-park-0.19.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.19.1/cc-park-0.19.1-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.19.0/cc-park-0.19.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.19.1/cc-park-0.19.1-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -565,6 +565,7 @@ cc-park --frame
 | 一時停止 / 再開 | 各予約の `on` / `off` トグル（消さずに止められる） |
 | 今すぐ実行 | 各予約の `実行` → 確認ダイアログ（時刻を待たずに起動する。`off` の予約も実行できる） |
 | 削除 | 各予約の `削除` → 確認ダイアログ |
+| 確認ダイアログ | `y` か確定ボタンで実行、他のキー（`Esc` を含む）か `取消` で取り消す。`Esc` で取り消しても予約画面は閉じない |
 | 閉じる | `Esc` ＋ `閉じる` ボタン |
 
 予約は `~/.cc-park/schedules.json` に保存され、次回の起動でも復元されます。
