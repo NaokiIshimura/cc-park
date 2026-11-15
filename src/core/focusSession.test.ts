@@ -159,6 +159,40 @@ describe('focusSession', () => {
     ).resolves.toEqual({ ok: false, reason: 'iTerm2 でセッションを開けませんでした' });
   });
 
+  it('Ghostty などは open -na の引数で、ログインシェルを通して開く', async () => {
+    const runner = fakeRunner({ open: '' });
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        { platform: 'darwin', runner, fallbackApp: 'Ghostty', shell: '/bin/zsh' },
+      ),
+    ).resolves.toEqual({ ok: true, target: 'terminal', app: 'Ghostty' });
+    expect(runner).toHaveBeenCalledWith(
+      'open',
+      [
+        '-na',
+        'Ghostty',
+        '--args',
+        '-e',
+        '/bin/zsh',
+        '-l',
+        '-c',
+        'cd /Users/naoki/app && claude attach 5c2d4962; exec /bin/zsh -l',
+      ],
+      expect.anything(),
+    );
+  });
+
+  it('アプリが入っていないなどで開けなければ、開けなかったと返す', async () => {
+    const runner = fakeRunner({ open: new Error('Unable to find application named kitty') });
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        { platform: 'darwin', runner, fallbackApp: 'kitty' },
+      ),
+    ).resolves.toEqual({ ok: false, reason: 'kitty でセッションを開けませんでした' });
+  });
+
   it('設定が「開かずにコピー」ならコマンドを実行せずに理由を返す', async () => {
     const runner = fakeRunner({});
     await expect(

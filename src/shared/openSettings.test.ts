@@ -11,7 +11,7 @@ describe('toOpenSettings', () => {
   });
 
   it('知らないアプリ・壊れた値は既定にする', () => {
-    expect(toOpenSettings({ fallbackApp: 'Ghostty' })).toEqual(DEFAULT_OPEN_SETTINGS);
+    expect(toOpenSettings({ fallbackApp: 'Warp' })).toEqual(DEFAULT_OPEN_SETTINGS);
     expect(toOpenSettings({ fallbackApp: 1 })).toEqual(DEFAULT_OPEN_SETTINGS);
     expect(toOpenSettings(null)).toEqual(DEFAULT_OPEN_SETTINGS);
     expect(toOpenSettings('Terminal')).toEqual(DEFAULT_OPEN_SETTINGS);

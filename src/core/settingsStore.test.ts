@@ -112,7 +112,7 @@ describe('parseSettings', () => {
       appearance: { theme: 'rainbow', accent: '#123456' },
       compact: { mode: 'on', layout: 'grid' },
       attention: { dockBadge: 'yes', tray: false },
-      open: { fallbackApp: 'Ghostty' },
+      open: { fallbackApp: 'Warp' },
     });
     expect(parseSettings(text)).toEqual({
       appearance: { theme: 'system', accent: '#123456', frame: false },

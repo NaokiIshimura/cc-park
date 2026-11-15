@@ -180,7 +180,15 @@ describe('SettingsPanel', () => {
 
   it('起動元が分からないセッションを開くアプリを並べ、既定は Terminal', () => {
     setup();
-    for (const name of ['Terminal', 'iTerm2', '開かずにコマンドをコピーする']) {
+    for (const name of [
+      'Terminal',
+      'iTerm2',
+      'Ghostty',
+      'WezTerm',
+      'kitty',
+      'Alacritty',
+      '開かずにコマンドをコピーする',
+    ]) {
       expect(screen.getByRole('radio', { name })).toBeDefined();
     }
     expect((screen.getByRole('radio', { name: 'Terminal' }) as HTMLInputElement).checked).toBe(

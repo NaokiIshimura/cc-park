@@ -1,5 +1,10 @@
 import { appBundleName } from './launchApp.js';
-import type { FallbackApp, FallbackTerminal } from './openSettings.js';
+import type {
+  ArgsTerminal,
+  FallbackApp,
+  FallbackTerminal,
+  ScriptTerminal,
+} from './openSettings.js';
 import { buildResumeCommand } from './resumeCommand.js';
 import type { Agent } from '../types/agent.js';
 
@@ -203,7 +208,7 @@ const toAppleScriptString = (text: string): string =>
  *
  * `command` は {@link planFocus} の `terminal` が返した値だけを渡すこと（制御文字を含まないことをそこで保証する）。
  */
-export const buildTerminalScript = (app: FallbackTerminal, command: string): string => {
+export const buildTerminalScript = (app: ScriptTerminal, command: string): string => {
   const quoted = toAppleScriptString(command);
   if (app === 'iTerm2') {
     return [
@@ -235,4 +240,56 @@ export const buildTerminalScript = (app: FallbackTerminal, command: string): str
     '  end tell',
     'end if',
   ].join('\n');
+};
+
+/** AppleScript で開く端末アプリか。それ以外は {@link buildTerminalOpenArgs} の引数で開く。 */
+export const isScriptTerminal = (app: FallbackTerminal): app is ScriptTerminal =>
+  app === 'Terminal' || app === 'iTerm2';
+
+/** `open -a` に渡す `.app` の名前。 */
+const ARGS_TERMINAL_BUNDLES: Readonly<Record<ArgsTerminal, string>> = {
+  Ghostty: 'Ghostty',
+  WezTerm: 'WezTerm',
+  kitty: 'kitty',
+  Alacritty: 'Alacritty',
+};
+
+/** アプリごとの「この後ろのコマンドを実行する」引数。 */
+const ARGS_TERMINAL_PREFIX: Readonly<Record<ArgsTerminal, readonly string[]>> = {
+  Ghostty: ['-e'],
+  WezTerm: ['start', '--'],
+  kitty: [],
+  Alacritty: ['-e'],
+};
+
+/** ログインシェルとして使えるパスの形。引数として渡すだけだが、想定外の値は既定に倒す。 */
+const SHELL_PATTERN = /^\/[A-Za-z0-9_./-]+$/;
+
+/** ユーザのシェルが分からないときに使う。macOS の既定のシェル。 */
+export const DEFAULT_SHELL = '/bin/zsh';
+
+/**
+ * AppleScript を持たない端末アプリで、新しいウィンドウを開いてコマンドを実行する `open` の引数を組み立てる。
+ *
+ * Finder から起動した cc-park の環境には、ユーザがシェルの設定で足した PATH が無い。
+ * `claude` を見つけられるよう、ユーザのログインシェル（`-l`）を通して実行する。
+ * `claude attach` を抜けてもウィンドウが閉じないよう、最後にログインシェルへ切り替える。
+ * `open -n` は端末アプリが起動済みでも新しく起動して、渡した引数で新しいウィンドウを開かせるため。
+ */
+export const buildTerminalOpenArgs = (
+  app: ArgsTerminal,
+  command: string,
+  shell: string | undefined,
+): string[] => {
+  const loginShell = shell !== undefined && SHELL_PATTERN.test(shell) ? shell : DEFAULT_SHELL;
+  return [
+    '-na',
+    ARGS_TERMINAL_BUNDLES[app],
+    '--args',
+    ...ARGS_TERMINAL_PREFIX[app],
+    loginShell,
+    '-l',
+    '-c',
+    `${command}; exec ${loginShell} -l`,
+  ];
 };

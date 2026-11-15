@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildFocusScript,
+  buildTerminalOpenArgs,
   buildTerminalScript,
+  DEFAULT_SHELL,
   FOCUS_SCRIPT_FOUND,
+  isScriptTerminal,
   planFocus,
   toTtyPath,
 } from './focusPlan.js';
@@ -147,6 +150,14 @@ describe('planFocus', () => {
     });
   });
 
+  it('設定で Ghostty などを選んでいれば、そのアプリで開く', () => {
+    expect(planFocus(background(), 'darwin', 'Ghostty')).toEqual({
+      kind: 'terminal',
+      app: 'Ghostty',
+      command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+    });
+  });
+
   it('設定で「開かずにコピー」を選んでいれば開かない（呼び出し側がコピーする）', () => {
     expect(planFocus(background(), 'darwin', 'copy')).toEqual({
       kind: 'unsupported',
@@ -277,5 +288,46 @@ describe('buildTerminalScript', () => {
   it('AppleScript の文字列を壊す引用符とバックスラッシュをエスケープする', () => {
     const script = buildTerminalScript('Terminal', "cd '/tmp/a\"b\\c' && claude attach 5c2d4962");
     expect(script).toContain('do script "cd \'/tmp/a\\"b\\\\c\' && claude attach 5c2d4962"');
+  });
+});
+
+describe('isScriptTerminal', () => {
+  it('Terminal と iTerm2 は AppleScript で開く', () => {
+    expect(isScriptTerminal('Terminal')).toBe(true);
+    expect(isScriptTerminal('iTerm2')).toBe(true);
+  });
+
+  it.each(['Ghostty', 'WezTerm', 'kitty', 'Alacritty'] as const)('%s は引数で開く', (app) => {
+    expect(isScriptTerminal(app)).toBe(false);
+  });
+});
+
+describe('buildTerminalOpenArgs', () => {
+  const command = 'cd /tmp && claude attach 5c2d4962';
+  const run = (shell: string) => [shell, '-l', '-c', `${command}; exec ${shell} -l`];
+
+  it.each([
+    ['Ghostty', ['-e']],
+    ['WezTerm', ['start', '--']],
+    ['kitty', []],
+    ['Alacritty', ['-e']],
+  ] as const)('%s は新しく起動して、ログインシェルで claude を実行する', (app, prefix) => {
+    expect(buildTerminalOpenArgs(app, command, '/bin/bash')).toEqual([
+      '-na',
+      app,
+      '--args',
+      ...prefix,
+      ...run('/bin/bash'),
+    ]);
+  });
+
+  it('シェルが分からない・想定外の形なら macOS 既定の zsh を使う', () => {
+    expect(DEFAULT_SHELL).toBe('/bin/zsh');
+    expect(buildTerminalOpenArgs('Ghostty', command, undefined).slice(-4)).toEqual(
+      run('/bin/zsh'),
+    );
+    expect(buildTerminalOpenArgs('Ghostty', command, 'zsh; rm -rf ~').slice(-4)).toEqual(
+      run('/bin/zsh'),
+    );
   });
 });

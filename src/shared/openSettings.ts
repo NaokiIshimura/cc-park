@@ -6,18 +6,39 @@
  * `claude attach` して開く。`copy` は開かずに、開くコマンドをコピーするだけにする。
  */
 
-/** 開くのに使える端末アプリ。AppleScript で新しいウィンドウにコマンドを打ち込める。 */
-export type FallbackTerminal = 'Terminal' | 'iTerm2';
+/** AppleScript で新しいウィンドウにコマンドを打ち込める端末アプリ。 */
+export type ScriptTerminal = 'Terminal' | 'iTerm2';
+
+/**
+ * AppleScript を持たず、起動時の引数で実行するコマンドを渡す端末アプリ（`open -na <アプリ> --args …`）。
+ * Warp は外からコマンドを渡して実行する手段が無いので入れていない。
+ */
+export type ArgsTerminal = 'Ghostty' | 'WezTerm' | 'kitty' | 'Alacritty';
+
+/** 開くのに使える端末アプリ。 */
+export type FallbackTerminal = ScriptTerminal | ArgsTerminal;
 
 export type FallbackApp = FallbackTerminal | 'copy';
 
 /** 設定画面に並べる順。 */
-export const FALLBACK_APPS: readonly FallbackApp[] = ['Terminal', 'iTerm2', 'copy'];
+export const FALLBACK_APPS: readonly FallbackApp[] = [
+  'Terminal',
+  'iTerm2',
+  'Ghostty',
+  'WezTerm',
+  'kitty',
+  'Alacritty',
+  'copy',
+];
 
 /** 設定画面での表記。 */
 export const FALLBACK_APP_LABELS: Readonly<Record<FallbackApp, string>> = {
   Terminal: 'Terminal',
   iTerm2: 'iTerm2',
+  Ghostty: 'Ghostty',
+  WezTerm: 'WezTerm',
+  kitty: 'kitty',
+  Alacritty: 'Alacritty',
   copy: '開かずにコマンドをコピーする',
 };
 
