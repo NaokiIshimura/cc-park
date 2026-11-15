@@ -1,4 +1,5 @@
 import { appBundleName } from './launchApp.js';
+import { buildResumeCommand } from './resumeCommand.js';
 import type { Agent } from '../types/agent.js';
 
 /**
@@ -24,6 +25,11 @@ export type FocusPlan =
       readonly bundleName: string;
       readonly folder?: string;
     }
+  /**
+   * 起動元の画面が無い・分からない background セッションを、Terminal.app の新しいウィンドウで
+   * `claude attach` して開く。`command` は {@link buildResumeCommand} の結果（`cd … && claude attach <id>`）
+   */
+  | { readonly kind: 'terminal'; readonly command: string }
   /** 移動できない。呼び出し側はコマンドのコピーへ切り替える */
   | { readonly kind: 'unsupported'; readonly reason: string };
 
@@ -46,26 +52,57 @@ const FOLDER_EDITORS: readonly string[] = [
   'Windsurf',
 ];
 
+/** AppleScript の文字列へそのまま埋め込める短縮 ID の形。 */
+const ATTACH_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+/** AppleScript の文字列を壊す制御文字（改行など）。 */
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+/**
+ * Terminal.app で `claude attach` して開ける background セッションなら、その手順を返す。
+ *
+ * interactive セッションは対象にしない。起動元の端末でまだ動いているため、
+ * 別の端末で `claude --resume` すると同じ会話が二重に動いてしまう。
+ */
+const planTerminal = (
+  agent: Pick<Agent, 'kind' | 'id' | 'sessionId' | 'cwd'>,
+): FocusPlan | undefined => {
+  if (agent.kind !== 'background' || agent.id === undefined || !ATTACH_ID_PATTERN.test(agent.id)) {
+    return undefined;
+  }
+  if (CONTROL_CHARS.test(agent.cwd)) {
+    return undefined;
+  }
+  return { kind: 'terminal', command: buildResumeCommand(agent) };
+};
+
 /** 移動の方法を決める。 */
 export const planFocus = (
-  agent: Pick<Agent, 'kind' | 'pid' | 'launchApp' | 'cwd'>,
+  agent: Pick<Agent, 'kind' | 'pid' | 'launchApp' | 'cwd' | 'id' | 'sessionId'>,
   platform: string,
 ): FocusPlan => {
   if (platform !== 'darwin') {
     return { kind: 'unsupported', reason: 'セッションへの移動は macOS のみ対応しています' };
   }
   if (agent.pid === undefined || agent.pid <= 0) {
-    return {
-      kind: 'unsupported',
-      reason:
-        agent.kind === 'background'
-          ? 'background セッションは端末を持たないため移動できません'
-          : 'セッションの PID を取得できないため移動できません',
-    };
+    return (
+      planTerminal(agent) ?? {
+        kind: 'unsupported',
+        reason:
+          agent.kind === 'background'
+            ? 'background セッションは端末を持たないため移動できません'
+            : 'セッションの PID を取得できないため移動できません',
+      }
+    );
   }
   const app = agent.launchApp;
   if (app === undefined) {
-    return { kind: 'unsupported', reason: '起動元のアプリを判定できないため移動できません' };
+    return (
+      planTerminal(agent) ?? {
+        kind: 'unsupported',
+        reason: '起動元のアプリを判定できないため移動できません',
+      }
+    );
   }
   if (app === 'tmux') {
     // tmux サーバの先にいるターミナルアプリまでは辿れない
@@ -140,5 +177,30 @@ export const buildFocusScript = (app: TabApp, ttyPath: string): string => {
     '  end repeat',
     'end tell',
     'return ""',
+  ].join('\n');
+};
+
+/**
+ * Terminal.app の新しいウィンドウでコマンドを実行する AppleScript を組み立てる。
+ *
+ * 起動していない Terminal に `do script` すると、起動時の空のウィンドウと実行用のウィンドウの
+ * 2 つが開く。起動していなければ先に起動し、その最初のウィンドウで実行する。
+ *
+ * `command` は {@link planFocus} の `terminal` が返した値だけを渡すこと（制御文字を含まないことをそこで保証する）。
+ */
+export const buildTerminalScript = (command: string): string => {
+  const quoted = `"${command.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+  return [
+    'if application "Terminal" is running then',
+    '  tell application "Terminal"',
+    `    do script ${quoted}`,
+    '    activate',
+    '  end tell',
+    'else',
+    '  tell application "Terminal"',
+    '    activate',
+    `    do script ${quoted} in window 1`,
+    '  end tell',
+    'end if',
   ].join('\n');
 };

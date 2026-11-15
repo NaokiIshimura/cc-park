@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildFocusScript, FOCUS_SCRIPT_FOUND, planFocus, toTtyPath } from './focusPlan.js';
+import {
+  buildFocusScript,
+  buildTerminalScript,
+  FOCUS_SCRIPT_FOUND,
+  planFocus,
+  toTtyPath,
+} from './focusPlan.js';
 
 const interactive = (
   launchApp: string | undefined,
@@ -10,6 +16,20 @@ const interactive = (
   pid,
   launchApp,
   cwd,
+  sessionId: 's1',
+  id: undefined,
+});
+
+/** `claude --bg` で起動した background セッション。既定は PID も起動元も無い。 */
+const background = (
+  overrides: { pid?: number; launchApp?: string; id?: string | undefined; cwd?: string } = {},
+) => ({
+  kind: 'background' as const,
+  pid: overrides.pid,
+  launchApp: overrides.launchApp,
+  cwd: overrides.cwd ?? '/Users/naoki/GitHub/cc-park',
+  sessionId: 's1',
+  id: 'id' in overrides ? overrides.id : '5c2d4962',
 });
 
 const withoutPid = (launchApp: string) => ({
@@ -17,6 +37,8 @@ const withoutPid = (launchApp: string) => ({
   pid: undefined,
   launchApp,
   cwd: '/Users/naoki/app',
+  sessionId: 's1',
+  id: undefined,
 });
 
 describe('planFocus', () => {
@@ -70,16 +92,52 @@ describe('planFocus', () => {
     });
   });
 
-  it('background セッションは端末を持たないので移動しない', () => {
-    expect(
-      planFocus(
-        { kind: 'background', pid: undefined, launchApp: undefined, cwd: '/Users/naoki/app' },
-        'darwin',
-      ),
-    ).toEqual({
+  it('PID の無い background セッションは Terminal で claude attach して開く', () => {
+    expect(planFocus(background(), 'darwin')).toEqual({
+      kind: 'terminal',
+      command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+    });
+  });
+
+  it('起動元が分からない background セッションも Terminal で開く', () => {
+    expect(planFocus(background({ pid: 4321 }), 'darwin')).toEqual({
+      kind: 'terminal',
+      command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+    });
+  });
+
+  it('起動元が分かる background セッションは、これまでどおりそのアプリへ移動する', () => {
+    expect(planFocus(background({ pid: 4321, launchApp: 'iTerm2' }), 'darwin')).toMatchObject({
+      kind: 'tab',
+      app: 'iTerm2',
+    });
+  });
+
+  it('短縮 ID が無い・想定外の形の background セッションは開かない', () => {
+    expect(planFocus(background({ id: undefined }), 'darwin')).toEqual({
       kind: 'unsupported',
       reason: 'background セッションは端末を持たないため移動できません',
     });
+    expect(planFocus(background({ id: '5c2d" & quit & "' }), 'darwin')).toMatchObject({
+      kind: 'unsupported',
+    });
+  });
+
+  it('ディレクトリに改行などの制御文字があれば開かない', () => {
+    expect(planFocus(background({ cwd: '/tmp/a\nb' }), 'darwin')).toMatchObject({
+      kind: 'unsupported',
+    });
+  });
+
+  it('ディレクトリに空白や引用符があっても、シェル向けに囲んだコマンドにする', () => {
+    expect(planFocus(background({ cwd: "/Users/naoki/My App's" }), 'darwin')).toEqual({
+      kind: 'terminal',
+      command: "cd '/Users/naoki/My App'\\''s' && claude attach 5c2d4962",
+    });
+  });
+
+  it('macOS 以外では background セッションも開かない', () => {
+    expect(planFocus(background(), 'linux')).toMatchObject({ kind: 'unsupported' });
   });
 
   it('PID が無い interactive セッションは移動しない', () => {
@@ -89,8 +147,11 @@ describe('planFocus', () => {
     });
   });
 
-  it('起動元が分からない・tmux なら移動しない', () => {
-    expect(planFocus(interactive(undefined), 'darwin')).toMatchObject({ kind: 'unsupported' });
+  it('起動元が分からない interactive・tmux なら移動しない（resume すると会話が二重に動くため）', () => {
+    expect(planFocus(interactive(undefined), 'darwin')).toEqual({
+      kind: 'unsupported',
+      reason: '起動元のアプリを判定できないため移動できません',
+    });
     expect(planFocus(interactive('tmux'), 'darwin')).toEqual({
       kind: 'unsupported',
       reason: 'tmux のセッションへは移動できません',
@@ -145,5 +206,25 @@ describe('buildFocusScript', () => {
 
   it('見つからなければ空文字を返す', () => {
     expect(buildFocusScript('Terminal', '/dev/ttys004').endsWith('return ""')).toBe(true);
+  });
+});
+
+describe('buildTerminalScript', () => {
+  it('Terminal の新しいウィンドウでコマンドを実行して前面に出す', () => {
+    const script = buildTerminalScript('cd /tmp && claude attach 5c2d4962');
+    expect(script).toContain('tell application "Terminal"');
+    expect(script).toContain('do script "cd /tmp && claude attach 5c2d4962"');
+    expect(script).toContain('activate');
+  });
+
+  it('起動していなければ、起動時に開く最初のウィンドウで実行する（ウィンドウを 2 つ開かない）', () => {
+    const script = buildTerminalScript('claude attach 5c2d4962');
+    expect(script).toContain('if application "Terminal" is running then');
+    expect(script).toContain('do script "claude attach 5c2d4962" in window 1');
+  });
+
+  it('AppleScript の文字列を壊す引用符とバックスラッシュをエスケープする', () => {
+    const script = buildTerminalScript("cd '/tmp/a\"b\\c' && claude attach 5c2d4962");
+    expect(script).toContain('do script "cd \'/tmp/a\\"b\\\\c\' && claude attach 5c2d4962"');
   });
 });

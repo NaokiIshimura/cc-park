@@ -200,7 +200,9 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
           setMessage(
             result.target === 'tab'
               ? `${result.app} のタブへ移動しました: ${agent.name}`
-              : `${result.app} を前面に出しました: ${agent.name}`,
+              : result.target === 'terminal'
+                ? `${result.app} でセッションを開きました: ${agent.name}`
+                : `${result.app} を前面に出しました: ${agent.name}`,
           );
           return;
         }
