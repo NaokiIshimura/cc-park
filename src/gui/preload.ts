@@ -1,3 +1,4 @@
+import type { AgentMenuRequest, AgentMenuSelection } from './agentMenu.js';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ScheduleFiredEvent } from '../core/scheduler.js';
 import type { AttentionCounts, AttentionSettings } from '../shared/attention.js';
@@ -25,6 +26,18 @@ const bridge: CcParkBridge = {
   writeClipboard: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.writeClipboard, text),
   setAlwaysOnTop: (value: boolean) => ipcRenderer.invoke(IPC_CHANNELS.setAlwaysOnTop, value),
   moveWindow: (step: 1 | -1) => ipcRenderer.invoke(IPC_CHANNELS.moveWindow, step),
+  showAgentMenu: (request: AgentMenuRequest) => {
+    ipcRenderer.send(IPC_CHANNELS.showAgentMenu, request);
+  },
+  onAgentMenuAction: (listener: (selection: AgentMenuSelection) => void) => {
+    const handler = (_event: IpcRendererEvent, payload: AgentMenuSelection) => {
+      listener(payload);
+    };
+    ipcRenderer.on(IPC_CHANNELS.agentMenuAction, handler);
+    return () => {
+      ipcRenderer.off(IPC_CHANNELS.agentMenuAction, handler);
+    };
+  },
   setAppearance: (appearance: Appearance) =>
     ipcRenderer.invoke(IPC_CHANNELS.setAppearance, appearance),
   setOpacity: (value: number) => ipcRenderer.invoke(IPC_CHANNELS.setOpacity, value),

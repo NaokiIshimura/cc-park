@@ -16,6 +16,8 @@ import {
   toggleCollapsed,
 } from '../../shared/filterAgents.js';
 import { flattenGroups, groupAgents } from '../../shared/groupAgents.js';
+import { canKill } from '../../shared/killSupport.js';
+import { canStop } from '../../shared/stopSupport.js';
 import { shouldCompact } from '../compact.js';
 import { nextOpacity, type GuiConfig } from '../config.js';
 import type { CcParkBridge } from '../ipc.js';
@@ -201,6 +203,8 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     select,
     openAt,
     openAgent,
+    copyAt,
+    requestAt,
     setMessage,
     toggleAlwaysOnTop,
     cycleOpacity,
@@ -243,6 +247,48 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
       openAt(index);
     },
     [select, openAt],
+  );
+
+  // 右クリックした行を選んでから、その行の操作メニューを出す（選んだ操作は通達で受け取る）
+  const handleContextMenu = useCallback(
+    (index: number) => {
+      const agent = sorted[index];
+      if (agent === undefined) {
+        return;
+      }
+      select(index);
+      bridge.showAgentMenu({
+        sessionId: agent.sessionId,
+        canStop: canStop(agent),
+        canKill: canKill(agent),
+      });
+    },
+    [sorted, select, bridge],
+  );
+
+  // メニューで選ばれた操作を、Enter / c / s / x と同じ処理へ渡す。
+  // メニューを開いている間に一覧が変わっても、セッション ID で今の位置を引き当てる
+  useEffect(
+    () =>
+      bridge.onAgentMenuAction(({ sessionId, action }) => {
+        const index = sorted.findIndex((agent) => agent.sessionId === sessionId);
+        if (index < 0) {
+          return;
+        }
+        switch (action) {
+          case 'open':
+            openAt(index);
+            return;
+          case 'copy':
+            copyAt(index);
+            return;
+          case 'stop':
+          case 'kill':
+            requestAt(action, index);
+            return;
+        }
+      }),
+    [bridge, sorted, openAt, copyAt, requestAt],
   );
 
   const pendingAgent = sorted.find((agent) => agent.sessionId === pendingAction?.sessionId);
@@ -355,6 +401,7 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
             showSubagents={config.subagents}
             onSelect={select}
             onOpen={handleOpen}
+            onContextMenu={handleContextMenu}
             onToggleGroup={toggleGroup}
             filtered={isFiltering(filter)}
           />

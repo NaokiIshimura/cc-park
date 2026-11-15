@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FetchAgentsResult } from '../../core/fetchAgents.js';
@@ -83,6 +83,8 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   writeClipboard: vi.fn(async () => true),
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
   moveWindow: vi.fn(async () => 'bottomRight' as const),
+  showAgentMenu: vi.fn(),
+  onAgentMenuAction: vi.fn(() => () => undefined),
   setAppearance: vi.fn(async (value: Appearance) => value),
   setOpacity: vi.fn(async (value: number) => value),
   setCompact: vi.fn(async (compact: boolean) => compact),
@@ -276,6 +278,98 @@ describe('GuiApp', () => {
 
     expect(stopAgent).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  describe('行の右クリックメニュー', () => {
+    type Listener = (selection: { sessionId: string; action: 'open' | 'copy' | 'stop' | 'kill' }) => void;
+
+    const menuBridge = () => {
+      let listener: Listener | null = null;
+      const showAgentMenu = vi.fn();
+      const onAgentMenuAction = vi.fn((next: Listener) => {
+        listener = next;
+        return () => {
+          listener = null;
+        };
+      });
+      const choose = (sessionId: string, action: 'open' | 'copy' | 'stop' | 'kill') => {
+        act(() => {
+          listener?.({ sessionId, action });
+        });
+      };
+      return { showAgentMenu, onAgentMenuAction, choose };
+    };
+
+    const twoAgents = () =>
+      vi.fn(async () => ({
+        ok: true as const,
+        agents: [agent('a', { pid: 4321 }), agent('b', { kind: 'background', id: 'bg-b' })],
+      }));
+
+    it('右クリックした行を選び、その行で使える操作をメニューに渡す', async () => {
+      const { showAgentMenu, onAgentMenuAction } = menuBridge();
+      await setup({ showAgentMenu, onAgentMenuAction, fetchAgents: twoAgents() });
+
+      fireEvent.contextMenu(screen.getAllByRole('option')[1] as HTMLElement);
+
+      expect(screen.getAllByRole('option')[1]?.getAttribute('aria-selected')).toBe('true');
+      expect(showAgentMenu).toHaveBeenCalledWith({
+        sessionId: 'b',
+        canStop: true,
+        canKill: false,
+      });
+    });
+
+    it('「コピー」を選ぶと、その行の開くコマンドをコピーする', async () => {
+      const { showAgentMenu, onAgentMenuAction, choose } = menuBridge();
+      const writeClipboard = vi.fn(async () => true);
+      await setup({ showAgentMenu, onAgentMenuAction, writeClipboard, fetchAgents: twoAgents() });
+
+      choose('b', 'copy');
+      await waitFor(() => {
+        expect(writeClipboard).toHaveBeenCalledWith(`cd ${HOME}/GitHub/app && claude attach bg-b`);
+      });
+    });
+
+    it('「開く」を選ぶと、その行のセッションの画面へ移動する', async () => {
+      const { showAgentMenu, onAgentMenuAction, choose } = menuBridge();
+      const focusSession = vi.fn(async () => ({
+        ok: true as const,
+        target: 'tab' as const,
+        app: 'iTerm2',
+      }));
+      await setup({ showAgentMenu, onAgentMenuAction, focusSession, fetchAgents: twoAgents() });
+
+      choose('a', 'open');
+      expect(focusSession).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'a' }));
+    });
+
+    it('「stop」を選ぶと、s キーと同じく確認ダイアログを出す', async () => {
+      const { showAgentMenu, onAgentMenuAction, choose } = menuBridge();
+      const stopAgent = vi.fn(async () => ({ ok: true as const }));
+      const { user } = await setup({
+        showAgentMenu,
+        onAgentMenuAction,
+        stopAgent,
+        fetchAgents: twoAgents(),
+      });
+
+      choose('b', 'stop');
+      expect(screen.getByRole('dialog')).toBeDefined();
+      await user.click(screen.getByRole('button', { name: 'stop する' }));
+      await waitFor(() => {
+        expect(stopAgent).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'b' }));
+      });
+    });
+
+    it('メニューを開いている間に一覧から消えたセッションへの操作は無視する', async () => {
+      const { showAgentMenu, onAgentMenuAction, choose } = menuBridge();
+      const writeClipboard = vi.fn(async () => true);
+      await setup({ showAgentMenu, onAgentMenuAction, writeClipboard, fetchAgents: twoAgents() });
+
+      choose('gone', 'copy');
+      expect(writeClipboard).not.toHaveBeenCalled();
+    });
   });
 
   it('起動直後は最前面固定が有効', async () => {

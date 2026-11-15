@@ -58,6 +58,8 @@ interface AgentRowProps {
   readonly onSelect: () => void;
   /** ダブルクリック。セッションの画面へ移動する（できなければコマンドをコピーする） */
   readonly onOpen: () => void;
+  /** 右クリック。この行の操作メニューを出す */
+  readonly onContextMenu?: () => void;
 }
 
 /**
@@ -79,6 +81,7 @@ const AgentRowComponent = ({
   showSubagents,
   onSelect,
   onOpen,
+  onContextMenu,
 }: AgentRowProps) => {
   const elapsed = agent.startedAt > 0 ? formatDuration(now - agent.startedAt) : '-';
   const detail = statusDetail(agent);
@@ -97,6 +100,14 @@ const AgentRowComponent = ({
       aria-selected={selected}
       onClick={onSelect}
       onDoubleClick={onOpen}
+      onContextMenu={
+        onContextMenu === undefined
+          ? undefined
+          : (event) => {
+              event.preventDefault();
+              onContextMenu();
+            }
+      }
       title={subagents.length === 0 ? undefined : subagentTitle(subagents)}
     >
       <div className="agent-row__main">

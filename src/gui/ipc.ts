@@ -15,6 +15,7 @@ import type { Agent } from '../types/agent.js';
 import type { Size } from './compact.js';
 import type { GuiConfig } from './config.js';
 import type { WindowPosition } from './windowPosition.js';
+import type { AgentMenuRequest, AgentMenuSelection } from './agentMenu.js';
 
 /**
  * main / preload / renderer で共有する IPC チャンネル名。
@@ -35,6 +36,10 @@ export const IPC_CHANNELS = {
   writeClipboard: 'clipboard:write',
   /** ウィンドウの最前面固定の切り替え */
   setAlwaysOnTop: 'window:alwaysOnTop',
+  /** 一覧の行の右クリックメニューを出す */
+  showAgentMenu: 'menu:showAgent',
+  /** 右クリックメニューで選ばれた操作の通達（main → renderer） */
+  agentMenuAction: 'menu:agentAction',
   /** ウィンドウを画面の四隅・中央へ順に動かす（← / →） */
   moveWindow: 'window:move',
   /** 見た目（配色テーマ・強調色）の変更と保存 */
@@ -92,6 +97,13 @@ export interface CcParkBridge {
   readonly writeClipboard: (text: string) => Promise<boolean>;
   /** ウィンドウを最前面に固定する / 解除する。適用後の状態を返す */
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;
+  /** 一覧の行の右クリックメニューを出す。選ばれた操作は {@link onAgentMenuAction} に届く */
+  readonly showAgentMenu: (request: AgentMenuRequest) => void;
+  /**
+   * 右クリックメニューで選ばれた操作を購読する。購読を解除する関数を返す。
+   * メニューは main が出すため、選ばれたことは通達で受け取る
+   */
+  readonly onAgentMenuAction: (listener: (selection: AgentMenuSelection) => void) => () => void;
   /**
    * ウィンドウを画面の四隅・中央へ順に動かす。`step` は 1 で次（→）、-1 で前（←）。
    * 動かした先を返し、動かせなければ null

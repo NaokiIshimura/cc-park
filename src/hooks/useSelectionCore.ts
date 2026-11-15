@@ -82,6 +82,8 @@ export interface UseSelectionCoreResult {
   readonly select: (index: number) => void;
   /** 位置を指定してセッションを開くコマンドをコピーする（ダブルクリック操作用） */
   readonly copyAt: (index: number) => void;
+  /** 位置を指定して stop / kill の確認待ちへ入る（右クリックメニュー用） */
+  readonly requestAt: (kind: PendingActionKind, index: number) => void;
 }
 
 /**
@@ -197,9 +199,9 @@ export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelection
   }, [onToggleNotify, notifySupported]);
 
   /** 確認待ちへ入る。対象にできない相手なら理由だけ出して何もしない。 */
-  const request = useCallback(
-    (kind: PendingActionKind) => {
-      const agent = agents[selectedIndex];
+  const requestAt = useCallback(
+    (kind: PendingActionKind, index: number) => {
+      const agent = agents[index];
       if (agent === undefined || runningRef.current) {
         return;
       }
@@ -211,7 +213,14 @@ export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelection
       setPendingAction({ kind, sessionId: agent.sessionId });
       setMessage(`「${agent.name}」を ${spec.label} しますか? y で実行 / 他キーで取消`);
     },
-    [agents, selectedIndex, specs],
+    [agents, specs],
+  );
+
+  const request = useCallback(
+    (kind: PendingActionKind) => {
+      requestAt(kind, selectedIndex);
+    },
+    [requestAt, selectedIndex],
   );
 
   /** 確認待ちの操作を実行する。対象は `run` が渡すため、ここでは待機状態を見ない。 */
@@ -330,5 +339,6 @@ export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelection
     run,
     select,
     copyAt,
+    requestAt,
   };
 };
