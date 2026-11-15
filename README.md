@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.17.0/cc-park-0.17.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.17.1/cc-park-0.17.1-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.17.0/cc-park-0.17.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.17.1/cc-park-0.17.1-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -281,13 +281,18 @@ GUI では `Enter` か行のダブルクリックで、セッションを動か�
 | 起動元 | 動作 |
 | --- | --- |
 | `iTerm2` / `Terminal` | セッションの tty（`ps -o tty= -p <PID>`）と一致するタブを AppleScript で探して選び、前面に出す |
-| それ以外のアプリ（`VS Code` など） | アプリを前面に出す（`open -a`）。統合ターミナルのタブまでは選べません |
+| `VS Code` 系（`VS Code`・`Visual Studio Code - Insiders`・`VSCodium`・`Cursor`・`Windsurf`） | セッションのフォルダを渡して（`open -a <アプリ> <cwd>`）、そのフォルダを開いているウィンドウを前面に出す。統合ターミナルのタブまでは選べません |
+| それ以外のアプリ | アプリを前面に出す（`open -a`） |
 | `tmux`・起動元が分からない・background セッション | 移動できないので、これまでどおり開くコマンドをコピーする |
 
 - 初めて iTerm2 / Terminal のタブへ移動するとき、macOS が「cc-park が "iTerm" を制御しようとしています」と
   オートメーションの許可を求めます。許可しないとタブは選べず、アプリを前面に出すだけになります
   （あとから「システム設定 → プライバシーとセキュリティ → オートメーション」で変えられます）
 - タブが見つからない（閉じた・別の端末へ移した）ときも、アプリを前面に出すだけにします
+- 移動先のウィンドウが別の Space（デスクトップ）にあれば、その Space へ切り替わります。
+  「システム設定 → デスクトップと Dock → アプリケーションの切り替えで、アプリケーションのウィンドウが開いている
+  操作スペースに移動」をオンにしておいてください（macOS の既定はオン）
+- VS Code 系でセッションのフォルダを開いているウィンドウが無いときは、そのフォルダを新しいウィンドウで開きます
 - cc-park のウィンドウを最前面に固定していると、移動した先の端末より手前に残ります
 - コピーだけしたいときは `c` を使います
 

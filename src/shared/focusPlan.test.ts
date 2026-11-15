@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { buildFocusScript, FOCUS_SCRIPT_FOUND, planFocus, toTtyPath } from './focusPlan.js';
 
-const interactive = (launchApp: string | undefined, pid: number | undefined = 123) => ({
+const interactive = (
+  launchApp: string | undefined,
+  pid: number | undefined = 123,
+  cwd = '/Users/naoki/app',
+) => ({
   kind: 'interactive' as const,
   pid,
   launchApp,
+  cwd,
 });
 
 const withoutPid = (launchApp: string) => ({
   kind: 'interactive' as const,
   pid: undefined,
   launchApp,
+  cwd: '/Users/naoki/app',
 });
 
 describe('planFocus', () => {
@@ -26,16 +32,34 @@ describe('planFocus', () => {
     });
   });
 
-  it('それ以外のアプリは .app の名前で前面に出す', () => {
+  it('VS Code 系のエディタは、セッションのフォルダを開いているウィンドウを前面に出す', () => {
     expect(planFocus(interactive('VS Code'), 'darwin')).toEqual({
       kind: 'app',
       app: 'VS Code',
       bundleName: 'Visual Studio Code',
+      folder: '/Users/naoki/app',
     });
     expect(planFocus(interactive('Cursor'), 'darwin')).toEqual({
       kind: 'app',
       app: 'Cursor',
       bundleName: 'Cursor',
+      folder: '/Users/naoki/app',
+    });
+  });
+
+  it('フォルダが絶対パスでなければ、エディタもアプリを前面に出すだけにする', () => {
+    expect(planFocus(interactive('VS Code', 123, ''), 'darwin')).toEqual({
+      kind: 'app',
+      app: 'VS Code',
+      bundleName: 'Visual Studio Code',
+    });
+  });
+
+  it('それ以外のアプリは .app の名前で前面に出すだけにする', () => {
+    expect(planFocus(interactive('Ghostty'), 'darwin')).toEqual({
+      kind: 'app',
+      app: 'Ghostty',
+      bundleName: 'Ghostty',
     });
   });
 
@@ -48,7 +72,10 @@ describe('planFocus', () => {
 
   it('background セッションは端末を持たないので移動しない', () => {
     expect(
-      planFocus({ kind: 'background', pid: undefined, launchApp: undefined }, 'darwin'),
+      planFocus(
+        { kind: 'background', pid: undefined, launchApp: undefined, cwd: '/Users/naoki/app' },
+        'darwin',
+      ),
     ).toEqual({
       kind: 'unsupported',
       reason: 'background セッションは端末を持たないため移動できません',
@@ -100,6 +127,21 @@ describe('buildFocusScript', () => {
     expect(script).toContain('set selected of t to true');
     expect(script).toContain('set index of w to 1');
   });
+
+  it.each(['iTerm2', 'Terminal'] as const)(
+    '%s は先にアプリを activate してからウィンドウを選ぶ（別の Space へ切り替えるため）',
+    (app) => {
+      const lines = buildFocusScript(app, '/dev/ttys003')
+        .split('\n')
+        .map((line) => line.trim());
+      const activateAt = lines.indexOf('activate');
+      const selectAt = lines.findIndex(
+        (line) => line === 'tell w to select' || line === 'set index of w to 1',
+      );
+      expect(activateAt).toBeGreaterThan(-1);
+      expect(selectAt).toBeGreaterThan(activateAt);
+    },
+  );
 
   it('見つからなければ空文字を返す', () => {
     expect(buildFocusScript('Terminal', '/dev/ttys004').endsWith('return ""')).toBe(true);
