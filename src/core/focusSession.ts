@@ -112,7 +112,7 @@ export const focusSession = async (
         }
       }
 
-      // Ghostty などは開くたびに新しく起動しているので、そのウィンドウを持つプロセスを pid で起動する。
+      // WezTerm などは開くたびに新しく起動しているので、そのウィンドウを持つプロセスを pid で起動する。
       // activate なので、ウィンドウが別の Space にあればその Space へ切り替わる
       try {
         await run('osascript', ['-l', 'JavaScript', '-e', buildActivateProcessJxa(owner.pid)]);

@@ -95,9 +95,17 @@ describe('focusSession', () => {
   it('VS Code 系でないアプリは .app の名前で前面に出す', async () => {
     const runner = fakeRunner({ open: '' });
     await expect(
+      focusSession(agent({ launchApp: 'WezTerm' }), { platform: 'darwin', runner }),
+    ).resolves.toEqual({ ok: true, target: 'app', app: 'WezTerm' });
+    expect(runner).toHaveBeenCalledWith('open', ['-a', 'WezTerm'], expect.anything());
+  });
+
+  it('Ghostty は iTerm2 と同じく tty でタブを探して選ぶ', async () => {
+    const runner = fakeRunner({ ps: 'ttys007\n', osascript: 'found\n' });
+    await expect(
       focusSession(agent({ launchApp: 'Ghostty' }), { platform: 'darwin', runner }),
-    ).resolves.toEqual({ ok: true, target: 'app', app: 'Ghostty' });
-    expect(runner).toHaveBeenCalledWith('open', ['-a', 'Ghostty'], expect.anything());
+    ).resolves.toEqual({ ok: true, target: 'tab', app: 'Ghostty' });
+    expect(runner.mock.calls[1]?.[1]?.[1]).toContain('tell application "Ghostty"');
   });
 
   it('アプリも前面に出せなければ失敗を返す', async () => {
@@ -159,21 +167,34 @@ describe('focusSession', () => {
     ).resolves.toEqual({ ok: false, reason: 'iTerm2 でセッションを開けませんでした' });
   });
 
-  it('Ghostty などは open -na の引数で、ログインシェルを通して開く', async () => {
+  it('Ghostty は AppleScript で、動いている Ghostty の中に新しいウィンドウを開く', async () => {
+    const runner = fakeRunner({ ps: '', osascript: '' });
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        { platform: 'darwin', runner, fallbackApp: 'Ghostty' },
+      ),
+    ).resolves.toEqual({ ok: true, target: 'terminal', app: 'Ghostty' });
+    expect(runner.mock.calls.map(([command]) => command)).toEqual(['ps', 'osascript']);
+    expect(runner.mock.calls[1]?.[1]?.[1]).toContain('new window with configuration cfg');
+  });
+
+  it('WezTerm などは open -na の引数で、ログインシェルを通して開く', async () => {
     const runner = fakeRunner({ open: '' });
     await expect(
       focusSession(
         agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
-        { platform: 'darwin', runner, fallbackApp: 'Ghostty', shell: '/bin/zsh' },
+        { platform: 'darwin', runner, fallbackApp: 'WezTerm', shell: '/bin/zsh' },
       ),
-    ).resolves.toEqual({ ok: true, target: 'terminal', app: 'Ghostty' });
+    ).resolves.toEqual({ ok: true, target: 'terminal', app: 'WezTerm' });
     expect(runner).toHaveBeenCalledWith(
       'open',
       [
         '-na',
-        'Ghostty',
+        'WezTerm',
         '--args',
-        '-e',
+        'start',
+        '--',
         '/bin/zsh',
         '-l',
         '-c',
@@ -258,18 +279,37 @@ describe('focusSession', () => {
       expect(commands(runner)).toEqual(['ps', 'ps', 'osascript']);
     });
 
-    it('Ghostty で attach していれば、そのウィンドウを持つプロセスを pid で起動する（Space も切り替わる）', async () => {
+    it('Ghostty で attach していれば、AppleScript で tty の一致する端末へ移る（Space も切り替わる）', async () => {
       const runner = attachedRunner(
-        '  950 ttys007  /bin/zsh -l -c cd /Users/naoki/app && claude attach 5c2d4962; exec /bin/zsh -l',
+        '  950 ttys007  claude attach 5c2d4962',
         [
           '  950   720 /bin/zsh',
           '  720   700 /usr/bin/login',
           '  700     1 /Applications/Ghostty.app/Contents/MacOS/ghostty',
         ].join('\n'),
+        'found',
       );
       await expect(
         focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'Ghostty' }),
-      ).resolves.toEqual({ ok: true, target: 'app', app: 'Ghostty' });
+      ).resolves.toEqual({ ok: true, target: 'tab', app: 'Ghostty' });
+      expect(runner.mock.calls[2]?.[1]?.[1]).toContain(
+        'if tty of t is "/dev/ttys007" or tty of t is "ttys007" then',
+      );
+      expect(commands(runner)).toEqual(['ps', 'ps', 'osascript']);
+    });
+
+    it('WezTerm などで attach していれば、そのウィンドウを持つプロセスを pid で起動する', async () => {
+      const runner = attachedRunner(
+        '  950 ttys007  /bin/zsh -l -c cd /Users/naoki/app && claude attach 5c2d4962; exec /bin/zsh -l',
+        [
+          '  950   720 /bin/zsh',
+          '  720   700 /usr/bin/login',
+          '  700     1 /Applications/WezTerm.app/Contents/MacOS/wezterm-gui',
+        ].join('\n'),
+      );
+      await expect(
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'WezTerm' }),
+      ).resolves.toEqual({ ok: true, target: 'app', app: 'WezTerm' });
       expect(runner.mock.calls[2]?.[1]).toEqual([
         '-l',
         'JavaScript',
@@ -282,14 +322,14 @@ describe('focusSession', () => {
     it('pid での起動に失敗したら、System Events で前面に出す', async () => {
       const runner = attachedRunner(
         '  950 ttys007  claude attach 5c2d4962',
-        ['  950   700 /bin/zsh', '  700     1 /Applications/Ghostty.app/Contents/MacOS/ghostty'].join(
+        ['  950   700 /bin/zsh', '  700     1 /Applications/WezTerm.app/Contents/MacOS/wezterm-gui'].join(
           '\n',
         ),
         (args) => (args.includes('JavaScript') ? new Error('-1743') : ''),
       );
       await expect(
-        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'Ghostty' }),
-      ).resolves.toEqual({ ok: true, target: 'app', app: 'Ghostty' });
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'WezTerm' }),
+      ).resolves.toEqual({ ok: true, target: 'app', app: 'WezTerm' });
       expect(runner.mock.calls[3]?.[1]?.[1]).toContain('first process whose unix id is 700');
       expect(commands(runner)).not.toContain('open');
     });
@@ -314,8 +354,8 @@ describe('focusSession', () => {
         '',
       );
       await expect(
-        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'Ghostty' }),
-      ).resolves.toEqual({ ok: true, target: 'terminal', app: 'Ghostty' });
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'WezTerm' }),
+      ).resolves.toEqual({ ok: true, target: 'terminal', app: 'WezTerm' });
       expect(commands(runner)).toEqual(['ps', 'open']);
     });
 

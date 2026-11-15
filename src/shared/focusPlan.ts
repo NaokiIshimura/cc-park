@@ -16,7 +16,7 @@ import type { Agent } from '../types/agent.js';
  */
 
 /** タブまで選べる端末アプリ。AppleScript でセッションの tty を引ける。 */
-export type TabApp = 'iTerm2' | 'Terminal';
+export type TabApp = 'iTerm2' | 'Terminal' | 'Ghostty';
 
 export type FocusPlan =
   /** 端末のタブを tty で探して選び、アプリを前面に出す */
@@ -46,7 +46,7 @@ export type FocusPlan =
   /** 移動できない。呼び出し側はコマンドのコピーへ切り替える */
   | { readonly kind: 'unsupported'; readonly reason: string };
 
-const TAB_APPS: readonly string[] = ['iTerm2', 'Terminal'] satisfies readonly TabApp[];
+const TAB_APPS: readonly string[] = ['iTerm2', 'Terminal', 'Ghostty'] satisfies readonly TabApp[];
 
 export const isTabApp = (app: string): app is TabApp => TAB_APPS.includes(app);
 
@@ -190,6 +190,29 @@ export const buildFocusScript = (app: TabApp, ttyPath: string): string => {
       'return ""',
     ].join('\n');
   }
+  if (app === 'Ghostty') {
+    // Ghostty（1.3 以降）の AppleScript。tty が `/dev/` 付きかどうかは書かれていないので両方と比べる。
+    // 先に activate してからウィンドウを前に出す（逆の順だと別の Space へ切り替わらない）
+    const shortTty = ttyPath.replace(/^\/dev\//, '');
+    return [
+      'tell application "Ghostty"',
+      '  repeat with w in windows',
+      '    repeat with tb in tabs of w',
+      '      repeat with t in terminals of tb',
+      `        if tty of t is "${ttyPath}" or tty of t is "${shortTty}" then`,
+      '          activate',
+      '          activate window w',
+      '          select tab tb',
+      '          focus t',
+      `          return "${FOCUS_SCRIPT_FOUND}"`,
+      '        end if',
+      '      end repeat',
+      '    end repeat',
+      '  end repeat',
+      'end tell',
+      'return ""',
+    ].join('\n');
+  }
   return [
     'tell application "Terminal"',
     '  repeat with w in windows',
@@ -221,6 +244,20 @@ const toAppleScriptString = (text: string): string =>
  */
 export const buildTerminalScript = (app: ScriptTerminal, command: string): string => {
   const quoted = toAppleScriptString(command);
+  if (app === 'Ghostty') {
+    // 1 つの Ghostty の中に新しいウィンドウを開き、ユーザのシェルにコマンドを打ち込む（initial input）。
+    // `open -na` で起動し直すと、ウィンドウごとに別のプロセスになり、あとから前面に出しても
+    // 別の Space へ切り替わらなかった
+    return [
+      'tell application "Ghostty"',
+      '  set cfg to new surface configuration',
+      `  set initial input of cfg to ${quoted} & linefeed`,
+      '  set newWindow to new window with configuration cfg',
+      '  activate',
+      '  activate window newWindow',
+      'end tell',
+    ].join('\n');
+  }
   if (app === 'iTerm2') {
     return [
       'if application "iTerm" is running then',
@@ -255,11 +292,10 @@ export const buildTerminalScript = (app: ScriptTerminal, command: string): strin
 
 /** AppleScript で開く端末アプリか。それ以外は {@link buildTerminalOpenArgs} の引数で開く。 */
 export const isScriptTerminal = (app: FallbackTerminal): app is ScriptTerminal =>
-  app === 'Terminal' || app === 'iTerm2';
+  app === 'Terminal' || app === 'iTerm2' || app === 'Ghostty';
 
 /** `open -a` に渡す `.app` の名前。 */
 const ARGS_TERMINAL_BUNDLES: Readonly<Record<ArgsTerminal, string>> = {
-  Ghostty: 'Ghostty',
   WezTerm: 'WezTerm',
   kitty: 'kitty',
   Alacritty: 'Alacritty',
@@ -267,7 +303,6 @@ const ARGS_TERMINAL_BUNDLES: Readonly<Record<ArgsTerminal, string>> = {
 
 /** アプリごとの「この後ろのコマンドを実行する」引数。 */
 const ARGS_TERMINAL_PREFIX: Readonly<Record<ArgsTerminal, readonly string[]>> = {
-  Ghostty: ['-e'],
   WezTerm: ['start', '--'],
   kitty: [],
   Alacritty: ['-e'],
