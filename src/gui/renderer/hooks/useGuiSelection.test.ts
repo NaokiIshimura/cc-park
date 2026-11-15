@@ -15,6 +15,8 @@ describe('toGuiSelectionCommand', () => {
     ['k', 'up'],
     ['ArrowDown', 'down'],
     ['j', 'down'],
+    ['ArrowRight', 'moveWindowNext'],
+    ['ArrowLeft', 'moveWindowPrev'],
     ['Enter', 'open'],
     ['c', 'copy'],
     ['r', 'refresh'],

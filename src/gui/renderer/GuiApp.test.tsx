@@ -82,6 +82,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   focusSession: vi.fn(async () => ({ ok: false as const, reason: '移動できません' })),
   writeClipboard: vi.fn(async () => true),
   setAlwaysOnTop: vi.fn(async (value: boolean) => value),
+  moveWindow: vi.fn(async () => 'bottomRight' as const),
   setAppearance: vi.fn(async (value: Appearance) => value),
   setOpacity: vi.fn(async (value: number) => value),
   setCompact: vi.fn(async (compact: boolean) => compact),

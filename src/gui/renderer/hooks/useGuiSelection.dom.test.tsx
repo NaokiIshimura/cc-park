@@ -218,6 +218,31 @@ describe('useGuiSelection', () => {
     expect(snapshot.message).toBe('OS 通知を ON にしました');
   });
 
+  it('→ / ← でウィンドウを動かし、動かした先をメッセージに出す', async () => {
+    const onMoveWindow = vi.fn(async (step: 1 | -1) =>
+      step === 1 ? ('topRight' as const) : ('center' as const),
+    );
+    setup({ onMoveWindow });
+    press('ArrowRight');
+    await act(async () => undefined);
+    expect(onMoveWindow).toHaveBeenLastCalledWith(1);
+    expect(snapshot.message).toBe('ウィンドウを右上へ移動しました');
+
+    press('ArrowLeft');
+    await act(async () => undefined);
+    expect(onMoveWindow).toHaveBeenLastCalledWith(-1);
+    expect(snapshot.message).toBe('ウィンドウを中央へ移動しました');
+    // 選択は動かさない
+    expect(snapshot.selectedIndex).toBe(0);
+  });
+
+  it('動かせなかったときはメッセージを出さない', async () => {
+    setup({ onMoveWindow: vi.fn(async () => null) });
+    press('ArrowRight');
+    await act(async () => undefined);
+    expect(snapshot.message).toBeNull();
+  });
+
   it('t で最前面固定を切り替え、結果をメッセージに出す', async () => {
     const { onToggleAlwaysOnTop } = setup();
     press('t');

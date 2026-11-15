@@ -12,10 +12,11 @@ import type { Agent } from '../../../types/agent.js';
 import type { CompactMode } from '../../../shared/compactSettings.js';
 import { buildResumeCommand } from '../../../shared/resumeCommand.js';
 import { formatOpacity } from '../../config.js';
+import { WINDOW_POSITION_LABELS, type WindowPosition } from '../../windowPosition.js';
 
 /**
  * GUI で扱う操作。共有の状態機械が知る操作に、GUI 固有のものを足したもの。
- * `toggleAlwaysOnTop` / `cycleOpacity` / `toggleCompact`（ウィンドウ）と `toggleSchedules`（予約画面）、
+ * `toggleAlwaysOnTop` / `cycleOpacity` / `toggleCompact` / `moveWindow*`（ウィンドウ）と `toggleSchedules`（予約画面）、
  * `open`（起動元アプリへの移動。Electron の main プロセスで AppleScript を使う）は
  * GUI にしかない概念なので core には置かない。
  */
@@ -23,6 +24,8 @@ type GuiOnlyCommand =
   | 'toggleAlwaysOnTop'
   | 'cycleOpacity'
   | 'toggleCompact'
+  | 'moveWindowNext'
+  | 'moveWindowPrev'
   | 'toggleSchedules'
   | 'open'
   | 'search';
@@ -34,6 +37,8 @@ const isGuiOnlyCommand = (command: GuiCommand): command is GuiOnlyCommand =>
   command === 'toggleAlwaysOnTop' ||
   command === 'cycleOpacity' ||
   command === 'toggleCompact' ||
+  command === 'moveWindowNext' ||
+  command === 'moveWindowPrev' ||
   command === 'toggleSchedules' ||
   command === 'open' ||
   command === 'search';
@@ -63,6 +68,10 @@ export const toGuiSelectionCommand = (event: KeyInput): GuiCommand | null => {
     case 'ArrowDown':
     case 'j':
       return 'down';
+    case 'ArrowRight':
+      return 'moveWindowNext';
+    case 'ArrowLeft':
+      return 'moveWindowPrev';
     case 'Enter':
       return 'open';
     case 'c':
@@ -120,6 +129,11 @@ export interface UseGuiSelectionOptions {
   readonly onToggleCompact: () => CompactMode;
   /** 予約画面の開閉 */
   readonly onToggleSchedules: () => void;
+  /**
+   * ウィンドウを画面の四隅・中央へ順に動かす（`→` は 1、`←` は -1）。動かした先を返す。
+   * 未指定なら `←` / `→` は何もしない
+   */
+  readonly onMoveWindow?: (step: 1 | -1) => Promise<WindowPosition | null>;
   /** 「操作待ちだけ表示」を切り替え、切り替え後に絞っているかを返す */
   readonly onToggleFilter?: () => boolean;
   /** 検索欄を開いて入力を始める（`/`） */
@@ -168,6 +182,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     onCycleOpacity,
     onToggleCompact,
     onToggleSchedules,
+    onMoveWindow,
     copy,
     stop,
     kill,
@@ -248,6 +263,20 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     );
   }, [onToggleCompact, setMessage]);
 
+  const moveWindow = useCallback(
+    (step: 1 | -1) => {
+      if (onMoveWindow === undefined) {
+        return;
+      }
+      void onMoveWindow(step).then((position) => {
+        if (position !== null) {
+          setMessage(`ウィンドウを${WINDOW_POSITION_LABELS[position]}へ移動しました`);
+        }
+      });
+    },
+    [onMoveWindow, setMessage],
+  );
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -288,6 +317,10 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
           toggleCompact();
           return;
         }
+        if (command === 'moveWindowNext' || command === 'moveWindowPrev') {
+          moveWindow(command === 'moveWindowNext' ? 1 : -1);
+          return;
+        }
         toggleAlwaysOnTop();
         return;
       }
@@ -310,6 +343,7 @@ export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectio
     toggleAlwaysOnTop,
     cycleOpacity,
     toggleCompact,
+    moveWindow,
     onToggleSchedules,
     openAt,
     selectedIndex,

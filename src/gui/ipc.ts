@@ -14,6 +14,7 @@ import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
 import type { Agent } from '../types/agent.js';
 import type { Size } from './compact.js';
 import type { GuiConfig } from './config.js';
+import type { WindowPosition } from './windowPosition.js';
 
 /**
  * main / preload / renderer で共有する IPC チャンネル名。
@@ -34,6 +35,8 @@ export const IPC_CHANNELS = {
   writeClipboard: 'clipboard:write',
   /** ウィンドウの最前面固定の切り替え */
   setAlwaysOnTop: 'window:alwaysOnTop',
+  /** ウィンドウを画面の四隅・中央へ順に動かす（← / →） */
+  moveWindow: 'window:move',
   /** 見た目（配色テーマ・強調色）の変更と保存 */
   setAppearance: 'appearance:set',
   /** ウィンドウの不透明度の変更 */
@@ -89,6 +92,11 @@ export interface CcParkBridge {
   readonly writeClipboard: (text: string) => Promise<boolean>;
   /** ウィンドウを最前面に固定する / 解除する。適用後の状態を返す */
   readonly setAlwaysOnTop: (value: boolean) => Promise<boolean>;
+  /**
+   * ウィンドウを画面の四隅・中央へ順に動かす。`step` は 1 で次（→）、-1 で前（←）。
+   * 動かした先を返し、動かせなければ null
+   */
+  readonly moveWindow: (step: 1 | -1) => Promise<WindowPosition | null>;
   /** ウィンドウの不透明度（0〜1）を変える。適用後の値を返す */
   readonly setOpacity: (value: number) => Promise<number>;
   /**
