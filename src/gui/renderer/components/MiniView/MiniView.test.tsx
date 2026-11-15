@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Agent } from '../../../../types/agent.js';
 import type { AgentGroup } from '../../../../shared/groupAgents.js';
 import { getFrame } from '../../../../shared/characters.js';
-import { MiniView } from './index.js';
+import { MiniView, TILE_FLASH_MS } from './index.js';
 
 const HOME = '/Users/naoki';
 
@@ -87,6 +87,57 @@ describe('MiniView', () => {
     await user.dblClick(container.querySelectorAll('.mini-tile')[2] as HTMLElement);
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'c' }));
+  });
+
+  describe('ダブルクリックしたタイルを光らせる', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const tiles = (container: HTMLElement) =>
+      [...container.querySelectorAll('.mini-tile')] as HTMLElement[];
+
+    it('押したタイルだけを光らせ、少しの間で戻す', () => {
+      vi.useFakeTimers();
+      const { container } = setup();
+      fireEvent.doubleClick(tiles(container)[1] as HTMLElement);
+
+      expect(tiles(container).map((tile) => tile.classList.contains('mini-tile--flash'))).toEqual([
+        false,
+        true,
+        false,
+      ]);
+
+      act(() => {
+        vi.advanceTimersByTime(TILE_FLASH_MS);
+      });
+      expect(container.querySelector('.mini-tile--flash')).toBeNull();
+    });
+
+    it('続けて別のタイルを押したら、光る先を移す', () => {
+      vi.useFakeTimers();
+      const { container } = setup();
+      fireEvent.doubleClick(tiles(container)[0] as HTMLElement);
+      act(() => {
+        vi.advanceTimersByTime(TILE_FLASH_MS / 2);
+      });
+      fireEvent.doubleClick(tiles(container)[2] as HTMLElement);
+
+      expect(tiles(container)[0]?.classList.contains('mini-tile--flash')).toBe(false);
+      expect(tiles(container)[2]?.classList.contains('mini-tile--flash')).toBe(true);
+
+      // 前のタイマーで早く消えず、後から押した分だけ光り続ける
+      act(() => {
+        vi.advanceTimersByTime(TILE_FLASH_MS - 1);
+      });
+      expect(tiles(container)[2]?.classList.contains('mini-tile--flash')).toBe(true);
+    });
+
+    it('シングルクリックでは光らせない', async () => {
+      const { container, user } = setup();
+      await user.click(tiles(container)[0] as HTMLElement);
+      expect(container.querySelector('.mini-tile--flash')).toBeNull();
+    });
   });
 
   it('シングルクリックでは移動しない', async () => {
