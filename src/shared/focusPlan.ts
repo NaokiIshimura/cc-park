@@ -340,8 +340,19 @@ export const findAttachClient = (stdout: string, id: string): AttachClient | und
 };
 
 /**
- * pid を指定してアプリのプロセスを前面に出す AppleScript。
- * `open -na` で同じアプリを複数起動していても、そのセッションのウィンドウを持つプロセスを選べる。
+ * pid を指定してアプリのプロセスを起動（activate）する JavaScript for Automation（`osascript -l JavaScript`）。
+ *
+ * `open -na` で同じアプリを複数起動していても、`Application(<pid>)` ならそのセッションのウィンドウを持つ
+ * プロセスを指定できる。activate の Apple Event を送るので、AppleScript の `tell application … to activate`
+ * と同じく、ウィンドウが別の Space にあればその Space へ切り替わる。
+ */
+export const buildActivateProcessJxa = (pid: number): string =>
+  `Application(${String(Math.trunc(pid))}).activate()`;
+
+/**
+ * pid を指定してアプリのプロセスを前面に出す AppleScript（System Events）。
+ * 前面にするだけで activate として扱われず、別の Space へは切り替わらない。
+ * {@link buildActivateProcessJxa} が使えないときの代わりにだけ使う。
  */
 export const buildActivateProcessScript = (pid: number): string =>
   `tell application "System Events" to set frontmost of (first process whose unix id is ${String(
