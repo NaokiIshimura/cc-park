@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.20.0/cc-park-0.20.0-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.0/cc-park-0.21.0-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.20.0/cc-park-0.20.0-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.0/cc-park-0.21.0-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -283,15 +283,25 @@ GUI では `Enter` か行のダブルクリック（[ミニ表示](#ミニ表示
 | `iTerm2` / `Terminal` | セッションの tty（`ps -o tty= -p <PID>`）と一致するタブを AppleScript で探して選び、前面に出す |
 | `VS Code` 系（`VS Code`・`Visual Studio Code - Insiders`・`VSCodium`・`Cursor`・`Windsurf`） | セッションのフォルダを渡して（`open -a <アプリ> <cwd>`）、そのフォルダを開いているウィンドウを前面に出す。統合ターミナルのタブまでは選べません |
 | それ以外のアプリ | アプリを前面に出す（`open -a`） |
-| 起動元が分からない background セッション（`claude --bg` で起動したものなど） | Terminal.app の新しいウィンドウを開き、セッションのディレクトリで `claude attach <ID>` を実行する |
+| 起動元が分からない background セッション（`claude --bg` で起動したものなど） | 設定で選んだアプリ（既定は Terminal）の新しいウィンドウを開き、セッションのディレクトリで `claude attach <ID>` を実行する |
 | `tmux`・起動元が分からない interactive セッション | 移動できないので、これまでどおり開くコマンドをコピーする（別の端末で `claude --resume` すると、動いている会話が二重になるため開かない） |
 
 - 初めて iTerm2 / Terminal のタブへ移動するとき、macOS が「cc-park が "iTerm" を制御しようとしています」と
   オートメーションの許可を求めます。許可しないとタブは選べず、アプリを前面に出すだけになります
   （あとから「システム設定 → プライバシーとセキュリティ → オートメーション」で変えられます）
 - タブが見つからない（閉じた・別の端末へ移した）ときも、アプリを前面に出すだけにします
-- background セッションを Terminal で開くときも、初回は Terminal のオートメーションの許可を求められます。許可しないと開けないので、開くコマンドをコピーします
-- Terminal が起動していなければ起動し、最初に開くウィンドウで実行します（ウィンドウを 2 つ開きません）
+- 起動元が分からない background セッションを開くアプリは、設定画面の「起動元のアプリが分からないセッションを開くアプリ」で選べます。選んだアプリは `~/.cc-park/settings.json` に保存されます
+
+  | 選択肢 | 動作 |
+  | --- | --- |
+  | `Terminal`（既定） | Terminal.app の新しいウィンドウで実行する |
+  | `iTerm2` | iTerm2 の新しいウィンドウで実行する |
+  | `Ghostty` / `WezTerm` / `kitty` / `Alacritty` | `open -na <アプリ> --args …` で新しく起動し、ログインシェル（`$SHELL -l -c`）を通して実行する。`claude attach` を抜けてもウィンドウはシェルとして残る |
+  | `開かずにコマンドをコピーする` | 開かずに、開くコマンドをコピーするだけにする |
+
+- Ghostty / WezTerm / kitty / Alacritty は AppleScript で操作できないため、開くたびにアプリを新しく起動します（Dock にアイコンが増えることがあります）。Warp は外からコマンドを渡して実行する手段が無いため選べません
+- background セッションを Terminal / iTerm2 で開くときも、初回はそのアプリのオートメーションの許可を求められます。許可しない・アプリが入っていないなどで開けないときは、開くコマンドをコピーします
+- 開くアプリが起動していなければ起動し、最初に開くウィンドウで実行します（ウィンドウを 2 つ開きません）
 - 移動先のウィンドウが別の Space（デスクトップ）にあれば、その Space へ切り替わります。
   「システム設定 → デスクトップと Dock → アプリケーションの切り替えで、アプリケーションのウィンドウが開いている
   操作スペースに移動」をオンにしておいてください（macOS の既定はオン）

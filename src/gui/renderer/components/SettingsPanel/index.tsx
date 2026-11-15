@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
 import type { AttentionSettings } from '../../../../shared/attention.js';
 import {
+  FALLBACK_APP_LABELS,
+  FALLBACK_APPS,
+  type OpenSettings,
+} from '../../../../shared/openSettings.js';
+import {
   formatMinWork,
   MIN_WORK_SECONDS_OPTIONS,
   type NotificationSettings,
@@ -29,6 +34,10 @@ interface SettingsPanelProps {
   readonly notification: NotificationSettings;
   /** 選んだ時点で呼ぶ。保存も含めて呼び出し側に任せる */
   readonly onNotificationChange: (notification: NotificationSettings) => void;
+  /** 起動元のアプリが分からないセッションを開くアプリ */
+  readonly open: OpenSettings;
+  /** 選んだ時点で呼ぶ。保存も含めて呼び出し側に任せる */
+  readonly onOpenChange: (open: OpenSettings) => void;
   readonly onClose: () => void;
 }
 
@@ -69,7 +78,10 @@ const NOTIFICATION_KINDS = [
   ['done', 'バックグラウンドの完了（DONE）'],
 ] as const;
 
-/** 配色テーマ・強調色・操作待ちの件数の出し方・通知の条件を選ぶ画面。選んだ時点で反映・保存される。 */
+/**
+ * 配色テーマ・強調色・操作待ちの件数の出し方・通知の条件・セッションを開くアプリを選ぶ画面。
+ * 選んだ時点で反映・保存される。
+ */
 export const SettingsPanel = ({
   appearance,
   prefersDark,
@@ -78,6 +90,8 @@ export const SettingsPanel = ({
   onAttentionChange,
   notification,
   onNotificationChange,
+  open,
+  onOpenChange,
   onClose,
 }: SettingsPanelProps) => {
   useEffect(() => {
@@ -233,6 +247,27 @@ export const SettingsPanel = ({
               />
               <span>通知音を鳴らす</span>
             </label>
+          </fieldset>
+
+          <fieldset className="settings__group">
+            <legend className="field__label">起動元のアプリが分からないセッションを開くアプリ</legend>
+            {FALLBACK_APPS.map((app) => (
+              <label key={app} className="settings__option">
+                <input
+                  type="radio"
+                  name="fallbackApp"
+                  value={app}
+                  checked={open.fallbackApp === app}
+                  onChange={() => {
+                    onOpenChange({ ...open, fallbackApp: app });
+                  }}
+                />
+                <span>{FALLBACK_APP_LABELS[app]}</span>
+              </label>
+            ))}
+            <p className="settings__note">
+              claude --bg で起動したセッションなどを、新しいウィンドウで claude attach して開きます
+            </p>
           </fieldset>
         </div>
 

@@ -4,6 +4,7 @@ import type { AttentionCounts, AttentionSettings } from '../shared/attention.js'
 import type { CompactSettings } from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { NotificationSettings } from '../shared/notificationSettings.js';
+import type { OpenSettings } from '../shared/openSettings.js';
 import type { Schedule } from '../shared/schedule.js';
 import type { Appearance } from '../shared/themes.js';
 import type { Agent } from '../types/agent.js';
@@ -37,6 +38,8 @@ const bridge: CcParkBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.saveAttentionSettings, settings),
   saveNotificationSettings: (settings: NotificationSettings) =>
     ipcRenderer.invoke(IPC_CHANNELS.saveNotificationSettings, settings),
+  saveOpenSettings: (settings: OpenSettings) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveOpenSettings, settings),
   pickDirectory: (defaultPath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.pickDirectory, defaultPath),
   listSchedules: () => ipcRenderer.invoke(IPC_CHANNELS.listSchedules),

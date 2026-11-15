@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_ATTENTION_SETTINGS } from '../shared/attention.js';
 import { DEFAULT_COMPACT_SETTINGS } from '../shared/compactSettings.js';
 import { DEFAULT_NOTIFICATION_SETTINGS } from '../shared/notificationSettings.js';
+import { DEFAULT_OPEN_SETTINGS } from '../shared/openSettings.js';
 import type { ScheduleFileSystem } from './scheduleStore.js';
 import {
   buildSettingsPath,
@@ -21,6 +22,7 @@ const settings: Settings = {
   compact: { mode: 'on', layout: 'horizontal' },
   attention: { dockBadge: false, tray: true },
   notification: { blocked: true, finished: false, done: true, minWorkSeconds: 300, sound: false },
+  open: { fallbackApp: 'iTerm2' },
 };
 
 /** 書き込みが必ず失敗するファイルシステム。 */
@@ -66,6 +68,7 @@ describe('parseSettings', () => {
       compact: DEFAULT_COMPACT_SETTINGS,
       attention: DEFAULT_ATTENTION_SETTINGS,
       notification: DEFAULT_NOTIFICATION_SETTINGS,
+      open: DEFAULT_OPEN_SETTINGS,
     });
   });
 
@@ -79,6 +82,7 @@ describe('parseSettings', () => {
       ...settings,
       attention: DEFAULT_ATTENTION_SETTINGS,
       notification: DEFAULT_NOTIFICATION_SETTINGS,
+      open: DEFAULT_OPEN_SETTINGS,
     });
   });
 
@@ -89,7 +93,18 @@ describe('parseSettings', () => {
       compact: settings.compact,
       attention: settings.attention,
     });
-    expect(parseSettings(text)).toEqual({ ...settings, notification: DEFAULT_NOTIFICATION_SETTINGS });
+    expect(parseSettings(text)).toEqual({
+      ...settings,
+      notification: DEFAULT_NOTIFICATION_SETTINGS,
+      open: DEFAULT_OPEN_SETTINGS,
+    });
+  });
+
+  it('開くアプリを持たない古いファイルは、開くアプリだけ既定（Terminal）にする', () => {
+    const { open: _open, ...withoutOpen } = settings;
+    const text = JSON.stringify({ version: 1, ...withoutOpen });
+    expect(parseSettings(text)).toEqual({ ...settings, open: DEFAULT_OPEN_SETTINGS });
+    expect(DEFAULT_OPEN_SETTINGS.fallbackApp).toBe('Terminal');
   });
 
   it('解釈できない項目だけ既定値で埋める', () => {
@@ -97,12 +112,14 @@ describe('parseSettings', () => {
       appearance: { theme: 'rainbow', accent: '#123456' },
       compact: { mode: 'on', layout: 'grid' },
       attention: { dockBadge: 'yes', tray: false },
+      open: { fallbackApp: 'Warp' },
     });
     expect(parseSettings(text)).toEqual({
       appearance: { theme: 'system', accent: '#123456', frame: false },
       compact: { mode: 'on', layout: 'vertical' },
       attention: { dockBadge: true, tray: false },
       notification: DEFAULT_NOTIFICATION_SETTINGS,
+      open: DEFAULT_OPEN_SETTINGS,
     });
   });
 });

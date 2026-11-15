@@ -7,6 +7,7 @@ import {
   DEFAULT_NOTIFICATION_SETTINGS,
   type NotificationSettings,
 } from '../../../../shared/notificationSettings.js';
+import { DEFAULT_OPEN_SETTINGS, type OpenSettings } from '../../../../shared/openSettings.js';
 import { PALETTES, THEME_IDS, THEME_LABELS, type Appearance } from '../../../../shared/themes.js';
 import { SettingsPanel } from './index.js';
 
@@ -17,10 +18,12 @@ const setup = (
   prefersDark = false,
   attention: AttentionSettings = { dockBadge: true, tray: true },
   notification: NotificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
+  open: OpenSettings = DEFAULT_OPEN_SETTINGS,
 ) => {
   const onChange = vi.fn();
   const onAttentionChange = vi.fn();
   const onNotificationChange = vi.fn();
+  const onOpenChange = vi.fn();
   const onClose = vi.fn();
   const result = render(
     <SettingsPanel
@@ -31,6 +34,8 @@ const setup = (
       onAttentionChange={onAttentionChange}
       notification={notification}
       onNotificationChange={onNotificationChange}
+      open={open}
+      onOpenChange={onOpenChange}
       onClose={onClose}
     />,
   );
@@ -39,6 +44,7 @@ const setup = (
     onChange,
     onAttentionChange,
     onNotificationChange,
+    onOpenChange,
     onClose,
     user: userEvent.setup(),
   };
@@ -170,6 +176,38 @@ describe('SettingsPanel', () => {
       ...DEFAULT_NOTIFICATION_SETTINGS,
       sound: false,
     });
+  });
+
+  it('起動元が分からないセッションを開くアプリを並べ、既定は Terminal', () => {
+    setup();
+    for (const name of [
+      'Terminal',
+      'iTerm2',
+      'Ghostty',
+      'WezTerm',
+      'kitty',
+      'Alacritty',
+      '開かずにコマンドをコピーする',
+    ]) {
+      expect(screen.getByRole('radio', { name })).toBeDefined();
+    }
+    expect((screen.getByRole('radio', { name: 'Terminal' }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+  });
+
+  it('開くアプリを選ぶと変更を伝える', async () => {
+    const { user, onOpenChange } = setup();
+    await user.click(screen.getByRole('radio', { name: 'iTerm2' }));
+    expect(onOpenChange).toHaveBeenCalledWith({ fallbackApp: 'iTerm2' });
+  });
+
+  it('保存済みの開くアプリを選択状態にする', () => {
+    setup(undefined, undefined, undefined, undefined, { fallbackApp: 'copy' });
+    expect(
+      (screen.getByRole('radio', { name: '開かずにコマンドをコピーする' }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
   });
 
   it('閉じるボタンと Escape で閉じる', async () => {

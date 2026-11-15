@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildFocusScript,
+  buildTerminalOpenArgs,
   buildTerminalScript,
+  DEFAULT_SHELL,
   FOCUS_SCRIPT_FOUND,
+  isScriptTerminal,
   planFocus,
   toTtyPath,
 } from './focusPlan.js';
@@ -95,6 +98,7 @@ describe('planFocus', () => {
   it('PID の無い background セッションは Terminal で claude attach して開く', () => {
     expect(planFocus(background(), 'darwin')).toEqual({
       kind: 'terminal',
+      app: 'Terminal',
       command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
     });
   });
@@ -102,6 +106,7 @@ describe('planFocus', () => {
   it('起動元が分からない background セッションも Terminal で開く', () => {
     expect(planFocus(background({ pid: 4321 }), 'darwin')).toEqual({
       kind: 'terminal',
+      app: 'Terminal',
       command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
     });
   });
@@ -132,8 +137,43 @@ describe('planFocus', () => {
   it('ディレクトリに空白や引用符があっても、シェル向けに囲んだコマンドにする', () => {
     expect(planFocus(background({ cwd: "/Users/naoki/My App's" }), 'darwin')).toEqual({
       kind: 'terminal',
+      app: 'Terminal',
       command: "cd '/Users/naoki/My App'\\''s' && claude attach 5c2d4962",
     });
+  });
+
+  it('設定で iTerm2 を選んでいれば iTerm2 で開く', () => {
+    expect(planFocus(background(), 'darwin', 'iTerm2')).toEqual({
+      kind: 'terminal',
+      app: 'iTerm2',
+      command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+    });
+  });
+
+  it('設定で Ghostty などを選んでいれば、そのアプリで開く', () => {
+    expect(planFocus(background(), 'darwin', 'Ghostty')).toEqual({
+      kind: 'terminal',
+      app: 'Ghostty',
+      command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+    });
+  });
+
+  it('設定で「開かずにコピー」を選んでいれば開かない（呼び出し側がコピーする）', () => {
+    expect(planFocus(background(), 'darwin', 'copy')).toEqual({
+      kind: 'unsupported',
+      reason: 'background セッションは端末を持たないため移動できません',
+    });
+    expect(planFocus(background({ pid: 4321 }), 'darwin', 'copy')).toEqual({
+      kind: 'unsupported',
+      reason: '起動元のアプリを判定できないため移動できません',
+    });
+  });
+
+  it('設定は起動元が分かるセッションの移動には関わらない', () => {
+    expect(planFocus(interactive('iTerm2'), 'darwin', 'copy')).toMatchObject({ kind: 'tab' });
+    expect(
+      planFocus(background({ pid: 4321, launchApp: 'Terminal' }), 'darwin', 'iTerm2'),
+    ).toMatchObject({ kind: 'tab', app: 'Terminal' });
   });
 
   it('macOS 以外では background セッションも開かない', () => {
@@ -210,21 +250,84 @@ describe('buildFocusScript', () => {
 });
 
 describe('buildTerminalScript', () => {
+  it('iTerm2 は新しいウィンドウを作り、そのセッションにコマンドを打ち込む', () => {
+    const script = buildTerminalScript('iTerm2', 'cd /tmp && claude attach 5c2d4962');
+    expect(script).toContain('tell application "iTerm"');
+    expect(script).toContain('set newWindow to (create window with default profile)');
+    expect(script).toContain(
+      'tell current session of newWindow to write text "cd /tmp && claude attach 5c2d4962"',
+    );
+  });
+
+  it('iTerm2 が起動していなければ、起動時に開くウィンドウで実行する（無ければ作る）', () => {
+    const script = buildTerminalScript('iTerm2', 'claude attach 5c2d4962');
+    expect(script).toContain('if application "iTerm" is running then');
+    expect(script).toContain('if (count of windows) is 0 then create window with default profile');
+    expect(script).toContain(
+      'tell current session of current window to write text "claude attach 5c2d4962"',
+    );
+  });
+
+  it('iTerm2 でも引用符とバックスラッシュをエスケープする', () => {
+    expect(buildTerminalScript('iTerm2', 'a"b\\c')).toContain('write text "a\\"b\\\\c"');
+  });
+
   it('Terminal の新しいウィンドウでコマンドを実行して前面に出す', () => {
-    const script = buildTerminalScript('cd /tmp && claude attach 5c2d4962');
+    const script = buildTerminalScript('Terminal', 'cd /tmp && claude attach 5c2d4962');
     expect(script).toContain('tell application "Terminal"');
     expect(script).toContain('do script "cd /tmp && claude attach 5c2d4962"');
     expect(script).toContain('activate');
   });
 
   it('起動していなければ、起動時に開く最初のウィンドウで実行する（ウィンドウを 2 つ開かない）', () => {
-    const script = buildTerminalScript('claude attach 5c2d4962');
+    const script = buildTerminalScript('Terminal', 'claude attach 5c2d4962');
     expect(script).toContain('if application "Terminal" is running then');
     expect(script).toContain('do script "claude attach 5c2d4962" in window 1');
   });
 
   it('AppleScript の文字列を壊す引用符とバックスラッシュをエスケープする', () => {
-    const script = buildTerminalScript("cd '/tmp/a\"b\\c' && claude attach 5c2d4962");
+    const script = buildTerminalScript('Terminal', "cd '/tmp/a\"b\\c' && claude attach 5c2d4962");
     expect(script).toContain('do script "cd \'/tmp/a\\"b\\\\c\' && claude attach 5c2d4962"');
+  });
+});
+
+describe('isScriptTerminal', () => {
+  it('Terminal と iTerm2 は AppleScript で開く', () => {
+    expect(isScriptTerminal('Terminal')).toBe(true);
+    expect(isScriptTerminal('iTerm2')).toBe(true);
+  });
+
+  it.each(['Ghostty', 'WezTerm', 'kitty', 'Alacritty'] as const)('%s は引数で開く', (app) => {
+    expect(isScriptTerminal(app)).toBe(false);
+  });
+});
+
+describe('buildTerminalOpenArgs', () => {
+  const command = 'cd /tmp && claude attach 5c2d4962';
+  const run = (shell: string) => [shell, '-l', '-c', `${command}; exec ${shell} -l`];
+
+  it.each([
+    ['Ghostty', ['-e']],
+    ['WezTerm', ['start', '--']],
+    ['kitty', []],
+    ['Alacritty', ['-e']],
+  ] as const)('%s は新しく起動して、ログインシェルで claude を実行する', (app, prefix) => {
+    expect(buildTerminalOpenArgs(app, command, '/bin/bash')).toEqual([
+      '-na',
+      app,
+      '--args',
+      ...prefix,
+      ...run('/bin/bash'),
+    ]);
+  });
+
+  it('シェルが分からない・想定外の形なら macOS 既定の zsh を使う', () => {
+    expect(DEFAULT_SHELL).toBe('/bin/zsh');
+    expect(buildTerminalOpenArgs('Ghostty', command, undefined).slice(-4)).toEqual(
+      run('/bin/zsh'),
+    );
+    expect(buildTerminalOpenArgs('Ghostty', command, 'zsh; rm -rf ~').slice(-4)).toEqual(
+      run('/bin/zsh'),
+    );
   });
 });

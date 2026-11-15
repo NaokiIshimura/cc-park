@@ -15,6 +15,7 @@ import {
   toCompactSettings,
   type CompactSettings,
 } from '../shared/compactSettings.js';
+import { DEFAULT_OPEN_SETTINGS, toOpenSettings, type OpenSettings } from '../shared/openSettings.js';
 import { DEFAULT_APPEARANCE, toAppearance, type Appearance } from '../shared/themes.js';
 import {
   fsScheduleFileSystem,
@@ -25,7 +26,7 @@ import {
 } from './scheduleStore.js';
 
 /**
- * GUI の設定（見た目・ミニ表示・操作待ちの件数の出し方・通知の条件）の永続化。
+ * GUI の設定（見た目・ミニ表示・操作待ちの件数の出し方・通知の条件・セッションを開くアプリ）の永続化。
  *
  * 予約と同じ `~/.cc-park/` に `settings.json` として置く。読み書きの方針も予約と揃え、
  * 壊れていても例外にせず、解釈できない項目だけ既定値で埋める。
@@ -42,6 +43,8 @@ export interface Settings {
   readonly attention: AttentionSettings;
   /** どの遷移を OS 通知するか */
   readonly notification: NotificationSettings;
+  /** 起動元のアプリが分からないセッションを開くアプリ */
+  readonly open: OpenSettings;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -49,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = {
   compact: DEFAULT_COMPACT_SETTINGS,
   attention: DEFAULT_ATTENTION_SETTINGS,
   notification: DEFAULT_NOTIFICATION_SETTINGS,
+  open: DEFAULT_OPEN_SETTINGS,
 };
 
 export const SETTINGS_FILE = 'settings.json';
@@ -70,7 +74,7 @@ export const parseSettings = (text: string): Settings => {
     return DEFAULT_SETTINGS;
   }
 
-  const { appearance, compact, attention, notification } = parsed as Partial<
+  const { appearance, compact, attention, notification, open } = parsed as Partial<
     Record<keyof Settings, unknown>
   >;
   return {
@@ -78,6 +82,7 @@ export const parseSettings = (text: string): Settings => {
     compact: toCompactSettings(compact),
     attention: toAttentionSettings(attention),
     notification: toNotificationSettings(notification),
+    open: toOpenSettings(open),
   };
 };
 
