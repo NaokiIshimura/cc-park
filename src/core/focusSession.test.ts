@@ -66,12 +66,38 @@ describe('focusSession', () => {
     expect(runner.mock.calls.map(([command]) => command)).toEqual(['ps', 'open']);
   });
 
-  it('VS Code などは .app の名前で前面に出す', async () => {
+  it('VS Code はセッションのフォルダを渡し、そのウィンドウ（の Space）へ移る', async () => {
     const runner = fakeRunner({ open: '' });
     await expect(
       focusSession(agent({ launchApp: 'VS Code' }), { platform: 'darwin', runner }),
     ).resolves.toEqual({ ok: true, target: 'app', app: 'VS Code' });
-    expect(runner).toHaveBeenCalledWith('open', ['-a', 'Visual Studio Code'], expect.anything());
+    expect(runner).toHaveBeenCalledWith(
+      'open',
+      ['-a', 'Visual Studio Code', '/Users/naoki/app'],
+      expect.anything(),
+    );
+    expect(runner).toHaveBeenCalledTimes(1);
+  });
+
+  it('フォルダを開けなければ（消えたなど）アプリを前面に出すだけにする', async () => {
+    const runner = vi.fn<CommandRunner>(async (_command, args) => {
+      if (args.length > 2) {
+        throw new Error('does not exist');
+      }
+      return '';
+    });
+    await expect(
+      focusSession(agent({ launchApp: 'VS Code' }), { platform: 'darwin', runner }),
+    ).resolves.toEqual({ ok: true, target: 'app', app: 'VS Code' });
+    expect(runner).toHaveBeenLastCalledWith('open', ['-a', 'Visual Studio Code'], expect.anything());
+  });
+
+  it('VS Code 系でないアプリは .app の名前で前面に出す', async () => {
+    const runner = fakeRunner({ open: '' });
+    await expect(
+      focusSession(agent({ launchApp: 'Ghostty' }), { platform: 'darwin', runner }),
+    ).resolves.toEqual({ ok: true, target: 'app', app: 'Ghostty' });
+    expect(runner).toHaveBeenCalledWith('open', ['-a', 'Ghostty'], expect.anything());
   });
 
   it('アプリも前面に出せなければ失敗を返す', async () => {

@@ -14,8 +14,16 @@ export type TabApp = 'iTerm2' | 'Terminal';
 export type FocusPlan =
   /** 端末のタブを tty で探して選び、アプリを前面に出す */
   | { readonly kind: 'tab'; readonly app: TabApp; readonly pid: number }
-  /** アプリを前面に出すだけ（VS Code の統合ターミナルなど、タブまでは選べない） */
-  | { readonly kind: 'app'; readonly app: string; readonly bundleName: string }
+  /**
+   * アプリを前面に出す（VS Code の統合ターミナルなど、タブまでは選べない）。
+   * `folder` があれば `open -a <app> <folder>` で、そのフォルダを開いているウィンドウを前面に出す
+   */
+  | {
+      readonly kind: 'app';
+      readonly app: string;
+      readonly bundleName: string;
+      readonly folder?: string;
+    }
   /** 移動できない。呼び出し側はコマンドのコピーへ切り替える */
   | { readonly kind: 'unsupported'; readonly reason: string };
 
@@ -23,9 +31,24 @@ const TAB_APPS: readonly string[] = ['iTerm2', 'Terminal'] satisfies readonly Ta
 
 const isTabApp = (app: string): app is TabApp => TAB_APPS.includes(app);
 
+/**
+ * フォルダを渡すと、そのフォルダを開いているウィンドウを前面に出すエディタ（VS Code 系）。
+ *
+ * `open -a` でアプリを出すだけだと、macOS はそのアプリの直前のウィンドウを出す。
+ * 別の Space にもウィンドウがあると、セッションのウィンドウがある Space へ切り替わらない。
+ * フォルダを渡せばエディタ自身がそのウィンドウを選ぶので、Space も切り替わる。
+ */
+const FOLDER_EDITORS: readonly string[] = [
+  'VS Code',
+  'Visual Studio Code - Insiders',
+  'VSCodium',
+  'Cursor',
+  'Windsurf',
+];
+
 /** 移動の方法を決める。 */
 export const planFocus = (
-  agent: Pick<Agent, 'kind' | 'pid' | 'launchApp'>,
+  agent: Pick<Agent, 'kind' | 'pid' | 'launchApp' | 'cwd'>,
   platform: string,
 ): FocusPlan => {
   if (platform !== 'darwin') {
@@ -51,7 +74,11 @@ export const planFocus = (
   if (isTabApp(app)) {
     return { kind: 'tab', app, pid: agent.pid };
   }
-  return { kind: 'app', app, bundleName: appBundleName(app) };
+  const bundleName = appBundleName(app);
+  if (FOLDER_EDITORS.includes(app) && agent.cwd.startsWith('/')) {
+    return { kind: 'app', app, bundleName, folder: agent.cwd };
+  }
+  return { kind: 'app', app, bundleName };
 };
 
 /**
@@ -73,6 +100,10 @@ export const FOCUS_SCRIPT_FOUND = 'found';
  * 見つかれば {@link FOCUS_SCRIPT_FOUND} を返し、見つからなければ空文字を返す。
  *
  * `ttyPath` は {@link toTtyPath} を通した値だけを渡すこと（引用符を含まないことをそこで保証する）。
+ *
+ * 先にアプリを `activate` してから、ウィンドウを選ぶ。逆の順だと、前面にないアプリの
+ * ウィンドウを選んでも Space は切り替わらず、`activate` はアプリの直前のウィンドウを出すだけになる。
+ * アプリが前面にいる状態でウィンドウを選べば、macOS がそのウィンドウのある Space へ切り替える。
  */
 export const buildFocusScript = (app: TabApp, ttyPath: string): string => {
   if (app === 'iTerm2') {
@@ -82,10 +113,10 @@ export const buildFocusScript = (app: TabApp, ttyPath: string): string => {
       '    repeat with t in tabs of w',
       '      repeat with s in sessions of t',
       `        if tty of s is "${ttyPath}" then`,
+      '          activate',
       '          tell w to select',
       '          tell t to select',
       '          tell s to select',
-      '          activate',
       `          return "${FOCUS_SCRIPT_FOUND}"`,
       '        end if',
       '      end repeat',
@@ -100,9 +131,9 @@ export const buildFocusScript = (app: TabApp, ttyPath: string): string => {
     '  repeat with w in windows',
     '    repeat with t in tabs of w',
     `      if tty of t is "${ttyPath}" then`,
+    '        activate',
     '        set selected of t to true',
     '        set index of w to 1',
-    '        activate',
     `        return "${FOCUS_SCRIPT_FOUND}"`,
     '      end if',
     '    end repeat',

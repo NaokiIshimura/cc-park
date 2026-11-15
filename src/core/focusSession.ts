@@ -52,6 +52,14 @@ export const focusSession = async (
   };
 
   if (plan.kind === 'app') {
+    if (plan.folder !== undefined) {
+      try {
+        await run('open', ['-a', plan.bundleName, plan.folder]);
+        return { ok: true, target: 'app', app: plan.app };
+      } catch {
+        // フォルダが消えたなど。アプリを出すだけにする
+      }
+    }
     return activate(plan.app, plan.bundleName);
   }
 
