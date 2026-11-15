@@ -83,11 +83,19 @@ describe('planFocus', () => {
     });
   });
 
-  it('それ以外のアプリは .app の名前で前面に出すだけにする', () => {
+  it('Ghostty も iTerm2 と同じくタブまで選ぶ（AppleScript で tty を引ける）', () => {
     expect(planFocus(interactive('Ghostty'), 'darwin')).toEqual({
-      kind: 'app',
+      kind: 'tab',
       app: 'Ghostty',
-      bundleName: 'Ghostty',
+      pid: 123,
+    });
+  });
+
+  it('それ以外のアプリは .app の名前で前面に出すだけにする', () => {
+    expect(planFocus(interactive('WezTerm'), 'darwin')).toEqual({
+      kind: 'app',
+      app: 'WezTerm',
+      bundleName: 'WezTerm',
     });
   });
 
@@ -237,7 +245,18 @@ describe('buildFocusScript', () => {
     expect(script).toContain('set index of w to 1');
   });
 
-  it.each(['iTerm2', 'Terminal'] as const)(
+  it('Ghostty は terminal の tty で探し、ウィンドウ・タブ・端末を選ぶ（/dev の有無を問わない）', () => {
+    const script = buildFocusScript('Ghostty', '/dev/ttys007');
+    expect(script).toContain('tell application "Ghostty"');
+    expect(script).toContain('repeat with t in terminals of tb');
+    expect(script).toContain('if tty of t is "/dev/ttys007" or tty of t is "ttys007" then');
+    expect(script).toContain('activate window w');
+    expect(script).toContain('select tab tb');
+    expect(script).toContain('focus t');
+    expect(script).toContain(`return "${FOCUS_SCRIPT_FOUND}"`);
+  });
+
+  it.each(['iTerm2', 'Terminal', 'Ghostty'] as const)(
     '%s は先にアプリを activate してからウィンドウを選ぶ（別の Space へ切り替えるため）',
     (app) => {
       const lines = buildFocusScript(app, '/dev/ttys003')
@@ -245,7 +264,10 @@ describe('buildFocusScript', () => {
         .map((line) => line.trim());
       const activateAt = lines.indexOf('activate');
       const selectAt = lines.findIndex(
-        (line) => line === 'tell w to select' || line === 'set index of w to 1',
+        (line) =>
+          line === 'tell w to select' ||
+          line === 'set index of w to 1' ||
+          line === 'activate window w',
       );
       expect(activateAt).toBeGreaterThan(-1);
       expect(selectAt).toBeGreaterThan(activateAt);
@@ -258,6 +280,24 @@ describe('buildFocusScript', () => {
 });
 
 describe('buildTerminalScript', () => {
+  it('Ghostty は 1 つの Ghostty の中に新しいウィンドウを開き、シェルにコマンドを打ち込む', () => {
+    const script = buildTerminalScript('Ghostty', 'cd /tmp && claude attach 5c2d4962');
+    expect(script).toContain('tell application "Ghostty"');
+    expect(script).toContain('set cfg to new surface configuration');
+    expect(script).toContain(
+      'set initial input of cfg to "cd /tmp && claude attach 5c2d4962" & linefeed',
+    );
+    expect(script).toContain('set newWindow to new window with configuration cfg');
+    // 新しく起動し直さない（open -na を使わない）ので、あとから前面に出すときも同じ Ghostty を操作できる
+    expect(script.indexOf('activate')).toBeLessThan(script.indexOf('activate window newWindow'));
+  });
+
+  it('Ghostty でも引用符とバックスラッシュをエスケープする', () => {
+    expect(buildTerminalScript('Ghostty', 'a"b\\c')).toContain(
+      'set initial input of cfg to "a\\"b\\\\c" & linefeed',
+    );
+  });
+
   it('iTerm2 は新しいウィンドウを作り、そのセッションにコマンドを打ち込む', () => {
     const script = buildTerminalScript('iTerm2', 'cd /tmp && claude attach 5c2d4962');
     expect(script).toContain('tell application "iTerm"');
@@ -300,12 +340,11 @@ describe('buildTerminalScript', () => {
 });
 
 describe('isScriptTerminal', () => {
-  it('Terminal と iTerm2 は AppleScript で開く', () => {
-    expect(isScriptTerminal('Terminal')).toBe(true);
-    expect(isScriptTerminal('iTerm2')).toBe(true);
+  it.each(['Terminal', 'iTerm2', 'Ghostty'] as const)('%s は AppleScript で開く', (app) => {
+    expect(isScriptTerminal(app)).toBe(true);
   });
 
-  it.each(['Ghostty', 'WezTerm', 'kitty', 'Alacritty'] as const)('%s は引数で開く', (app) => {
+  it.each(['WezTerm', 'kitty', 'Alacritty'] as const)('%s は引数で開く', (app) => {
     expect(isScriptTerminal(app)).toBe(false);
   });
 });
@@ -315,7 +354,6 @@ describe('buildTerminalOpenArgs', () => {
   const run = (shell: string) => [shell, '-l', '-c', `${command}; exec ${shell} -l`];
 
   it.each([
-    ['Ghostty', ['-e']],
     ['WezTerm', ['start', '--']],
     ['kitty', []],
     ['Alacritty', ['-e']],
@@ -331,10 +369,10 @@ describe('buildTerminalOpenArgs', () => {
 
   it('シェルが分からない・想定外の形なら macOS 既定の zsh を使う', () => {
     expect(DEFAULT_SHELL).toBe('/bin/zsh');
-    expect(buildTerminalOpenArgs('Ghostty', command, undefined).slice(-4)).toEqual(
+    expect(buildTerminalOpenArgs('WezTerm', command, undefined).slice(-4)).toEqual(
       run('/bin/zsh'),
     );
-    expect(buildTerminalOpenArgs('Ghostty', command, 'zsh; rm -rf ~').slice(-4)).toEqual(
+    expect(buildTerminalOpenArgs('WezTerm', command, 'zsh; rm -rf ~').slice(-4)).toEqual(
       run('/bin/zsh'),
     );
   });

@@ -6,14 +6,14 @@
  * `claude attach` して開く。`copy` は開かずに、開くコマンドをコピーするだけにする。
  */
 
-/** AppleScript で新しいウィンドウにコマンドを打ち込める端末アプリ。 */
-export type ScriptTerminal = 'Terminal' | 'iTerm2';
+/** AppleScript で新しいウィンドウにコマンドを打ち込める端末アプリ（Ghostty は 1.3 以降）。 */
+export type ScriptTerminal = 'Terminal' | 'iTerm2' | 'Ghostty';
 
 /**
  * AppleScript を持たず、起動時の引数で実行するコマンドを渡す端末アプリ（`open -na <アプリ> --args …`）。
  * Warp は外からコマンドを渡して実行する手段が無いので入れていない。
  */
-export type ArgsTerminal = 'Ghostty' | 'WezTerm' | 'kitty' | 'Alacritty';
+export type ArgsTerminal = 'WezTerm' | 'kitty' | 'Alacritty';
 
 /** 開くのに使える端末アプリ。 */
 export type FallbackTerminal = ScriptTerminal | ArgsTerminal;
