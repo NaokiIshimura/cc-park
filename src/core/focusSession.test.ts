@@ -217,16 +217,20 @@ describe('focusSession', () => {
       agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined });
 
     /** `ps` を引数で出し分けるランナー。attach の一覧とプロセスの親子を返す。 */
-    const attachedRunner = (clients: string, table: string, osascript: string | Error = '') =>
+    /** osascript の応答。関数なら引数（JXA かどうかなど）で出し分ける */
+    type OsascriptResponse = string | Error | ((args: readonly string[]) => string | Error);
+
+    const attachedRunner = (clients: string, table: string, osascript: OsascriptResponse = '') =>
       vi.fn<CommandRunner>(async (command, args) => {
         if (command === 'ps') {
           return args.includes('pid=,tty=,args=') ? clients : table;
         }
         if (command === 'osascript') {
-          if (osascript instanceof Error) {
-            throw osascript;
+          const response = typeof osascript === 'function' ? osascript(args) : osascript;
+          if (response instanceof Error) {
+            throw response;
           }
-          return osascript;
+          return response;
         }
         if (command === 'open') {
           return '';
@@ -254,7 +258,7 @@ describe('focusSession', () => {
       expect(commands(runner)).toEqual(['ps', 'ps', 'osascript']);
     });
 
-    it('Ghostty で attach していれば、そのウィンドウを持つプロセスを前面に出す', async () => {
+    it('Ghostty で attach していれば、そのウィンドウを持つプロセスを pid で起動する（Space も切り替わる）', async () => {
       const runner = attachedRunner(
         '  950 ttys007  /bin/zsh -l -c cd /Users/naoki/app && claude attach 5c2d4962; exec /bin/zsh -l',
         [
@@ -266,11 +270,31 @@ describe('focusSession', () => {
       await expect(
         focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'Ghostty' }),
       ).resolves.toEqual({ ok: true, target: 'app', app: 'Ghostty' });
-      expect(runner.mock.calls[2]?.[1]?.[1]).toContain('first process whose unix id is 700');
+      expect(runner.mock.calls[2]?.[1]).toEqual([
+        '-l',
+        'JavaScript',
+        '-e',
+        'Application(700).activate()',
+      ]);
+      expect(commands(runner)).toEqual(['ps', 'ps', 'osascript']);
+    });
+
+    it('pid での起動に失敗したら、System Events で前面に出す', async () => {
+      const runner = attachedRunner(
+        '  950 ttys007  claude attach 5c2d4962',
+        ['  950   700 /bin/zsh', '  700     1 /Applications/Ghostty.app/Contents/MacOS/ghostty'].join(
+          '\n',
+        ),
+        (args) => (args.includes('JavaScript') ? new Error('-1743') : ''),
+      );
+      await expect(
+        focusSession(bg(), { platform: 'darwin', runner, fallbackApp: 'Ghostty' }),
+      ).resolves.toEqual({ ok: true, target: 'app', app: 'Ghostty' });
+      expect(runner.mock.calls[3]?.[1]?.[1]).toContain('first process whose unix id is 700');
       expect(commands(runner)).not.toContain('open');
     });
 
-    it('プロセスを前面に出せなければ（System Events の許可が無いなど）、アプリを前面に出す', async () => {
+    it('どちらでも前面に出せなければ（オートメーションの許可が無いなど）、アプリを前面に出す', async () => {
       const runner = attachedRunner(
         '  950 ttys007  claude attach 5c2d4962',
         ['  950   700 /bin/zsh', '  700     1 /Applications/kitty.app/Contents/MacOS/kitty'].join(

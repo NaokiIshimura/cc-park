@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildActivateProcessJxa,
   buildActivateProcessScript,
   buildFocusScript,
   buildTerminalOpenArgs,
@@ -368,6 +369,16 @@ describe('findAttachClient', () => {
     expect(
       findAttachClient('  960 ttys008  grep myclaude attach 5c2d4962', '5c2d4962'),
     ).toBeUndefined();
+  });
+});
+
+describe('buildActivateProcessJxa', () => {
+  it('pid で指定したプロセスへ activate を送る', () => {
+    expect(buildActivateProcessJxa(700)).toBe('Application(700).activate()');
+  });
+
+  it('pid は整数にしてから埋め込む', () => {
+    expect(buildActivateProcessJxa(700.9)).toBe('Application(700).activate()');
   });
 });
 

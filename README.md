@@ -58,7 +58,7 @@ GUI だけ使う場合は、[Releases](../../releases) から macOS 用の `.app
 Apple シリコン（M1 以降）:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.1/cc-park-0.21.1-darwin-arm64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.2/cc-park-0.21.2-darwin-arm64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -67,7 +67,7 @@ curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/d
 Intel Mac:
 
 ```bash
-curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.1/cc-park-0.21.1-darwin-x64.zip && \
+curl -fL -o /tmp/cc-park.zip https://github.com/NaokiIshimura/cc-park/releases/download/v0.21.2/cc-park-0.21.2-darwin-x64.zip && \
   rm -rf /Applications/cc-park.app && \
   ditto -x -k /tmp/cc-park.zip /Applications && \
   rm /tmp/cc-park.zip
@@ -299,7 +299,7 @@ GUI では `Enter` か行のダブルクリック（[ミニ表示](#ミニ表示
   | `Ghostty` / `WezTerm` / `kitty` / `Alacritty` | `open -na <アプリ> --args …` で新しく起動し、ログインシェル（`$SHELL -l -c`）を通して実行する。`claude attach` を抜けてもウィンドウはシェルとして残る |
   | `開かずにコマンドをコピーする` | 開かずに、開くコマンドをコピーするだけにする |
 
-- そのセッションへ既に `claude attach` しているウィンドウがあれば、新しく開かずにそのウィンドウへ移ります（開くたびにウィンドウが増えないように）。iTerm2 / Terminal はタブまで選び、それ以外のアプリはそのウィンドウを持つプロセスを前面に出します（初回は「System Events」のオートメーションの許可を求められます）。`claude attach` を抜けたあとのウィンドウはシェルとして残りますが、セッションへは繋がっていないので、次は新しく開きます
+- そのセッションへ既に `claude attach` しているウィンドウがあれば、新しく開かずにそのウィンドウへ移ります（開くたびにウィンドウが増えないように）。iTerm2 / Terminal はタブまで選び、それ以外のアプリは、開くたびに新しく起動しているので、そのウィンドウを持つプロセスを指定して前面に出します。どちらも別の Space にあればその Space へ切り替わります（初回はそのアプリのオートメーションの許可を求められます）。`claude attach` を抜けたあとのウィンドウはシェルとして残りますが、セッションへは繋がっていないので、次は新しく開きます
 - Ghostty / WezTerm / kitty / Alacritty は AppleScript で操作できないため、開くたびにアプリを新しく起動します（Dock にアイコンが増えることがあります）。Warp は外からコマンドを渡して実行する手段が無いため選べません
 - background セッションを Terminal / iTerm2 で開くときも、初回はそのアプリのオートメーションの許可を求められます。許可しない・アプリが入っていないなどで開けないときは、開くコマンドをコピーします
 - 開くアプリが起動していなければ起動し、最初に開くウィンドウで実行します（ウィンドウを 2 つ開きません）

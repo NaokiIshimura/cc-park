@@ -1,5 +1,6 @@
 import {
   ATTACH_CLIENT_ARGS,
+  buildActivateProcessJxa,
   buildActivateProcessScript,
   buildFocusScript,
   buildTerminalOpenArgs,
@@ -111,7 +112,14 @@ export const focusSession = async (
         }
       }
 
-      // Ghostty などは開くたびに新しく起動しているので、そのウィンドウを持つプロセスを前面に出す
+      // Ghostty などは開くたびに新しく起動しているので、そのウィンドウを持つプロセスを pid で起動する。
+      // activate なので、ウィンドウが別の Space にあればその Space へ切り替わる
+      try {
+        await run('osascript', ['-l', 'JavaScript', '-e', buildActivateProcessJxa(owner.pid)]);
+        return { ok: true, target: 'app', app: owner.app };
+      } catch {
+        // オートメーションの許可が無いなど。System Events で前面に出す（Space は切り替わらない）
+      }
       try {
         await run('osascript', ['-e', buildActivateProcessScript(owner.pid)]);
         return { ok: true, target: 'app', app: owner.app };
