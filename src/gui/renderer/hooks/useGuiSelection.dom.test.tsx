@@ -154,6 +154,16 @@ describe('useGuiSelection', () => {
     expect(snapshot.message).toBe('VS Code を前面に出しました: a');
   });
 
+  it('Terminal で開いたときはそう伝え、コマンドはコピーしない', async () => {
+    const { copy } = setup({
+      focus: vi.fn(async () => ({ ok: true as const, target: 'terminal' as const, app: 'Terminal' })),
+    });
+    press('Enter');
+    await act(async () => undefined);
+    expect(copy).not.toHaveBeenCalled();
+    expect(snapshot.message).toBe('Terminal でセッションを開きました: a');
+  });
+
   it('移動できないセッションは、理由とともに開くコマンドをコピーする', async () => {
     const { copy } = setup({
       focus: vi.fn(async () => ({ ok: false as const, reason: 'tmux のセッションへは移動できません' })),

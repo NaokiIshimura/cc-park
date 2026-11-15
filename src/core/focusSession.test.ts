@@ -107,6 +107,37 @@ describe('focusSession', () => {
     ).resolves.toEqual({ ok: false, reason: 'Cursor を前面に出せませんでした' });
   });
 
+  it('起動元の分からない background セッションは Terminal で claude attach して開く', async () => {
+    const runner = fakeRunner({ osascript: '' });
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        {
+          platform: 'darwin',
+          runner,
+        },
+      ),
+    ).resolves.toEqual({ ok: true, target: 'terminal', app: 'Terminal' });
+    expect(runner).toHaveBeenCalledTimes(1);
+    expect(runner.mock.calls[0]?.[0]).toBe('osascript');
+    expect(runner.mock.calls[0]?.[1]?.[1]).toContain(
+      'do script "cd /Users/naoki/app && claude attach 5c2d4962"',
+    );
+  });
+
+  it('Terminal で開けなければ（オートメーションの許可が無いなど）失敗を返す', async () => {
+    const runner = fakeRunner({ osascript: new Error('-1743') });
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        {
+          platform: 'darwin',
+          runner,
+        },
+      ),
+    ).resolves.toEqual({ ok: false, reason: 'Terminal でセッションを開けませんでした' });
+  });
+
   it('移動できないセッションはコマンドを実行せずに理由を返す', async () => {
     const runner = fakeRunner({});
     await expect(

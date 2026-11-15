@@ -1,5 +1,6 @@
 import {
   buildFocusScript,
+  buildTerminalScript,
   FOCUS_SCRIPT_FOUND,
   planFocus,
   toTtyPath,
@@ -17,8 +18,11 @@ import { execFileRunner, type CommandRunner } from './runCommand.js';
  */
 
 export type FocusSessionResult =
-  /** `tab` はタブまで選べた、`app` はアプリを前面に出しただけ */
-  | { readonly ok: true; readonly target: 'tab' | 'app'; readonly app: string }
+  /**
+   * `tab` はタブまで選べた、`app` はアプリを前面に出しただけ、
+   * `terminal` は background セッションを Terminal の新しいウィンドウで開いた
+   */
+  | { readonly ok: true; readonly target: 'tab' | 'app' | 'terminal'; readonly app: string }
   | { readonly ok: false; readonly reason: string };
 
 export interface FocusSessionOptions {
@@ -50,6 +54,16 @@ export const focusSession = async (
       return { ok: false, reason: `${app} を前面に出せませんでした` };
     }
   };
+
+  if (plan.kind === 'terminal') {
+    try {
+      await run('osascript', ['-e', buildTerminalScript(plan.command)]);
+      return { ok: true, target: 'terminal', app: 'Terminal' };
+    } catch {
+      // オートメーションを許可していないなど。呼び出し側はコマンドのコピーへ切り替える
+      return { ok: false, reason: 'Terminal でセッションを開けませんでした' };
+    }
+  }
 
   if (plan.kind === 'app') {
     if (plan.folder !== undefined) {
