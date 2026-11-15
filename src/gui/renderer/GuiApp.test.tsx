@@ -13,6 +13,7 @@ import {
   DEFAULT_NOTIFICATION_SETTINGS,
   type NotificationSettings,
 } from '../../shared/notificationSettings.js';
+import { DEFAULT_OPEN_SETTINGS, type OpenSettings } from '../../shared/openSettings.js';
 import type { Schedule } from '../../shared/schedule.js';
 import { DEFAULT_APPEARANCE, PALETTES, type Appearance } from '../../shared/themes.js';
 import type { Agent } from '../../types/agent.js';
@@ -45,6 +46,7 @@ const config: GuiConfig = {
   compact: DEFAULT_COMPACT_SETTINGS,
   attention: DEFAULT_ATTENTION_SETTINGS,
   notification: DEFAULT_NOTIFICATION_SETTINGS,
+  open: DEFAULT_OPEN_SETTINGS,
 };
 
 const agent = (sessionId: string, overrides: Partial<Agent> = {}): Agent => ({
@@ -87,6 +89,7 @@ const createBridge = (overrides: Partial<CcParkBridge> = {}): CcParkBridge => ({
   setAttention: vi.fn(),
   saveAttentionSettings: vi.fn(async (settings: AttentionSettings) => settings),
   saveNotificationSettings: vi.fn(async (settings: NotificationSettings) => settings),
+  saveOpenSettings: vi.fn(async (settings: OpenSettings) => settings),
   pickDirectory: vi.fn(async () => null),
   listSchedules: vi.fn(async () => []),
   saveSchedule: vi.fn(async () => []),
@@ -756,6 +759,18 @@ describe('GuiApp の通知の条件', () => {
       ...DEFAULT_NOTIFICATION_SETTINGS,
       sound: false,
     });
+  });
+});
+
+describe('GuiApp の開くアプリの設定', () => {
+  it('設定画面で選んだ開くアプリを main へ伝えて保存させる', async () => {
+    const saveOpenSettings = vi.fn(async (settings: OpenSettings) => settings);
+    const { user } = await setup({ saveOpenSettings });
+
+    await user.click(screen.getByRole('button', { name: '設定' }));
+    await user.click(screen.getByRole('radio', { name: 'iTerm2' }));
+
+    expect(saveOpenSettings).toHaveBeenCalledWith({ fallbackApp: 'iTerm2' });
   });
 });
 

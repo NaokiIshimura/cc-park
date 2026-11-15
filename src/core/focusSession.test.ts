@@ -138,6 +138,38 @@ describe('focusSession', () => {
     ).resolves.toEqual({ ok: false, reason: 'Terminal でセッションを開けませんでした' });
   });
 
+  it('設定で選んだ iTerm2 で開く', async () => {
+    const runner = fakeRunner({ osascript: '' });
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        { platform: 'darwin', runner, fallbackApp: 'iTerm2' },
+      ),
+    ).resolves.toEqual({ ok: true, target: 'terminal', app: 'iTerm2' });
+    expect(runner.mock.calls[0]?.[1]?.[1]).toContain('tell application "iTerm"');
+  });
+
+  it('iTerm2 で開けなければ、iTerm2 で開けなかったと返す', async () => {
+    const runner = fakeRunner({ osascript: new Error('not found') });
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        { platform: 'darwin', runner, fallbackApp: 'iTerm2' },
+      ),
+    ).resolves.toEqual({ ok: false, reason: 'iTerm2 でセッションを開けませんでした' });
+  });
+
+  it('設定が「開かずにコピー」ならコマンドを実行せずに理由を返す', async () => {
+    const runner = fakeRunner({});
+    await expect(
+      focusSession(
+        agent({ kind: 'background', id: '5c2d4962', pid: undefined, launchApp: undefined }),
+        { platform: 'darwin', runner, fallbackApp: 'copy' },
+      ),
+    ).resolves.toMatchObject({ ok: false });
+    expect(runner).not.toHaveBeenCalled();
+  });
+
   it('移動できないセッションはコマンドを実行せずに理由を返す', async () => {
     const runner = fakeRunner({});
     await expect(

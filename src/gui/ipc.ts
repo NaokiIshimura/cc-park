@@ -7,6 +7,7 @@ import type { AttentionCounts, AttentionSettings } from '../shared/attention.js'
 import type { CompactSettings } from '../shared/compactSettings.js';
 import type { NotificationPayload } from '../shared/notification.js';
 import type { NotificationSettings } from '../shared/notificationSettings.js';
+import type { OpenSettings } from '../shared/openSettings.js';
 import type { Schedule } from '../shared/schedule.js';
 import type { Appearance } from '../shared/themes.js';
 import type { ScheduledLaunch } from '../shared/scheduledLaunch.js';
@@ -47,6 +48,8 @@ export const IPC_CHANNELS = {
   saveAttentionSettings: 'attention:save',
   /** 通知の条件の変更と保存 */
   saveNotificationSettings: 'notification:save',
+  /** 起動元のアプリが分からないセッションを開くアプリの変更と保存 */
+  saveOpenSettings: 'open:save',
   /** ディレクトリ選択ダイアログの表示 */
   pickDirectory: 'dialog:pickDirectory',
   /** 予約一覧の取得 */
@@ -114,6 +117,8 @@ export interface CcParkBridge {
   readonly saveNotificationSettings: (
     settings: NotificationSettings,
   ) => Promise<NotificationSettings>;
+  /** 起動元のアプリが分からないセッションを開くアプリを変更して保存する。保存した値を返す */
+  readonly saveOpenSettings: (settings: OpenSettings) => Promise<OpenSettings>;
   /**
    * ディレクトリ選択ダイアログを開く。選ばれた絶対パスを返し、取り消したら null。
    * `defaultPath` は最初に開く場所（空文字なら OS に任せる）。

@@ -27,6 +27,11 @@ import {
   saveScheduledLaunches,
   saveSchedules,
 } from '../core/scheduleStore.js';
+import {
+  DEFAULT_OPEN_SETTINGS,
+  toOpenSettings,
+  type OpenSettings,
+} from '../shared/openSettings.js';
 import { createScheduler, type ScheduleFiredEvent } from '../core/scheduler.js';
 import { loadSettings, saveSettings } from '../core/settingsStore.js';
 import { resolveShellPath } from '../core/shellPath.js';
@@ -127,6 +132,7 @@ const config: GuiConfig = {
   compact: DEFAULT_COMPACT_SETTINGS,
   attention: DEFAULT_ATTENTION_SETTINGS,
   notification: DEFAULT_NOTIFICATION_SETTINGS,
+  open: DEFAULT_OPEN_SETTINGS,
 };
 
 /** 現在の見た目。起動時に保存済みの設定から解決し、renderer からの変更で差し替える。 */
@@ -146,6 +152,9 @@ let attentionSettings: AttentionSettings = DEFAULT_ATTENTION_SETTINGS;
 
 /** どの遷移を OS 通知するか。判断は renderer が行い、main は保存と受け渡しだけをする。 */
 let notificationSettings: NotificationSettings = DEFAULT_NOTIFICATION_SETTINGS;
+
+/** 起動元のアプリが分からないセッションを開くアプリ。起動時に保存済みの設定から読み、renderer からの変更で差し替える。 */
+let openSettings: OpenSettings = DEFAULT_OPEN_SETTINGS;
 
 /** renderer が数えた操作待ちの件数。 */
 let attentionCounts: AttentionCounts = NO_ATTENTION;
@@ -181,6 +190,7 @@ const prepareSettings = async (): Promise<void> => {
   compactSettings = startupCompactSettings(saved.compact);
   attentionSettings = saved.attention;
   notificationSettings = saved.notification;
+  openSettings = saved.open;
 };
 
 /** 設定をまとめて保存する。1 つのファイルに書くため、どれを変えたときも全体を書く。 */
@@ -191,6 +201,7 @@ const persistSettings = (): Promise<boolean> =>
       compact: compactSettings,
       attention: attentionSettings,
       notification: notificationSettings,
+      open: openSettings,
     },
     { home: config.home },
   );
@@ -367,6 +378,7 @@ ipcMain.handle(IPC_CHANNELS.getConfig, (event): GuiConfig => {
     compact: compactSettings,
     attention: attentionSettings,
     notification: notificationSettings,
+    open: openSettings,
   };
 });
 
@@ -402,7 +414,9 @@ ipcMain.handle(IPC_CHANNELS.stopAgent, async (_event, agent: Agent) => stopAgent
 
 ipcMain.handle(IPC_CHANNELS.killAgent, async (_event, agent: Agent) => killAgent(agent));
 
-ipcMain.handle(IPC_CHANNELS.focusSession, async (_event, agent: Agent) => focusSession(agent));
+ipcMain.handle(IPC_CHANNELS.focusSession, async (_event, agent: Agent) =>
+  focusSession(agent, { fallbackApp: openSettings.fallbackApp }),
+);
 
 ipcMain.handle(IPC_CHANNELS.writeClipboard, (_event, text: string) => {
   clipboard.writeText(text);
@@ -447,6 +461,13 @@ ipcMain.handle(IPC_CHANNELS.saveNotificationSettings, async (_event, value: unkn
   notificationSettings = toNotificationSettings(value);
   await persistSettings();
   return notificationSettings;
+});
+
+ipcMain.handle(IPC_CHANNELS.saveOpenSettings, async (_event, value: unknown) => {
+  // renderer から来た値なので、解釈できない項目は既定値へ倒してから使う
+  openSettings = toOpenSettings(value);
+  await persistSettings();
+  return openSettings;
 });
 
 ipcMain.handle(IPC_CHANNELS.saveCompactSettings, async (_event, value: unknown) => {

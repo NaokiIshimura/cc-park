@@ -63,6 +63,10 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
     bridge,
     config.attention,
   );
+  const { settings: openSettings, change: changeOpenSettings } = useSavedSetting(
+    config.open,
+    bridge.saveOpenSettings,
+  );
   const { settings: notificationSettings, change: changeNotificationSettings } = useSavedSetting(
     config.notification,
     bridge.saveNotificationSettings,
@@ -396,6 +400,10 @@ export const GuiApp = ({ config, bridge }: GuiAppProps) => {
           notification={notificationSettings}
           onNotificationChange={(next) => {
             void changeNotificationSettings(next);
+          }}
+          open={openSettings}
+          onOpenChange={(next) => {
+            void changeOpenSettings(next);
           }}
           onClose={toggleSettings}
         />
