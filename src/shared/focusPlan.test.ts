@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildActivateProcessScript,
   buildFocusScript,
   buildTerminalOpenArgs,
   buildTerminalScript,
   DEFAULT_SHELL,
+  findAttachClient,
   FOCUS_SCRIPT_FOUND,
   isScriptTerminal,
   planFocus,
@@ -100,6 +102,7 @@ describe('planFocus', () => {
       kind: 'terminal',
       app: 'Terminal',
       command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+      id: '5c2d4962',
     });
   });
 
@@ -108,6 +111,7 @@ describe('planFocus', () => {
       kind: 'terminal',
       app: 'Terminal',
       command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+      id: '5c2d4962',
     });
   });
 
@@ -139,6 +143,7 @@ describe('planFocus', () => {
       kind: 'terminal',
       app: 'Terminal',
       command: "cd '/Users/naoki/My App'\\''s' && claude attach 5c2d4962",
+      id: '5c2d4962',
     });
   });
 
@@ -147,6 +152,7 @@ describe('planFocus', () => {
       kind: 'terminal',
       app: 'iTerm2',
       command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+      id: '5c2d4962',
     });
   });
 
@@ -155,6 +161,7 @@ describe('planFocus', () => {
       kind: 'terminal',
       app: 'Ghostty',
       command: 'cd /Users/naoki/GitHub/cc-park && claude attach 5c2d4962',
+      id: '5c2d4962',
     });
   });
 
@@ -328,6 +335,46 @@ describe('buildTerminalOpenArgs', () => {
     );
     expect(buildTerminalOpenArgs('Ghostty', command, 'zsh; rm -rf ~').slice(-4)).toEqual(
       run('/bin/zsh'),
+    );
+  });
+});
+
+describe('findAttachClient', () => {
+  const ps = [
+    '  100 ??       /Applications/cc-park.app/Contents/MacOS/cc-park',
+    '  201 ttys001  claude attach 5c2d4962aa',
+    '  202 ??       claude attach 5c2d4962',
+    '  203 ttys004  node /usr/local/bin/claude attach 5c2d4962',
+  ].join('\n');
+
+  it('同じ ID へ attach していて、端末を持つプロセスを返す', () => {
+    expect(findAttachClient(ps, '5c2d4962')).toEqual({ pid: 203, tty: 'ttys004' });
+  });
+
+  it('ID の前方一致や、端末を持たないプロセスは数えない', () => {
+    expect(findAttachClient(ps.split('\n').slice(0, 3).join('\n'), '5c2d4962')).toBeUndefined();
+  });
+
+  it('ログインシェル越しに開いたものも見つける', () => {
+    expect(
+      findAttachClient(
+        '  950 ttys007  /bin/zsh -l -c cd /tmp && claude attach 5c2d4962; exec /bin/zsh -l',
+        '5c2d4962',
+      ),
+    ).toEqual({ pid: 950, tty: 'ttys007' });
+  });
+
+  it('claude 以外のコマンドの引数に含まれているだけなら数えない', () => {
+    expect(
+      findAttachClient('  960 ttys008  grep myclaude attach 5c2d4962', '5c2d4962'),
+    ).toBeUndefined();
+  });
+});
+
+describe('buildActivateProcessScript', () => {
+  it('System Events で pid のプロセスを前面に出す', () => {
+    expect(buildActivateProcessScript(700)).toBe(
+      'tell application "System Events" to set frontmost of (first process whose unix id is 700) to true',
     );
   });
 });

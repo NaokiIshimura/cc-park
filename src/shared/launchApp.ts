@@ -70,8 +70,19 @@ export const appNameFromCommand = (command: string): string | undefined => {
   return undefined;
 };
 
-/** pid の祖先を辿り、最初に判定できた起動元アプリを返す。 */
-export const resolveLaunchApp = (pid: number, table: ProcessTable): string | undefined => {
+/** 起動元アプリと、そのアプリのプロセス。 */
+export interface LaunchAppProcess {
+  /** 表示名（`iTerm2` / `Ghostty` / `tmux` など） */
+  readonly app: string;
+  /** 起動元と判定した祖先プロセスの pid。同じアプリが複数起動していても、どれかを特定できる */
+  readonly pid: number;
+}
+
+/** pid の祖先を辿り、最初に判定できた起動元アプリとそのプロセスを返す。 */
+export const resolveLaunchAppProcess = (
+  pid: number,
+  table: ProcessTable,
+): LaunchAppProcess | undefined => {
   let current = table.get(pid)?.ppid;
   for (let depth = 0; depth < MAX_DEPTH && current !== undefined && current > 1; depth += 1) {
     const entry = table.get(current);
@@ -80,9 +91,13 @@ export const resolveLaunchApp = (pid: number, table: ProcessTable): string | und
     }
     const name = appNameFromCommand(entry.command);
     if (name !== undefined) {
-      return name;
+      return { app: name, pid: current };
     }
     current = entry.ppid;
   }
   return undefined;
 };
+
+/** pid の祖先を辿り、最初に判定できた起動元アプリを返す。 */
+export const resolveLaunchApp = (pid: number, table: ProcessTable): string | undefined =>
+  resolveLaunchAppProcess(pid, table)?.app;

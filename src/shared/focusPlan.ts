@@ -36,13 +36,19 @@ export type FocusPlan =
    * 新しいウィンドウで `claude attach` して開く。
    * `command` は {@link buildResumeCommand} の結果（`cd … && claude attach <id>`）
    */
-  | { readonly kind: 'terminal'; readonly app: FallbackTerminal; readonly command: string }
+  | {
+      readonly kind: 'terminal';
+      readonly app: FallbackTerminal;
+      readonly command: string;
+      /** `claude attach` に渡す短縮 ID。既に開いているウィンドウを探すのに使う */
+      readonly id: string;
+    }
   /** 移動できない。呼び出し側はコマンドのコピーへ切り替える */
   | { readonly kind: 'unsupported'; readonly reason: string };
 
 const TAB_APPS: readonly string[] = ['iTerm2', 'Terminal'] satisfies readonly TabApp[];
 
-const isTabApp = (app: string): app is TabApp => TAB_APPS.includes(app);
+export const isTabApp = (app: string): app is TabApp => TAB_APPS.includes(app);
 
 /**
  * フォルダを渡すと、そのフォルダを開いているウィンドウを前面に出すエディタ（VS Code 系）。
@@ -85,7 +91,12 @@ const planTerminal = (
   if (CONTROL_CHARS.test(agent.cwd)) {
     return undefined;
   }
-  return { kind: 'terminal', app: fallbackApp, command: buildResumeCommand(agent) };
+  return {
+    kind: 'terminal',
+    app: fallbackApp,
+    command: buildResumeCommand(agent),
+    id: agent.id,
+  };
 };
 
 /**
@@ -293,3 +304,46 @@ export const buildTerminalOpenArgs = (
     `${command}; exec ${loginShell} -l`,
   ];
 };
+
+/** 端末を持つプロセスの pid・tty・引数を一覧する `ps` の引数。既に開いている `claude attach` を探すのに使う。 */
+export const ATTACH_CLIENT_ARGS: readonly string[] = ['-axo', 'pid=,tty=,args='];
+
+/** 既に開いている `claude attach <id>` のプロセス。 */
+export interface AttachClient {
+  readonly pid: number;
+  /** `ps` の tty 列（`ttys003` など） */
+  readonly tty: string;
+}
+
+/**
+ * `ps -axo pid=,tty=,args=` の出力から、`id` のセッションへ `claude attach` しているプロセスを探す。
+ *
+ * 端末を持たない（tty が `??`）プロセスは、ウィンドウが無いので数えない。
+ * cc-park がログインシェル越しに開いたもの（`zsh -l -c "… claude attach <id>; exec zsh -l"`）は、
+ * シェルと claude の両方が見つかるが、どちらも同じ端末にいるのでどれを返してもよい。
+ * `id` は {@link planFocus} が形を確かめた値だけを渡すこと（正規表現に埋め込むため）。
+ */
+export const findAttachClient = (stdout: string, id: string): AttachClient | undefined => {
+  const attach = new RegExp(`(^|[\\s/])claude\\s+attach\\s+${id}(?![\\w-])`);
+  for (const line of stdout.split('\n')) {
+    const matched = /^\s*(\d+)\s+(\S+)\s+(.*)$/.exec(line);
+    if (matched === null) {
+      continue;
+    }
+    const [, pid, tty, args] = matched;
+    if (tty === undefined || tty === '??' || args === undefined || !attach.test(args)) {
+      continue;
+    }
+    return { pid: Number(pid), tty };
+  }
+  return undefined;
+};
+
+/**
+ * pid を指定してアプリのプロセスを前面に出す AppleScript。
+ * `open -na` で同じアプリを複数起動していても、そのセッションのウィンドウを持つプロセスを選べる。
+ */
+export const buildActivateProcessScript = (pid: number): string =>
+  `tell application "System Events" to set frontmost of (first process whose unix id is ${String(
+    Math.trunc(pid),
+  )}) to true`;
