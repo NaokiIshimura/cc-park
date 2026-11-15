@@ -127,6 +127,11 @@ describe('SchedulePanel', () => {
     expect(screen.getByText('「09:00 の予約」を 実行 しますか?')).toBeDefined();
     expect(onRun).not.toHaveBeenCalled();
 
+    // セッションを始める操作なので、削除のような赤ではなく on と同じ緑にする
+    expect(screen.getByRole('button', { name: '実行 する' }).className).toContain(
+      'button--positive',
+    );
+
     await user.click(screen.getByRole('button', { name: '実行 する' }));
     expect(onRun).toHaveBeenCalledWith('a1');
     expect(screen.queryByRole('button', { name: '実行 する' })).toBeNull();

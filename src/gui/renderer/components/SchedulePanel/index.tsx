@@ -115,6 +115,7 @@ export const SchedulePanel = ({
         <ConfirmDialog
           action="実行"
           name={`${running.time} の予約`}
+          tone="positive"
           onConfirm={() => {
             onRun(running.id);
             setRunning(null);

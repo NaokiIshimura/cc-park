@@ -197,6 +197,13 @@ body {
   font-weight: 700;
 }
 
+/* 何かを始める確定ボタン（予約の実行）。`on` のトグルと同じ緑にする */
+.button--positive {
+  border-color: var(--ink-green);
+  color: var(--ink-green);
+  font-weight: 700;
+}
+
 .button--danger {
   border-color: var(--ink-red);
   color: var(--ink-red);
