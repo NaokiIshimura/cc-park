@@ -22,12 +22,15 @@ interface HarnessProps {
   readonly enabled: boolean;
   readonly notifier: ReturnType<typeof vi.fn>;
   readonly settings?: NotificationSettings;
+  /** 既定は 0（完了もすぐ通知する）。状態が続くのを待つ挙動を確かめるときだけ指定する */
+  readonly settleMs?: number;
 }
 
-const Harness = ({ transitions, enabled, notifier, settings }: HarnessProps) => {
+const Harness = ({ transitions, enabled, notifier, settings, settleMs = 0 }: HarnessProps) => {
   useNotifications(transitions, {
     enabled,
     notifier: notifier as never,
+    settleMs,
     ...(settings === undefined ? {} : { settings }),
   });
   return <Text>ok</Text>;
@@ -209,6 +212,163 @@ describe('useNotifications', () => {
       rerender(<Harness transitions={transitions} enabled notifier={notifier} />);
       await wait();
       expect(notifier).not.toHaveBeenCalled();
+      unmount();
+    });
+  });
+
+  describe('完了の状態が続くのを待ってから通知する（#84）', () => {
+    const SETTLE = 150;
+
+    it('完了と作業を行き来している間は通知せず、完了が続いたら 1 回だけ通知する', async () => {
+      const notifier = vi.fn();
+      const { rerender, unmount } = render(
+        <Harness
+          transitions={[event('waiting', 0)]}
+          enabled
+          notifier={notifier}
+          settleMs={SETTLE}
+        />,
+      );
+      await wait();
+      for (const [index, next] of [
+        event('working', 2000, 'waiting'),
+        event('waiting', 4000),
+        event('working', 6000, 'waiting'),
+        event('waiting', 8000),
+      ].entries()) {
+        rerender(<Harness transitions={[next]} enabled notifier={notifier} settleMs={SETTLE} />);
+        await wait();
+        expect(notifier, `${index} 回目の遷移の直後`).not.toHaveBeenCalled();
+      }
+      await wait(SETTLE + 50);
+      expect(notifier).toHaveBeenCalledTimes(1);
+      expect(notifier.mock.calls[0]?.[0]).toMatchObject({ message: 'a が入力待ちになりました' });
+      unmount();
+    });
+
+    it('待っている間に作業へ戻ったら通知しない', async () => {
+      const notifier = vi.fn();
+      const { rerender, unmount } = render(
+        <Harness
+          transitions={[event('waiting', 0)]}
+          enabled
+          notifier={notifier}
+          settleMs={SETTLE}
+        />,
+      );
+      await wait();
+      rerender(
+        <Harness
+          transitions={[event('working', 2000, 'waiting')]}
+          enabled
+          notifier={notifier}
+          settleMs={SETTLE}
+        />,
+      );
+      await wait(SETTLE + 50);
+      expect(notifier).not.toHaveBeenCalled();
+      unmount();
+    });
+
+    it('バックグラウンドの完了も、作業へ戻ったら通知しない', async () => {
+      const notifier = vi.fn();
+      const { rerender, unmount } = render(
+        <Harness transitions={[event('done', 0)]} enabled notifier={notifier} settleMs={SETTLE} />,
+      );
+      await wait();
+      rerender(
+        <Harness
+          transitions={[event('working', 2000, 'done')]}
+          enabled
+          notifier={notifier}
+          settleMs={SETTLE}
+        />,
+      );
+      await wait(SETTLE + 50);
+      expect(notifier).not.toHaveBeenCalled();
+      unmount();
+    });
+
+    it('承認待ちは待たずにすぐ通知する', async () => {
+      const notifier = vi.fn();
+      const { unmount } = render(
+        <Harness
+          transitions={[event('blocked', 0)]}
+          enabled
+          notifier={notifier}
+          settleMs={60_000}
+        />,
+      );
+      await wait();
+      expect(notifier).toHaveBeenCalledTimes(1);
+      unmount();
+    });
+
+    it('待っている間に通知を切ったら出さない', async () => {
+      const notifier = vi.fn();
+      const transitions = [event('waiting', 0)];
+      const { rerender, unmount } = render(
+        <Harness transitions={transitions} enabled notifier={notifier} settleMs={SETTLE} />,
+      );
+      await wait();
+      rerender(
+        <Harness transitions={transitions} enabled={false} notifier={notifier} settleMs={SETTLE} />,
+      );
+      await wait(SETTLE + 50);
+      expect(notifier).not.toHaveBeenCalled();
+      unmount();
+    });
+
+    it('アンマウントしたら待っていた通知を出さない', async () => {
+      const notifier = vi.fn();
+      const { unmount } = render(
+        <Harness
+          transitions={[event('waiting', 0)]}
+          enabled
+          notifier={notifier}
+          settleMs={SETTLE}
+        />,
+      );
+      await wait();
+      unmount();
+      await wait(SETTLE + 50);
+      expect(notifier).not.toHaveBeenCalled();
+    });
+
+    it('完了をはさんで作業へ戻っても、作業時間は最初に作業を始めた時刻から数える', async () => {
+      const notifier = vi.fn();
+      const minWork = { ...DEFAULT_NOTIFICATION_SETTINGS, minWorkSeconds: 60 };
+      const steps = [
+        event('working', 0, 'waiting'),
+        event('waiting', 50_000),
+        event('working', 52_000, 'waiting'),
+        // 作業へ戻ってからは 18 秒だが、最初に始めてからは 70 秒
+        event('waiting', 70_000),
+      ];
+      const { rerender, unmount } = render(
+        <Harness
+          transitions={[steps[0]!]}
+          enabled
+          notifier={notifier}
+          settings={minWork}
+          settleMs={SETTLE}
+        />,
+      );
+      await wait();
+      for (const step of steps.slice(1)) {
+        rerender(
+          <Harness
+            transitions={[step]}
+            enabled
+            notifier={notifier}
+            settings={minWork}
+            settleMs={SETTLE}
+          />,
+        );
+        await wait();
+      }
+      await wait(SETTLE + 50);
+      expect(notifier).toHaveBeenCalledTimes(1);
       unmount();
     });
   });

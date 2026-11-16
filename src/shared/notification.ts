@@ -56,3 +56,21 @@ export const toNotification = (event: TransitionEvent): NotificationPayload | nu
       return null;
   }
 };
+
+/**
+ * 完了の通知を出す前に、その状態が続くのを待つ時間。
+ *
+ * Claude Code はサブエージェントやバックグラウンドのタスクを待つ間、ターンを終えて `idle` になり、
+ * タスクの途中経過が届くたびに `busy` へ戻る。完了したとたんに通知すると、本当に終わるまでに
+ * 何度も通知が出る（#84）。完了の状態がこの時間続いたときだけ通知する。
+ * ポーリング（既定 2 秒）を何回かまたいで、作業へ戻らないことを確かめられる長さにする。
+ */
+export const NOTIFY_SETTLE_MS = 10_000;
+
+/**
+ * 状態が続くのを待ってから通知する種類か。
+ *
+ * 承認待ちはこちらが操作するまで先へ進まないので、待たずにすぐ知らせる。
+ */
+export const settlesBeforeNotify = (kind: NotificationKind): boolean =>
+  kind === 'finished' || kind === 'done';
