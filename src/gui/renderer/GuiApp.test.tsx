@@ -9,6 +9,7 @@ import {
   type AttentionSettings,
 } from '../../shared/attention.js';
 import { DEFAULT_COMPACT_SETTINGS, type CompactSettings } from '../../shared/compactSettings.js';
+import { NOTIFY_SETTLE_MS } from '../../shared/notification.js';
 import {
   DEFAULT_NOTIFICATION_SETTINGS,
   type NotificationSettings,
@@ -544,14 +545,27 @@ describe('GuiApp', () => {
       { ok: true, agents: [agent('a', { state: 'waiting' })] },
     ];
     const fetchAgents = vi.fn(async () => responses.shift() ?? { ok: true as const, agents: [] });
-    const { user } = await setup({ notify, fetchAgents });
+    // 作業完了は状態が続くのを待ってから通知するので、待つ時間を進める
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { bridge } = await setup({ notify, fetchAgents });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
-    await user.click(screen.getByRole('button', { name: '更新' }));
+      await user.click(screen.getByRole('button', { name: '更新' }));
+      await waitFor(() => {
+        expect(bridge.fetchAgents).toHaveBeenCalledTimes(2);
+      });
+      await act(async () => undefined);
+      expect(notify).not.toHaveBeenCalled();
 
-    await waitFor(() => {
+      await act(async () => {
+        vi.advanceTimersByTime(NOTIFY_SETTLE_MS);
+      });
       expect(notify).toHaveBeenCalledTimes(1);
-    });
-    expect(notify.mock.calls[0]?.[0]).toMatchObject({ message: 'a が入力待ちになりました' });
+      expect(notify.mock.calls[0]?.[0]).toMatchObject({ message: 'a が入力待ちになりました' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('操作待ちの件数を main へ知らせ、変わったときだけ送り直す', async () => {
