@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Agent, CharacterState, Subagent } from '../types/agent.js';
-import { SUBAGENT_MAX_AGE_MS, visibleSubagentCount, visibleSubagents } from './subagents.js';
+import { SUBAGENT_MAX_AGE_MS, visibleSubagents } from './subagents.js';
 
 const NOW = Date.parse('2026-09-25T01:00:00.000Z');
 
@@ -61,15 +61,5 @@ describe('visibleSubagents', () => {
 
   it('transcript を読んでいなければ空を返す', () => {
     expect(visibleSubagents(agent('working', null), NOW)).toEqual([]);
-  });
-});
-
-describe('visibleSubagentCount', () => {
-  it('表示する体数を返す', () => {
-    expect(visibleSubagentCount(agent('working', [subagent('a'), subagent('b')]), NOW)).toBe(2);
-  });
-
-  it('終了済みのセッションは 0 を返す', () => {
-    expect(visibleSubagentCount(agent('done', [subagent('a')]), NOW)).toBe(0);
   });
 });

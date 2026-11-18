@@ -1,7 +1,7 @@
 import type { CharacterState } from '../types/agent.js';
 
 /**
- * キャラクターの見た目定義。TUI / GUI の双方から参照する UI 非依存の共有資産。
+ * キャラクターの見た目定義。GUI の renderer とメニューバーのアイコンが参照する UI 非依存の共有資産。
  *
  * Claude Code の起動バナーと同じブロックアートを使う。
  * レイアウトを揺らさないため、全フレームは 3 行・表示幅 9 桁に揃えている。
@@ -64,7 +64,7 @@ const frame = (pose: Pose, legs: string = LEGS): string => {
 export interface CharacterAppearance {
   /** アニメーションフレーム（各要素は改行区切りの 3 行） */
   readonly frames: readonly string[];
-  /** 色名（Ink の color 名。GUI では CSS 変数へ対応付ける） */
+  /** 色名（`cyan` など。renderer の colors.ts で CSS 変数へ対応付ける） */
   readonly color: string;
   /** 一覧に出すステータスラベル */
   readonly label: string;
@@ -154,9 +154,6 @@ export const CHARACTERS: Readonly<Record<CharacterState, CharacterAppearance>> =
 /** ミニキャラクター 1 体の桁数。 */
 export const MINI_WIDTH = 2;
 
-/** 体と体の間に空ける桁数。 */
-const MINI_GAP = 1;
-
 /** 足を開いた形（外向きに 1 本ずつ）と、閉じた形（中央で 1 本に繋がる）。 */
 const MINI_FRAMES: readonly string[] = ['▛▜', '▜▛'];
 
@@ -165,47 +162,6 @@ export const getMiniFrame = (frame: number): string => {
   const index = ((frame % MINI_FRAMES.length) + MINI_FRAMES.length) % MINI_FRAMES.length;
   return MINI_FRAMES[index] ?? '';
 };
-
-/**
- * 表示幅に並ぶ体数。
- *
- * ミニキャラクターは行の幅いっぱいまで横に並べ、入りきらなくなったときだけ折り返す。
- * 幅がどれだけ狭くても 1 体は出す（0 にすると折り返しが終わらない）。
- */
-export const miniPerRow = (width: number): number =>
-  Math.max(Math.floor((width + MINI_GAP) / (MINI_WIDTH + MINI_GAP)), 1);
-
-/** 実行中の体数を並べるのに要る行数。 */
-export const countMiniRows = (count: number, perRow: number): number =>
-  count <= 0 ? 0 : Math.ceil(count / Math.max(perRow, 1));
-
-/**
- * ミニキャラクターが占める行数。折り返したときは行の間に空行を 1 つ入れる。
- * 端末の高さから表示件数を出すときに使う。
- */
-export const countMiniHeight = (count: number, perRow: number): number => {
-  const rows = countMiniRows(count, perRow);
-  return rows === 0 ? 0 : rows * 2 - 1;
-};
-
-/**
- * 実行中のサブエージェントの数だけミニキャラクターを並べる。
- *
- * 省略はせず、走っている体数ぶんすべて出す。`perRow` 体で折り返す。
- * 位相は「行 + 列」でずらすので、横にも縦にも隣り合う体の足が揃うことはない。
- */
-export const buildMiniRows = (
-  count: number,
-  frame: number,
-  perRow: number,
-): readonly string[] =>
-  Array.from({ length: countMiniRows(count, perRow) }, (_, row) => {
-    const first = row * perRow;
-    const slots = Array.from({ length: Math.min(perRow, count - first) }, (_, column) =>
-      getMiniFrame(frame + row + column),
-    );
-    return slots.join(' '.repeat(MINI_GAP));
-  });
 
 /** 状態に対応する見た目を取得する。 */
 export const getAppearance = (state: CharacterState): CharacterAppearance =>

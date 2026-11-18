@@ -3,69 +3,27 @@ import { encodeGuiOptions, DEFAULT_GUI_OPTIONS } from './config.js';
 import {
   buildGuiArgs,
   isFlagGiven,
-  resolveGuiFlags,
   buildGuiEnv,
-  ELECTRON_MISSING_MESSAGE,
-  GUI_ONCE_CONFLICT_MESSAGE,
+  findRemovedFlag,
   INVALID_ACCENT_MESSAGE,
   INVALID_THEME_MESSAGE,
-  MODE_CONFLICT_MESSAGE,
+  REMOVED_CLI_MESSAGE,
   resolveAppearanceFlags,
   resolveElectronPath,
-  resolveStartupMode,
-  type StartupFlags,
 } from './launch.js';
 
-const flags = (overrides: Partial<StartupFlags> = {}): StartupFlags => ({
-  cli: false,
-  gui: false,
-  once: false,
-  ...overrides,
-});
-
-describe('resolveStartupMode', () => {
-  it('フラグが無ければ GUI で起動する', () => {
-    expect(resolveStartupMode(flags())).toEqual({ ok: true, mode: 'gui' });
+describe('findRemovedFlag', () => {
+  it('削除したフラグが無ければ null を返す', () => {
+    expect(findRemovedFlag(['--all', '--theme', 'navy'])).toBeNull();
   });
 
-  it('--cli なら CLI で起動する', () => {
-    expect(resolveStartupMode(flags({ cli: true }))).toEqual({ ok: true, mode: 'cli' });
-  });
-
-  it('--gui なら GUI で起動する', () => {
-    expect(resolveStartupMode(flags({ gui: true }))).toEqual({ ok: true, mode: 'gui' });
-  });
-
-  it('--once だけなら CLI とみなす', () => {
-    expect(resolveStartupMode(flags({ once: true }))).toEqual({ ok: true, mode: 'cli' });
-  });
-
-  it('--cli --once は CLI で起動する', () => {
-    expect(resolveStartupMode(flags({ cli: true, once: true }))).toEqual({
-      ok: true,
-      mode: 'cli',
-    });
-  });
-
-  it('--cli と --gui の同時指定は拒否する', () => {
-    expect(resolveStartupMode(flags({ cli: true, gui: true }))).toEqual({
-      ok: false,
-      message: MODE_CONFLICT_MESSAGE,
-    });
-  });
-
-  it('--gui と --once の同時指定は拒否する', () => {
-    expect(resolveStartupMode(flags({ gui: true, once: true }))).toEqual({
-      ok: false,
-      message: GUI_ONCE_CONFLICT_MESSAGE,
-    });
-  });
-
-  it('3 つ同時なら先にモードの矛盾を伝える', () => {
-    expect(resolveStartupMode(flags({ cli: true, gui: true, once: true }))).toEqual({
-      ok: false,
-      message: MODE_CONFLICT_MESSAGE,
-    });
+  it.each([
+    ['--cli', 'cli'],
+    ['--no-cli', 'cli'],
+    ['--once', 'once'],
+    ['--once=true', 'once'],
+  ])('%s を検出する', (flag, name) => {
+    expect(findRemovedFlag(['--all', flag])).toBe(name);
   });
 });
 
@@ -92,48 +50,11 @@ describe('isFlagGiven', () => {
   });
 
   it('指定が無ければ false', () => {
-    expect(isFlagGiven(['--all', '--cli'], 'prompt')).toBe(false);
+    expect(isFlagGiven(['--all', '--tokens'], 'prompt')).toBe(false);
   });
 
   it('前方一致する別のフラグには反応しない', () => {
     expect(isFlagGiven(['--prompt-only'], 'prompt')).toBe(false);
-  });
-});
-
-describe('resolveGuiFlags', () => {
-  const off = { all: false, prompt: false, tokens: false, subagents: false };
-
-  it('指定が無ければ GUI の既定（all のみ無効）にする', () => {
-    expect(resolveGuiFlags(off, [])).toEqual({
-      all: false,
-      prompt: true,
-      tokens: true,
-      subagents: true,
-    });
-  });
-
-  it('明示した否定はそのまま尊重する', () => {
-    expect(resolveGuiFlags(off, ['--no-prompt'])).toEqual({
-      all: false,
-      prompt: false,
-      tokens: true,
-      subagents: true,
-    });
-  });
-
-  it('すべて否定できる', () => {
-    expect(
-      resolveGuiFlags(off, ['--no-all', '--no-prompt', '--no-tokens', '--no-subagents']),
-    ).toEqual(off);
-  });
-
-  it('明示した有効化もそのまま尊重する', () => {
-    expect(resolveGuiFlags({ ...off, all: true }, ['--all'])).toEqual({
-      all: true,
-      prompt: true,
-      tokens: true,
-      subagents: true,
-    });
   });
 });
 
@@ -185,17 +106,9 @@ describe('resolveElectronPath', () => {
 });
 
 describe('案内メッセージ', () => {
-  it('electron 不在の案内に代替手段を含む', () => {
-    expect(ELECTRON_MISSING_MESSAGE).toContain('--cli');
-  });
-
-  it('モード指定の矛盾を伝える', () => {
-    expect(MODE_CONFLICT_MESSAGE).toContain('--cli');
-    expect(MODE_CONFLICT_MESSAGE).toContain('--gui');
-  });
-
-  it('--once との併用不可を伝える', () => {
-    expect(GUI_ONCE_CONFLICT_MESSAGE).toContain('--once');
+  it('CLI モードの削除を伝える', () => {
+    expect(REMOVED_CLI_MESSAGE).toContain('--cli');
+    expect(REMOVED_CLI_MESSAGE).toContain('--once');
   });
 });
 

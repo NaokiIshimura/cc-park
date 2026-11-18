@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatTokenBar,
   formatTokenCounts,
   formatTokenPercent,
   toFilledSegments,
   tokenUsageColor,
   toPercent,
   TOKEN_BAR_SEGMENTS,
-  TOKEN_TEXT_WIDTH,
 } from './formatTokenUsage.js';
 
 describe('toPercent', () => {
@@ -39,20 +37,6 @@ describe('toFilledSegments', () => {
   });
 });
 
-describe('formatTokenBar', () => {
-  it('セグメント数ぶんの文字幅になる', () => {
-    expect(formatTokenBar(0.45)).toHaveLength(TOKEN_BAR_SEGMENTS);
-  });
-
-  it('Block Elements だけで構成する', () => {
-    expect(formatTokenBar(0.45)).toBe('████░░░░');
-  });
-
-  it('0% は空のバーになる', () => {
-    expect(formatTokenBar(0)).toBe('░░░░░░░░');
-  });
-});
-
 describe('formatTokenPercent', () => {
   it('3 桁へ右寄せして桁を揃える', () => {
     expect(formatTokenPercent(0.07)).toBe('ctx   7%');
@@ -62,7 +46,7 @@ describe('formatTokenPercent', () => {
 
   it('どの値でも表示幅が変わらない', () => {
     for (const ratio of [0, 0.07, 0.5, 1]) {
-      expect(formatTokenPercent(ratio)).toHaveLength(TOKEN_TEXT_WIDTH - TOKEN_BAR_SEGMENTS - 1);
+      expect(formatTokenPercent(ratio)).toHaveLength('ctx 100%'.length);
     }
   });
 });

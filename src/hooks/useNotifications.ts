@@ -27,11 +27,11 @@ export interface UseNotificationsOptions {
   /**
    * 通知の発火手段。
    *
-   * TUI は osascript、GUI は Electron の Notification と実装が異なるため、
-   * `node:*` に依存する既定実装を静的 import せず、呼び出し側から注入させる。
+   * renderer は Node API を使えないため、実際の通知（main プロセスの Electron Notification）は
+   * 呼び出し側から注入させる。
    */
   readonly notifier: (payload: NotificationPayload) => void;
-  /** どの遷移を通知するか。省略時はすべて通知する（設定画面の無い CLI） */
+  /** どの遷移を通知するか。省略時はすべて通知する */
   readonly settings?: NotificationSettings;
   /** 完了の状態がどれだけ続いたら通知するか。省略時は {@link NOTIFY_SETTLE_MS} */
   readonly settleMs?: number;

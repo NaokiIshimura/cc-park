@@ -1,8 +1,19 @@
-import { Text } from 'ink';
-import { render } from 'ink-testing-library';
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { cleanup, render as renderDom } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { Agent, CharacterState } from '../types/agent.js';
 import { useTransitions } from './useTransitions.js';
+
+afterEach(cleanup);
+
+/** フックの結果を文字列で描画し、最後に描画された内容を読めるようにする。 */
+const render = (ui: ReactElement) => {
+  const result = renderDom(ui);
+  // テスト用の tsconfig は DOM の型を持たないため、読む値だけ型を付ける
+  const container = result.container as unknown as { readonly textContent: string | null };
+  return { ...result, lastFrame: () => container.textContent ?? '' };
+};
 
 const wait = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -33,12 +44,12 @@ const Harness = ({ agents, previousAgents, highlightMs, now }: HarnessProps) => 
     now,
   });
   return (
-    <Text>
+    <span>
       {JSON.stringify({
         states: result.agents.map((item) => [item.sessionId, item.state]),
         transitions: result.transitions.map((item) => [item.sessionId, item.from, item.to]),
       })}
-    </Text>
+    </span>
   );
 };
 

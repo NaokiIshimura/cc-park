@@ -1,7 +1,7 @@
 {
   "name": "cc-park",
-  "version": "0.24.1",
-  "description": "マシン上で稼働中の Claude Code セッションをキャラクターで一覧表示するターミナル TUI / デスクトップ GUI",
+  "version": "0.25.0",
+  "description": "マシン上で稼働中の Claude Code セッションをキャラクターで一覧表示するデスクトップアプリ",
   "type": "module",
   "main": "dist/gui/main.js",
   "bin": {
@@ -30,9 +30,6 @@
   "keywords": [
     "claude",
     "claude-code",
-    "cli",
-    "tui",
-    "ink",
     "gui",
     "electron",
     "desktop"
@@ -40,7 +37,6 @@
   "license": "MIT",
   "dependencies": {
     "electron": "^44.4.3",
-    "ink": "^7.1.1",
     "meow": "^14.1.0",
     "react": "^19.3.0"
   },
@@ -53,7 +49,6 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "^4.1.11",
-    "ink-testing-library": "^4.0.0",
     "jsdom": "^29.1.1",
     "react-dom": "^19.3.0",
     "typescript": "^7.0.2",

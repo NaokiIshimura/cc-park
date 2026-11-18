@@ -89,7 +89,7 @@ export interface UseSelectionCoreResult {
 /**
  * 選択カーソルと操作の状態機械。
  *
- * ink にも DOM にも依存しないため、TUI と GUI で同じ判断ロジックを共有できる。
+ * DOM に依存しないため、入力の配線と切り離してテストできる。
  * 入力の解釈（どのキーがどの操作か）だけを呼び出し側が受け持つ。
  */
 export const useSelectionCore = (options: UseSelectionCoreOptions): UseSelectionCoreResult => {

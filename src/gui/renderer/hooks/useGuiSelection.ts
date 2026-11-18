@@ -170,7 +170,7 @@ export interface UseGuiSelectionResult extends UseSelectionCoreResult {
 
 /**
  * カーソル移動とキーバインドを扱う（GUI 用の入力配線）。
- * 判断ロジックは TUI と共通の `useSelectionCore` に委ね、ここは入力源の差だけを吸収する。
+ * 判断ロジックは `useSelectionCore` に委ね、ここは入力源の差だけを吸収する。
  */
 export const useGuiSelection = (options: UseGuiSelectionOptions): UseGuiSelectionResult => {
   const {
