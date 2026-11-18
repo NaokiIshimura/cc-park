@@ -9,7 +9,7 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.test.{ts,tsx}',
-        'src/cli.tsx',
+        'src/cli.ts',
         'src/**/index.ts',
         // Electron の配線のみでロジックを持たない層。実行には Electron 本体が要る
         'src/gui/main.ts',

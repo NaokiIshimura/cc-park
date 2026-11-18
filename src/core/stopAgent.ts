@@ -42,7 +42,7 @@ export const buildStopArgs = (id: string): string[] => ['stop', id];
  * `claude stop <id>` を実行して background セッションを停止する。
  * 会話自体は保持されるため、`claude attach <id>` で再開できる。
  *
- * 失敗は例外ではなく Result 型で返し、TUI を落とさない。
+ * 失敗は例外ではなく Result 型で返し、呼び出し側を落とさない。
  */
 export const stopAgent = async (
   agent: Agent,

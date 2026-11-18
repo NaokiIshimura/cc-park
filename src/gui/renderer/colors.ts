@@ -1,7 +1,7 @@
 /**
- * Ink の color 名 → CSS 変数名の対応表。
+ * 色名 → CSS 変数名の対応表。
  *
- * キャラクターやラベルの配色定義（`shared/characters.ts`）は TUI 由来の色名を持つため、
+ * キャラクターやラベルの配色定義（`shared/characters.ts`）は色名（`cyan` など）を持つため、
  * GUI では色名をそのまま使わず、この表を通して CSS 変数へ読み替える。
  */
 export const INK_COLOR_VARIABLES: Readonly<Record<string, string>> = {
@@ -16,6 +16,6 @@ export const INK_COLOR_VARIABLES: Readonly<Record<string, string>> = {
   white: '--ink-white',
 };
 
-/** Ink の color 名を CSS の色値へ変換する。未知の色名は既定色にフォールバックする。 */
+/** 色名を CSS の色値へ変換する。未知の色名は既定色にフォールバックする。 */
 export const inkColor = (name: string): string =>
   `var(${INK_COLOR_VARIABLES[name] ?? '--ink-default'})`;

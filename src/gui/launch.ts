@@ -1,60 +1,22 @@
 import { isAccentColor, isThemeId, THEME_IDS, type ThemeId } from '../shared/themes.js';
-import { encodeGuiOptions, GUI_DEFAULT_FLAGS, type GuiOptions } from './config.js';
+import { encodeGuiOptions, type GuiOptions } from './config.js';
 
-/** electron を解決できなかったときの案内。勝手に CLI へ倒さず、ここで終了させる。 */
+/** electron を解決できなかったときの案内。 */
 export const ELECTRON_MISSING_MESSAGE = [
-  'GUI モードを起動できませんでした: electron が見つかりません。',
-  'npm install をやり直すか、--cli を付けてターミナル (CLI) モードで起動してください。',
+  'cc-park を起動できませんでした: electron が見つかりません。',
+  'npm install をやり直してください。',
 ].join('\n');
 
-/** `--gui` と併用できないフラグを指定されたときの案内。 */
-export const GUI_ONCE_CONFLICT_MESSAGE =
-  '--gui と --once は同時に指定できません（GUI には 1 回だけ描画する動作がありません）。';
+/** 削除したターミナル (CLI) モードのフラグ。黙って無視すると気づけないため、起動前に止める。 */
+export const REMOVED_CLI_FLAGS = ['cli', 'once'] as const;
 
-/** 起動モードを両方指定されたときの案内。 */
-export const MODE_CONFLICT_MESSAGE = '--cli と --gui は同時に指定できません。';
+/** 削除したフラグを指定されたときの案内。 */
+export const REMOVED_CLI_MESSAGE =
+  'ターミナル (CLI) モードは削除されました。--cli / --once は指定できません。';
 
-/** 起動モード。既定は GUI で、`--cli` を付けるとターミナルの TUI になる。 */
-export type StartupMode = 'gui' | 'cli';
-
-export interface StartupFlags {
-  readonly cli: boolean;
-  readonly gui: boolean;
-  readonly once: boolean;
-}
-
-export type StartupDecision =
-  | { readonly ok: true; readonly mode: StartupMode }
-  | { readonly ok: false; readonly message: string };
-
-/**
- * フラグから起動モードを決める。
- *
- * 標準出力が TTY かどうかは判断に使わない。ランチャーやエディタから起動した場合は
- * 非 TTY でも GUI を開きたいため、モードの決定は明示のフラグだけに任せる。
- */
-export const resolveStartupMode = (flags: StartupFlags): StartupDecision => {
-  if (flags.cli && flags.gui) {
-    return { ok: false, message: MODE_CONFLICT_MESSAGE };
-  }
-  if (flags.gui && flags.once) {
-    return { ok: false, message: GUI_ONCE_CONFLICT_MESSAGE };
-  }
-  if (flags.cli) {
-    return { ok: true, mode: 'cli' };
-  }
-  if (flags.gui) {
-    return { ok: true, mode: 'gui' };
-  }
-  // --once は「1 回描画して終わる」CLI 固有の動作なので、単独指定でも CLI とみなす
-  if (flags.once) {
-    return { ok: true, mode: 'cli' };
-  }
-  return { ok: true, mode: 'gui' };
-};
-
-/** GUI 側で既定値を差し替える表示オプション。 */
-export type GuiDisplayFlags = { readonly [K in keyof typeof GUI_DEFAULT_FLAGS]: boolean };
+/** 削除したフラグが argv に含まれていれば、その名前を返す。 */
+export const findRemovedFlag = (argv: readonly string[]): string | null =>
+  REMOVED_CLI_FLAGS.find((name) => isFlagGiven(argv, name)) ?? null;
 
 /**
  * フラグが argv に明示されているか。
@@ -69,24 +31,6 @@ export const isFlagGiven = (argv: readonly string[], name: string): boolean =>
       argument === `--no-${name}` ||
       argument.startsWith(`--${name}=`),
   );
-
-/**
- * GUI の表示オプションを決める。
- *
- * 明示されていないものは GUI 用の既定（`GUI_DEFAULT_FLAGS`）へ倒し、
- * `--no-all` のように明示した場合はそちらを優先する。
- */
-export const resolveGuiFlags = (
-  flags: GuiDisplayFlags,
-  argv: readonly string[],
-): GuiDisplayFlags => ({
-  all: isFlagGiven(argv, 'all') ? flags.all : GUI_DEFAULT_FLAGS.all,
-  prompt: isFlagGiven(argv, 'prompt') ? flags.prompt : GUI_DEFAULT_FLAGS.prompt,
-  tokens: isFlagGiven(argv, 'tokens') ? flags.tokens : GUI_DEFAULT_FLAGS.tokens,
-  subagents: isFlagGiven(argv, 'subagents')
-    ? flags.subagents
-    : GUI_DEFAULT_FLAGS.subagents,
-});
 
 /** `--theme` に知らない名前を指定されたときの案内。 */
 export const INVALID_THEME_MESSAGE = `--theme には次のいずれかを指定してください: ${THEME_IDS.join(', ')}`;
@@ -151,7 +95,7 @@ export const buildGuiEnv = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
  * electron パッケージの読み込み。
  *
  * 既定値を持たせると「electron を実際に読み込む」以外に検証しようがない分岐が
- * 増えるため、`() => import('electron')` の指定は呼び出し側（cli）に置く。
+ * 増えるため、`() => import('electron')` の指定は呼び出し側（cli.ts）に置く。
  */
 export type ElectronImporter = () => Promise<unknown>;
 

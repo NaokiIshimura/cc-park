@@ -37,7 +37,3 @@ export const visibleSubagents = (agent: Agent, now: number): readonly Subagent[]
   const subagents = agent.meta?.subagents ?? [];
   return subagents.filter((subagent) => isFresh(subagent, now));
 };
-
-/** 画面に出すミニキャラクターの数。 */
-export const visibleSubagentCount = (agent: Agent, now: number): number =>
-  visibleSubagents(agent, now).length;

@@ -4,20 +4,19 @@ Claude Code がこのリポジトリで作業するときの指針。
 
 ## このツールについて
 
-マシン上で稼働中の Claude Code セッションを、キャラクターで一覧表示するツール。
-デスクトップ GUI（既定・Electron）とターミナル TUI（`--cli`・Ink）の 2 モードがある。
+マシン上で稼働中の Claude Code セッションを、キャラクターで一覧表示するデスクトップアプリ（Electron）。
+ターミナル TUI（`--cli`・Ink）のモードは削除した。`--cli` / `--once` は案内を出して終了する。
 
 ## コマンド
 
 ```bash
-npm run build       # TUI + GUI（preload / renderer）をまとめてビルド
+npm run build       # main・preload・renderer をまとめてビルド
 npm run typecheck   # 本体・テスト・GUI renderer の 3 構成すべて型チェック
 npm test            # 全テスト
 npx vitest run <ファイルパス>   # テストは対象を指定して実行する
 npm run gui:dev     # ビルドして GUI ウィンドウを起動
 npm run gui:package # .app にパッケージ化（アプリ名を cc-park で表示したいときはこちらを起動）
 npm run icon:build  # AA からアプリアイコンを生成（assets/icon.svg / .png / .icns）
-node dist/cli.js --once --all   # TUI を 1 回だけ描画（実描画の確認用）
 ```
 
 変更後は **テスト・型チェック・ビルドの 3 つ**を通すこと。
@@ -47,7 +46,7 @@ README の「ダウンロード」にあるインストール手順は `releases
 
 ## キャラクター（AA）を変更するときの決まり
 
-AA の定義は `src/shared/characters.ts` の 1 箇所だけ。TUI と GUI が同じ定義を共有する。
+AA の定義は `src/shared/characters.ts` の 1 箇所だけ。renderer とメニューバーのアイコンが同じ定義を共有する。
 
 ### 重要: アニメーションや AA を変更したら README.md も更新する
 
@@ -56,7 +55,6 @@ AA の定義は `src/shared/characters.ts` の 1 箇所だけ。TUI と GUI が�
 
 | README の箇所 | 内容 |
 | --- | --- |
-| 冒頭の表示サンプル | `--cli` の画面例。実際の AA と揃える |
 | `### ステータス一覧` | 表示・色・動く部位・フレーム数・動き・意味の表 |
 | `### ステータスごとのアニメーション` | 各ステータスの状態キー・色・優先度・説明文・動き・AA の全フレーム |
 | `### 手（1 行目の両端）` | 手のポーズの図 |
@@ -92,7 +90,7 @@ GUI のスクリーンショット `docs/gui.png` と、README 冒頭のアニ�
 | 制約 | 内容 |
 | --- | --- |
 | サイズ | 全フレーム **3 行 x 9 桁**。崩すとレイアウトが揺れる |
-| ミニのサイズ | サブエージェント用のミニキャラクターは **1 行 x 2 桁**。1 桁空けて行の幅いっぱいまで横に並べ、入りきらないときだけ折り返す（省略はしない。折り返した行の間は 1 行空ける） |
+| ミニのサイズ | サブエージェント用のミニキャラクターは **1 行 x 2 桁**。行の幅いっぱいまで横に並べ、入りきらないときだけ折り返す（省略はしない。折り返しは CSS に任せる） |
 | 使える文字 | Block Elements（U+2580–U+259F）と空白だけ |
 | フォント | `Menlo` と `SF Mono` の**両方**に収録され、字送り幅が ASCII と同じことを実測した文字のみ |
 | 浮き | すべての部品が身体と繋がっていること（1 つの連結成分） |
@@ -103,7 +101,7 @@ GUI のフォントスタックは `ui-monospace, SFMono-Regular, Menlo, ...` �
 macOS では先頭の **SF Mono** が使われる。`✻` などの星記号や `◡` は SF Mono に無く、
 フォールバック描画で桁が崩れるので使えない。
 
-これらは `src/components/Character/Character.test.tsx` でテストとして固定してある。
+これらは `src/shared/characters.test.ts` でテストとして固定してある。
 AA を変えてテストが落ちたら、テストではなく AA の方を直す。
 
 ### 動かす部位の役割
@@ -125,14 +123,13 @@ AA を変えてテストが落ちたら、テストではなく AA の方を直�
 | `src/shared/` | UI 非依存の共有資産（AA 定義・並べ替え・整形） |
 | `src/core/` | 外部コマンド実行・通知・クリップボードなど副作用 |
 | `src/hooks/` | 取得・差分検出・選択状態。`useSelectionCore` は入力源に依存しない |
-| `src/components/` | TUI（Ink）の描画 |
 | `src/gui/` | Electron の main / preload / renderer |
 
 予約（指定時刻の定期起動）は `src/shared/schedule.ts`（判断）、`src/core/scheduleStore.ts`（永続化）、
 `src/core/launchAgent.ts`（`claude --bg` の実行）、`src/core/scheduler.ts`（発火ループ）に分かれている。
 一覧の保持も `scheduler` が持ち、main プロセスは取り次ぐだけにする。
 
-CLI と GUI は「取得・正規化・差分検出・並べ替え・選択状態の遷移」を共有する。
+「取得・正規化・差分検出・並べ替え・選択状態の遷移」は描画から切り離して `src/shared/` と `src/hooks/` に置いている。
 新しいロジックを足すときは、まず `src/shared/` か `src/hooks/` に置けないか検討する。
 
 `claude agents --json` の出力仕様は非公開で変わりうる。実際に見た出力は匿名化して
@@ -147,9 +144,6 @@ main プロセスへ IPC で委譲する（`tsconfig.gui.json` が型検査で�
 見た目を変えたら、テストだけでなく実際の描画も確認する。
 
 ```bash
-# TUI
-node dist/cli.js --once --all
-
 # GUI（Chromium の CDP でスクリーンショットと実測値を取る）
 ELECTRON_RUN_AS_NODE= npx electron dist/gui/main.js --remote-debugging-port=9222
 # → http://127.0.0.1:9222/json/list から WebSocket で Runtime.evaluate / Page.captureScreenshot

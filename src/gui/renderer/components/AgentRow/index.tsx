@@ -19,7 +19,7 @@ import { inkColor } from '../../colors.js';
 import { Character } from '../Character/index.js';
 import { StatusBadge } from '../StatusBadge/index.js';
 
-/** プロンプト行の先頭に置く目印。TUI と揃える。 */
+/** プロンプト行の先頭に置く目印。 */
 const PROMPT_MARKER = '>';
 
 /**

@@ -1,10 +1,21 @@
-import { Text } from 'ink';
+// @vitest-environment jsdom
+import { cleanup, render as renderDom } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { useEffect } from 'react';
-import { render } from 'ink-testing-library';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FetchAgentsOptions, FetchAgentsResult } from '../core/fetchAgents.js';
 import type { Agent, CharacterState } from '../types/agent.js';
 import { MIN_INTERVAL_MS, useAgents, type UseAgentsOptions } from './useAgents.js';
+
+afterEach(cleanup);
+
+/** フックの結果を文字列で描画し、最後に描画された内容を読めるようにする。 */
+const render = (ui: ReactElement) => {
+  const result = renderDom(ui);
+  // テスト用の tsconfig は DOM の型を持たないため、読む値だけ型を付ける
+  const container = result.container as unknown as { readonly textContent: string | null };
+  return { ...result, lastFrame: () => container.textContent ?? '' };
+};
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -25,14 +36,14 @@ const agent = (sessionId: string, state: CharacterState = 'working'): Agent => (
 const Harness = (props: UseAgentsOptions) => {
   const { agents, previousAgents, error, isFetching } = useAgents(props);
   return (
-    <Text>
+    <span>
       {JSON.stringify({
         ids: agents.map((item) => item.sessionId),
         previous: previousAgents?.map((item) => item.sessionId) ?? null,
         error: error?.kind ?? null,
         isFetching,
       })}
-    </Text>
+    </span>
   );
 };
 
@@ -190,7 +201,7 @@ describe('useAgents', () => {
           clearTimeout(timer);
         };
       }, [refresh]);
-      return <Text>ok</Text>;
+      return <span>ok</span>;
     };
 
     const { unmount } = render(<RefreshHarness />);

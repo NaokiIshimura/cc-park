@@ -50,7 +50,7 @@ export interface GuiAppProps {
   readonly bridge: CcParkBridge;
 }
 
-/** GUI のルート。TUI の App.tsx と同じ流れを DOM で組み立てる。 */
+/** GUI のルート。 */
 export const GuiApp = ({ config, bridge }: GuiAppProps) => {
   const [notifyEnabled, setNotifyEnabled] = useState(config.notify);
   const [alwaysOnTop, setAlwaysOnTop] = useState(config.alwaysOnTop);
